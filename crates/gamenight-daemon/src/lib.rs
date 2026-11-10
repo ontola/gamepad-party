@@ -94,6 +94,10 @@ struct Shared {
     /// so this is "don't bring it back on your own", not "banned for the
     /// night".
     quit_games: std::collections::HashSet<GameId>,
+    /// The build each of `quit_games` was on when it went away. A different
+    /// build on disk (a fixed playtest copied over the old exe) is no longer
+    /// the game that crashed or was closed, so it may warm again by itself.
+    quit_builds: HashMap<GameId, Option<BuildStamp>>,
     /// Titles the daemon stopped itself because the night no longer needed
     /// them (see `retire_idle_games`). Their disconnect is expected: not a
     /// crash to report and not a quit to respect.
@@ -363,6 +367,7 @@ impl Shared {
             running_children: HashMap::new(),
             quitting: None,
             quit_games: std::collections::HashSet::new(),
+            quit_builds: HashMap::new(),
             retired: std::collections::HashSet::new(),
             game_issues: HashMap::new(),
             onboarding_error: None,
@@ -688,6 +693,8 @@ impl Shared {
 
     fn record_game_issue(&mut self, game: GameId, kind: gamenight_protocol::GameIssueKind) {
         self.quit_games.insert(game.clone());
+        let stamp = self.launch_specs.get(&game).and_then(BuildStamp::of);
+        self.quit_builds.insert(game.clone(), stamp);
         self.game_issues.insert(game.clone(), kind);
         self.quitting = Some(game.clone());
         self.dispatch(Command::GameDisconnected { game }, None);
@@ -1434,7 +1441,13 @@ impl Shared {
             info!(%game, "not respawning a game that just quit");
             return;
         }
-        // ...and it stays gone until asked for by name. See `quit_games`.
+        // ...and it stays gone until asked for by name, or until a new build
+        // of it is on disk. See `quit_games`.
+        if self.quit_games.contains(game) && self.new_build_since_quit(game) {
+            info!(%game, "a new build of a game that went away — it may warm again");
+            self.quit_games.remove(game);
+            self.game_issues.remove(game);
+        }
         if self.quit_games.contains(game) {
             info!(%game, "leaving a game the party closed alone until they ask for it");
             return;
@@ -1552,6 +1565,43 @@ impl Shared {
                 );
             }
         }
+    }
+
+    /// Whether the executable of a game in `quit_games` changed since it
+    /// went away. Unknown either side is not a change.
+    fn new_build_since_quit(&self, game: &GameId) -> bool {
+        let Some(Some(then)) = self.quit_builds.get(game) else {
+            return false;
+        };
+        self.launch_specs
+            .get(game)
+            .and_then(BuildStamp::of)
+            .is_some_and(|now| &now != then)
+    }
+
+    /// A game left alone after it went away is welcome again once a new
+    /// build of it is on disk: warm it if it is what plays next. Without
+    /// this, a playtest that crashed early stayed cold all evening, even
+    /// after the fixed build was copied in.
+    fn rewarm_new_builds(&mut self) {
+        let fresh: Vec<GameId> = self
+            .quit_games
+            .iter()
+            .filter(|game| self.new_build_since_quit(game))
+            .cloned()
+            .collect();
+        if fresh.is_empty() {
+            return;
+        }
+        for game in &fresh {
+            info!(%game, "a new build of a game that went away — it may warm again");
+            self.quit_games.remove(game);
+            self.quit_builds.remove(game);
+            self.game_issues.remove(game);
+        }
+        let fx = self.night.ensure_warm();
+        self.apply_effects(fx, None);
+        self.apply_effects(vec![Effect::StateChanged], None);
     }
 
     /// The night is over: take every child down.
@@ -2520,6 +2570,7 @@ async fn run_inner(
                     s.refresh_onboarding_error(file);
                 }
                 s.apply_effects(fx, None);
+                s.rewarm_new_builds();
                 continue;
             },
             _ = lifetime_tick.tick() => {
@@ -3189,6 +3240,35 @@ async fn serve(
     result
 }
 
+/// Which build a launch spec starts: its command line and the executable's
+/// size and modification time.
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct BuildStamp {
+    spec: String,
+    len: u64,
+    modified: Option<std::time::SystemTime>,
+}
+
+impl BuildStamp {
+    fn of(spec: &LaunchSpec) -> Option<Self> {
+        let mut path = std::path::PathBuf::from(&spec.command);
+        if path.is_relative() {
+            if let Some(cwd) = &spec.cwd {
+                let joined = std::path::Path::new(cwd).join(&path);
+                if joined.exists() {
+                    path = joined;
+                }
+            }
+        }
+        let meta = std::fs::metadata(&path).ok()?;
+        Some(Self {
+            spec: serde_json::to_string(spec).unwrap_or_default(),
+            len: meta.len(),
+            modified: meta.modified().ok(),
+        })
+    }
+}
+
 enum Registration {
     Game(GameId),
     Lobby(GameId),
@@ -3583,6 +3663,52 @@ mod replacement_lobby_tests {
         assert!(s.game_issues.is_empty());
         assert!(s.pending_launches.contains_key(&game));
         s.kill_all_children();
+    }
+
+    #[cfg(not(windows))]
+    #[tokio::test]
+    async fn a_new_build_of_a_crashed_game_warms_again_by_itself() {
+        let dir =
+            std::env::temp_dir().join(format!("gamenight-new-build-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let exe = dir.join("game.sh");
+        std::fs::write(&exe, "#!/bin/sh\nsleep 30\n").unwrap();
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(&exe, std::fs::Permissions::from_mode(0o755)).unwrap();
+        let mut s = Shared::new(
+            vec![test_game(
+                serde_json::json!({"command": exe.to_string_lossy()}),
+            )],
+            "127.0.0.1:0".into(),
+            None,
+        );
+        s.night.set_lobby_game(Some(GameId::new("lobby")));
+        let game = GameId::new("test");
+        s.record_game_issue(
+            game.clone(),
+            gamenight_protocol::GameIssueKind::ExitedUnexpectedly,
+        );
+        s.launch(&game);
+        assert!(
+            s.pending_launches.is_empty(),
+            "the crashed build stays cold"
+        );
+        s.rewarm_new_builds();
+        assert!(
+            s.pending_launches.is_empty(),
+            "same build: still left alone"
+        );
+        // The fixed build is copied over the old one.
+        std::fs::write(&exe, "#!/bin/sh\n# fixed\nsleep 30\n").unwrap();
+        s.rewarm_new_builds();
+        assert!(!s.quit_games.contains(&game));
+        assert!(s.game_issues.is_empty());
+        assert!(
+            s.pending_launches.contains_key(&game),
+            "the new build warms as up next"
+        );
+        s.kill_all_children();
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[cfg(not(windows))]
