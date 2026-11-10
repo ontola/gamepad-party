@@ -364,6 +364,15 @@ class AppState extends ChangeNotifier {
   /// Kept the random name when asked: do not ask again.
   void keepName() => prefs.setBool('chose_name', true);
 
+  /// Saw the "This is you" banner on the room screen after first joining
+  /// and closed it. Until then the room screen shows who you are on the TV.
+  bool get metPlayer => prefs.getBool('met_player') ?? false;
+
+  void meetPlayer() {
+    prefs.setBool('met_player', true);
+    notifyListeners();
+  }
+
   void setSkin(String color) {
     skinColor = color;
     prefs.setString('skin_color', color);

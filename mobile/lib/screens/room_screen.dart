@@ -6,6 +6,7 @@ import '../navigation/open_website.dart';
 import '../theme.dart';
 import '../layout.dart';
 import '../widgets/name_dialog.dart';
+import '../widgets/onboarding.dart';
 import '../widgets/room_code_field.dart';
 import 'scanner_screen.dart';
 import 'game_screen.dart';
@@ -170,6 +171,10 @@ class RoomScreenState extends State<RoomScreen> {
               state: state,
               onJoin: () {},
               playlist: PlaylistPeek(state: state),
+              above: state.metPlayer
+                  ? null
+                  : MeetYourPlayer(
+                      key: const ValueKey('meet-player-banner'), state: state),
               below: [...cards, leave]);
           // A game's phone screen fills the page, so the way out stays on top.
           if (state.companion?.url == null) return game;
@@ -285,6 +290,10 @@ class RoomScreenState extends State<RoomScreen> {
     final waiting = room?.waiting ?? false;
     final choosing = room?.canChoosePlayer ?? false;
     return [
+      if (!connected && !choosing && (waiting || room?.choosingPlayer == true))
+        const PressAStep(
+            next:
+                'Then pick your player here, or walk it to your door on the TV.'),
       if (choosing)
         Section(title: 'Choose your player', children: [
           Hint(waiting
@@ -305,6 +314,8 @@ class RoomScreenState extends State<RoomScreen> {
                       'Player ${(seat['index'] as num? ?? 0).toInt() + 1}'),
                 )),
         ]),
+      if (room != null && (waiting || room.choosingPlayer))
+        _phoneSeatCard(asked: room.phoneSeat),
       Section(
           title: room?.code == null ? 'Your room' : 'Room ${room!.code}',
           children: [
@@ -339,7 +350,9 @@ class RoomScreenState extends State<RoomScreen> {
                 ),
               ),
             ]),
-            if (!connected) ...[
+            // The big press A step above says the rest while nobody is up.
+            if (!connected &&
+                (choosing || !(waiting || room?.choosingPlayer == true))) ...[
               const SizedBox(height: 8),
               Hint(room?.choosingPlayer == true
                   ? 'No account needed.'
@@ -352,8 +365,8 @@ class RoomScreenState extends State<RoomScreen> {
             if (connected && !room!.fresh)
               const Padding(
                 padding: EdgeInsets.only(top: 8),
-                child:
-                    Hint('The Gamepad Party PC has not checked in for a moment.'),
+                child: Hint(
+                    'The Gamepad Party PC has not checked in for a moment.'),
               ),
             if (!state.isGuest && room != null && (connected || waiting)) ...[
               const SizedBox(height: 4),
@@ -369,7 +382,8 @@ class RoomScreenState extends State<RoomScreen> {
                               : 'Your player will no longer appear automatically.';
                         }),
                 title: const Text('Main player on this Gamepad Party'),
-                subtitle: const Text('Wait at the door when Gamepad Party starts.'),
+                subtitle:
+                    const Text('Wait at the door when Gamepad Party starts.'),
               ),
               if (!room.mainPlayer)
                 SwitchListTile(
@@ -388,8 +402,6 @@ class RoomScreenState extends State<RoomScreen> {
             ],
           ]),
       if (connected) RoomLogPeek(state: state),
-      if (room != null && (waiting || room.choosingPlayer))
-        _phoneSeatCard(asked: room.phoneSeat),
       if (room != null && room.none)
         Section(title: 'Room code', children: [_codeField(), _rememberBox()]),
       if (!connected)
@@ -524,6 +536,10 @@ class RoomScreenState extends State<RoomScreen> {
     final linked = s?.linked ?? false;
     final waiting = s?.waiting ?? false;
     return [
+      if (waiting)
+        const PressAStep(
+            next: 'Then walk your character to the door with your name in the '
+                'lobby and stand there.'),
       Section(title: 'Your session', children: [
         Row(children: [
           Icon(

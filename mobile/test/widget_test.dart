@@ -137,7 +137,8 @@ void main() {
 
   testWidgets('an unreachable Gamepad Party shows a warning, not a green check',
       (tester) async {
-    SharedPreferences.setMockInitialValues({'host': 'http://192.168.1.5:3000'});
+    SharedPreferences.setMockInitialValues(
+        {'host': 'http://192.168.1.5:3000', 'met_player': true});
     final state = AppState(await SharedPreferences.getInstance());
     state.session = const SessionInfo(linked: true, playerId: 'p1', players: 1);
     state.sessionError =

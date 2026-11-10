@@ -184,8 +184,11 @@ void main() {
     testWidgets(
         '${cold ? "Cold" : "Warm"} notification opens authenticated room',
         (tester) async {
-      SharedPreferences.setMockInitialValues(
-          {'cloud_token': 'session', 'player_name': 'Test Player'});
+      SharedPreferences.setMockInitialValues({
+        'cloud_token': 'session',
+        'player_name': 'Test Player',
+        'met_player': true
+      });
       final device = FakePush()..initial = cold ? 'TEST42' : null;
       final requests = <http.Request>[];
       final state = AppState(await SharedPreferences.getInstance(),

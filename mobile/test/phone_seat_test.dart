@@ -137,6 +137,8 @@ void main() {
     final button = find.text('Play on this phone');
     await tester.scrollUntilVisible(button, 200,
         scrollable: find.byType(Scrollable).first);
+    await tester.ensureVisible(button);
+    await tester.pumpAndSettle();
     await _capture(tester, 'phone-seat-waiting');
     await tester.tap(button);
     await tester.pumpAndSettle();

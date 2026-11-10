@@ -29,12 +29,16 @@ class GameScreen extends StatelessWidget {
   /// The playlist and the room, on the same screen as the game.
   final Widget? playlist;
   final List<Widget> below;
+
+  /// Shown first, above the game: the new player's "This is you" banner.
+  final Widget? above;
   const GameScreen(
       {super.key,
       required this.state,
       required this.onJoin,
       this.playlist,
       this.below = const [],
+      this.above,
       this.catalogOnly = false,
       this.requestedGame,
       this.onRequestedGameOpened});
@@ -93,6 +97,11 @@ class GameScreen extends StatelessWidget {
           final fullscreen = state.companionFullscreen;
           return Stack(children: [
             Column(children: [
+              // A game's phone screen needs the room; the banner waits.
+              if (above != null && companion.url == null)
+                Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                    child: above),
               Visibility(
                   visible: !fullscreen,
                   child: Padding(
@@ -182,6 +191,9 @@ class GameScreen extends StatelessWidget {
             child: ListView(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
                 children: [
+              if (above case final above?)
+                Padding(
+                    padding: const EdgeInsets.only(bottom: 8), child: above),
               Section(title: playing ?? 'Current game', children: [
                 if (waiting)
                   const Hint(
