@@ -895,18 +895,21 @@ func set_links(data: Dictionary) -> void:
 		qr = null
 		var image := Image.new()
 		if not source.is_empty() and source.length() < 200000 and image.load_svg_from_string(source, 6.0) == OK:
-			qr = ImageTexture.create_from_image(_inverted_qr(image))
+			qr = ImageTexture.create_from_image(_plaque_qr(image))
 	_sync_doors()
 	room.redraw("plaque")
 
-## The daemon renders black modules on white; the plaque shows white modules
-## on its own dark background, so light only comes from the modules.
-static func _inverted_qr(image: Image) -> Image:
+## The daemon renders black modules on white with a quiet zone. Keep it that
+## way round (Android's scanner does not read inverted codes), only in the
+## plaque's own ink on a light grey that does not bloom after tone mapping.
+static func _plaque_qr(image: Image) -> Image:
 	image.convert(Image.FORMAT_RGBA8)
+	var dark := Color("0c0a16")
+	var light := Color("d9d9d9")
 	for y in image.get_height():
 		for x in image.get_width():
 			var c := image.get_pixel(x, y)
-			image.set_pixel(x, y, Color.WHITE if c.a > 0.5 and c.get_luminance() < 0.5 else Color.TRANSPARENT)
+			image.set_pixel(x, y, dark if c.a > 0.5 and c.get_luminance() < 0.5 else light)
 	return image
 
 ## Doors are kept per waiting profile and only moved: building one draws a
@@ -1384,13 +1387,13 @@ func _draw_jukebox(canvas: Control) -> void:
 	_text(canvas, artist, Vector2(0, 128), _fit(artist, 24, width - 40, 16), Color("8a2e3c"), size.x, HORIZONTAL_ALIGNMENT_CENTER)
 
 func _draw_plaque(canvas: Control) -> void:
-	# Only the code itself: white modules on black (the dark wall around it is
-	# the quiet zone, so inverted readers still scan it), the room code below.
+	# The code as big as the plaque allows (phones read it from the couch, at
+	# an angle): dark modules on light with its quiet zone, the room code below.
 	var size := canvas.size
 	canvas.draw_rect(Rect2(Vector2.ZERO, size), Color("0c0a16"))
 	var room_info: Dictionary = links.get("room", {})
-	var side := 264.0
-	var qr_rect := Rect2((size.x - side) / 2, 20, side, side)
+	var side := size.x - 12.0
+	var qr_rect := Rect2((size.x - side) / 2, 6, side, side)
 	if qr != null:
 		canvas.draw_texture_rect(qr, qr_rect, false)
 	else:

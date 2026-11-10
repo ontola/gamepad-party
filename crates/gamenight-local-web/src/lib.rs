@@ -870,8 +870,8 @@ async fn serve_qr() -> Response {
     let svg_xml = code
         .render::<svg::Color>()
         .min_dimensions(200, 200)
-        .dark_color(svg::Color("#6366f1"))
-        .light_color(svg::Color("#0f172a"))
+        .dark_color(svg::Color("#0f172a"))
+        .light_color(svg::Color("#ffffff"))
         .build();
 
     (
@@ -894,8 +894,8 @@ async fn serve_session_qr(Path(session_id): Path<String>) -> Response {
     let svg_xml = code
         .render::<svg::Color>()
         .min_dimensions(220, 220)
-        .dark_color(svg::Color("#6366f1"))
-        .light_color(svg::Color("#0f172a"))
+        .dark_color(svg::Color("#0f172a"))
+        .light_color(svg::Color("#ffffff"))
         .build();
 
     (
