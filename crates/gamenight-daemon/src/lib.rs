@@ -98,6 +98,9 @@ struct Shared {
     /// build on disk (a fixed playtest copied over the old exe) is no longer
     /// the game that crashed or was closed, so it may warm again by itself.
     quit_builds: HashMap<GameId, Option<BuildStamp>>,
+    /// The party asked to start a game: when, which, and how far its warm
+    /// session was, so the start can be logged as warm or cold.
+    start_requested: Option<(std::time::Instant, GameId, String)>,
     /// The window owner last seen in front, logged when it changes so a
     /// pause nobody asked for can be traced to the window that took over.
     #[cfg(windows)]
@@ -372,6 +375,7 @@ impl Shared {
             quitting: None,
             quit_games: std::collections::HashSet::new(),
             quit_builds: HashMap::new(),
+            start_requested: None,
             #[cfg(windows)]
             last_foreground: None,
             retired: std::collections::HashSet::new(),
@@ -873,6 +877,7 @@ impl Shared {
                 }
             }
         }
+        self.note_start_request(&command);
         self.sync_held_games();
         let effects = self.night.handle(command);
         self.apply_effects(effects, origin);
@@ -893,6 +898,44 @@ impl Shared {
             }
         }
         self.sync_prewarm_players();
+    }
+
+    /// Remember a request to start a game and how ready it was, for the
+    /// "game started" line: the one place to see whether Y was instant.
+    fn note_start_request(&mut self, command: &Command) {
+        let party = self.night.snapshot();
+        let game = match command {
+            Command::PlayNext { game } | Command::RequestStart { game } => game.clone(),
+            Command::Next => match party
+                .warm_session
+                .as_ref()
+                .map(|w| w.game.clone())
+                .or_else(|| party.warming.as_ref().map(|e| e.game.clone()))
+            {
+                Some(game) => game,
+                None => return,
+            },
+            _ => return,
+        };
+        let was = match party.warm_session.as_ref().filter(|w| w.game == game) {
+            Some(w) if w.phase == gamenight_protocol::SessionPhase::Ready => {
+                "warm and ready".to_string()
+            }
+            Some(w) => format!(
+                "still loading ({:?}{})",
+                w.phase,
+                w.progress.map(|p| format!(", {p}%")).unwrap_or_default()
+            ),
+            None if self.games.contains_key(&game) => "running, not prepared".into(),
+            None if self.pending_launches.contains_key(&game) => "cold: process starting".into(),
+            None if self.quit_games.contains(&game) => "cold: held after it went away".into(),
+            None => match &party.warm_session {
+                Some(other) => format!("cold: {} was warm instead", other.game),
+                None => "cold: nothing warm".into(),
+            },
+        };
+        info!(%game, was = %was, "start requested");
+        self.start_requested = Some((std::time::Instant::now(), game, was));
     }
 
     /// Tell the night which games we won't start by ourselves, so autoplay
@@ -920,7 +963,19 @@ impl Shared {
                     game,
                     session,
                     command,
-                } => self.send_to_game(&game, session, command),
+                } => {
+                    if matches!(command, GameCommand::Start) {
+                        if let Some((at, wanted, was)) = self.start_requested.take() {
+                            let ms = at.elapsed().as_millis() as u64;
+                            if wanted == game {
+                                info!(%game, ms, was = %was, "game started");
+                            } else {
+                                info!(%game, %wanted, ms, was = %was, "game started (not the one asked for)");
+                            }
+                        }
+                    }
+                    self.send_to_game(&game, session, command)
+                }
                 Effect::StateChanged => broadcast = true,
                 Effect::SettingChanged { game, key, value } => {
                     // Not session-scoped: settings outlive sessions. If the
