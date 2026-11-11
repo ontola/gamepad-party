@@ -98,6 +98,10 @@ struct Shared {
     /// build on disk (a fixed playtest copied over the old exe) is no longer
     /// the game that crashed or was closed, so it may warm again by itself.
     quit_builds: HashMap<GameId, Option<BuildStamp>>,
+    /// The window owner last seen in front, logged when it changes so a
+    /// pause nobody asked for can be traced to the window that took over.
+    #[cfg(windows)]
+    last_foreground: Option<(u32, std::path::PathBuf)>,
     /// Titles the daemon stopped itself because the night no longer needed
     /// them (see `retire_idle_games`). Their disconnect is expected: not a
     /// crash to report and not a quit to respect.
@@ -368,6 +372,8 @@ impl Shared {
             quitting: None,
             quit_games: std::collections::HashSet::new(),
             quit_builds: HashMap::new(),
+            #[cfg(windows)]
+            last_foreground: None,
             retired: std::collections::HashSet::new(),
             game_issues: HashMap::new(),
             onboarding_error: None,
@@ -591,6 +597,19 @@ impl Shared {
                     | gamenight_protocol::SessionPhase::Paused
             )
         });
+        #[cfg(windows)]
+        {
+            let now = foreground_process();
+            if now != self.last_foreground {
+                match &now {
+                    Some((pid, path)) => {
+                        info!(pid, path = %path.display(), "foreground window changed")
+                    }
+                    None => info!("foreground window changed: none"),
+                }
+                self.last_foreground = now;
+            }
+        }
         let front = match &active {
             Some((game, _, _)) if watching => self.front(game),
             _ => focus::Front::Neutral,
@@ -3160,6 +3179,24 @@ async fn serve(
                     continue;
                 }
             };
+            // Every pause, resume and switch says who asked for it.
+            if matches!(
+                command,
+                Command::OverlayOpened
+                    | Command::OverlayClosed
+                    | Command::Pause
+                    | Command::Resume
+                    | Command::Next
+                    | Command::RequestStart { .. }
+                    | Command::PlayNext { .. }
+            ) {
+                let from = match &registration {
+                    Registration::Game(game) => format!("game {game}"),
+                    Registration::Lobby(game) => format!("lobby {game}"),
+                    Registration::Overlay(id) => format!("overlay {id}"),
+                };
+                info!(%from, ?command, "party command");
+            }
             shared.lock().await.dispatch(command, Some(&tx));
         }
         Ok(())

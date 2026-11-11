@@ -264,6 +264,11 @@ impl InputRouter {
                 && s.overlay_opened_by_request
                     .is_some_and(|at| at.elapsed() < BACK_ECHO_WINDOW);
             if !echoed {
+                info!(
+                    open = !open,
+                    "Back pressed on a controller; {} the lobby",
+                    if open { "closing" } else { "opening" }
+                );
                 s.dispatch(
                     if open {
                         Command::OverlayClosed
