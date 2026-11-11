@@ -132,7 +132,8 @@ class _ModsScreenState extends State<ModsScreen> {
             'it changes the code while you play, and the mod stays in your account.'),
       ));
       if (_error != null) {
-        children.add(Text(_error!, style: const TextStyle(color: GnColors.warn)));
+        children
+            .add(Text(_error!, style: const TextStyle(color: GnColors.warn)));
       }
       final mods = _mods;
       if (mods == null) {
@@ -308,8 +309,8 @@ class _ModScreenState extends State<ModScreen> {
         context: context,
         builder: (context) => AlertDialog(
               title: const Text('Rename mod'),
-              content: TextField(
-                  controller: name, autofocus: true, maxLength: 80),
+              content:
+                  TextField(controller: name, autofocus: true, maxLength: 80),
               actions: [
                 TextButton(
                     onPressed: () => Navigator.pop(context),
@@ -403,7 +404,9 @@ class _ModScreenState extends State<ModScreen> {
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 leading: Icon(
-                    change.ok ? Icons.check_circle_outline : Icons.error_outline,
+                    change.ok
+                        ? Icons.check_circle_outline
+                        : Icons.error_outline,
                     color: change.ok ? GnColors.ok : GnColors.warn),
                 title: Text(change.asked),
                 subtitle: Text(change.answer),

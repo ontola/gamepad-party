@@ -5,18 +5,45 @@ import '../player_face.dart';
 import '../screens/face_editor_screen.dart';
 import '../theme.dart';
 
-/// The first thing a new player sees after scanning the QR: nothing happens
-/// on the TV until someone presses A on a controller, so say that loudly.
-class PressAStep extends StatelessWidget {
-  /// What happens after pressing A, shown as step 2.
-  final String next;
-  const PressAStep({super.key, required this.next});
+/// The first thing a new player sees after scanning the QR: two steps of
+/// the same size. Nothing happens on the TV until someone presses A on a
+/// controller, then Y there picks up this phone's player, shown in step 2.
+List<Widget> joinSteps(AppState state) => [
+      const _StepCard(
+        key: ValueKey('press-a'),
+        number: 1,
+        button: _PadButton('A', Color(0xFF22A45D), Color(0xFF7CF0AE)),
+        title: 'Grab a controller\nand press A',
+        hint: 'A player appears on the TV.',
+      ),
+      _StepCard(
+        key: const ValueKey('press-y'),
+        number: 2,
+        button: const _PadButton('Y', Color(0xFFE0A100), Color(0xFFFFE08A)),
+        title: 'Press Y to pick up\nyour player',
+        hint: 'This one, from this phone:',
+        child: _Profile(state: state),
+      ),
+    ];
+
+class _StepCard extends StatelessWidget {
+  final int number;
+  final Widget button;
+  final String title;
+  final String hint;
+  final Widget? child;
+  const _StepCard(
+      {super.key,
+      required this.number,
+      required this.button,
+      required this.title,
+      required this.hint,
+      this.child});
 
   @override
   Widget build(BuildContext context) => Container(
-        key: const ValueKey('press-a'),
         margin: const EdgeInsets.only(top: 8, bottom: 8),
-        padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
         decoration: BoxDecoration(
           gradient: const LinearGradient(
               begin: Alignment.topLeft,
@@ -26,38 +53,71 @@ class PressAStep extends StatelessWidget {
           border: Border.all(color: GnColors.accent, width: 2),
         ),
         child: Column(children: [
-          const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-            Icon(Icons.sports_esports, size: 72, color: GnColors.text),
-            SizedBox(width: 16),
-            _AButton(size: 64),
-          ]),
-          const SizedBox(height: 20),
-          const Text('Grab a controller\nand press A',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                  fontSize: 30, height: 1.15, fontWeight: FontWeight.w800)),
-          const SizedBox(height: 10),
-          const Text('Your player appears on the TV.',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 16, color: GnColors.muted)),
-          const SizedBox(height: 20),
-          const Divider(color: GnColors.border, height: 1),
-          const SizedBox(height: 16),
-          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const _StepNumber(2),
+          Row(children: [
+            _StepNumber(number),
+            const Spacer(),
+            const Icon(Icons.sports_esports, size: 56, color: GnColors.text),
             const SizedBox(width: 12),
-            Expanded(
-                child: Text(next,
-                    style:
-                        const TextStyle(fontSize: 15, color: GnColors.muted))),
+            button,
+            const Spacer(),
+            const SizedBox(width: 32),
           ]),
+          const SizedBox(height: 16),
+          Text(title,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                  fontSize: 28, height: 1.15, fontWeight: FontWeight.w800)),
+          const SizedBox(height: 8),
+          Text(hint,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 16, color: GnColors.muted)),
+          if (child case final child?) ...[const SizedBox(height: 12), child],
         ]),
       );
 }
 
-class _AButton extends StatelessWidget {
-  final double size;
-  const _AButton({required this.size});
+/// This phone's player as the TV will show it.
+class _Profile extends StatelessWidget {
+  final AppState state;
+  const _Profile({required this.state});
+  @override
+  Widget build(BuildContext context) => Material(
+        color: GnColors.field,
+        borderRadius: BorderRadius.circular(14),
+        child: InkWell(
+          key: const ValueKey('step-profile'),
+          borderRadius: BorderRadius.circular(14),
+          onTap: () => FaceEditorScreen.open(context, state),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(10, 10, 14, 10),
+            child: Row(children: [
+              SizedBox.square(
+                dimension: 56,
+                child: FittedBox(
+                    child: PlayerFaceIcon(
+                        face: state.face, skin: state.skinColor)),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(state.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                        fontSize: 22, fontWeight: FontWeight.w800)),
+              ),
+              const Icon(Icons.brush, size: 18, color: GnColors.muted),
+            ]),
+          ),
+        ),
+      );
+}
+
+class _PadButton extends StatelessWidget {
+  final String label;
+  final Color fill;
+  final Color rim;
+  const _PadButton(this.label, this.fill, this.rim);
+  static const size = 56.0;
   @override
   Widget build(BuildContext context) => Container(
         width: size,
@@ -65,14 +125,17 @@ class _AButton extends StatelessWidget {
         alignment: Alignment.center,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: const Color(0xFF22A45D),
-          border: Border.all(color: const Color(0xFF7CF0AE), width: 3),
-          boxShadow: const [
-            BoxShadow(color: Color(0x6634D399), blurRadius: 18, spreadRadius: 2)
+          color: fill,
+          border: Border.all(color: rim, width: 3),
+          boxShadow: [
+            BoxShadow(
+                color: fill.withValues(alpha: .4),
+                blurRadius: 18,
+                spreadRadius: 2)
           ],
         ),
-        child: Text('A',
-            style: TextStyle(
+        child: Text(label,
+            style: const TextStyle(
                 fontSize: size * 0.5,
                 fontWeight: FontWeight.w900,
                 color: Colors.white)),
@@ -84,13 +147,13 @@ class _StepNumber extends StatelessWidget {
   const _StepNumber(this.n);
   @override
   Widget build(BuildContext context) => Container(
-        width: 24,
-        height: 24,
+        width: 32,
+        height: 32,
         alignment: Alignment.center,
         decoration:
             const BoxDecoration(shape: BoxShape.circle, color: GnColors.field),
         child: Text('$n',
-            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
       );
 }
 

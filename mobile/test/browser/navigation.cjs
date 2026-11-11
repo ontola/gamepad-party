@@ -30,6 +30,9 @@ const output=process.env.GAMENIGHT_TEST_SCREENSHOTS;
    return route.fulfill({json:data});
   });
   await page.goto('https://gamenight.ontola.io/app/?room=ABC234',{waitUntil:'networkidle',timeout:60000});
+  // A new phone names its player first; Join room keeps the suggested name.
+  await page.evaluate(()=>document.querySelector('flt-semantics-placeholder')?.click());
+  await page.getByRole('button',{name:'Join room'}).click({timeout:30000});
   await page.frameLocator('iframe').getByText('Your private hand').waitFor({timeout:30000});
   await page.evaluate(()=>{window.originalPhone=document.querySelector('iframe');document.querySelector('flt-semantics-placeholder')?.click();});
   await page.waitForTimeout(300);

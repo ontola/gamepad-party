@@ -9,7 +9,12 @@ void main() {
       'base': 'neon-siege-warp',
       'game': 'project-neon-siege-warp-mod-1a2b3c4d-865370577',
       'changes': [
-        {'at': 1790000000, 'asked': 'bosses split', 'answer': 'Done', 'ok': true}
+        {
+          'at': 1790000000,
+          'asked': 'bosses split',
+          'answer': 'Done',
+          'ok': true
+        }
       ],
     });
     expect(mod.base, 'neon-siege-warp');

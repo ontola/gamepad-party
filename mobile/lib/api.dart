@@ -290,7 +290,8 @@ class GameNightApi {
                     'seat': seat,
                     'link_revision': linkRevision
                   },
-                  failure: 'Saved on your phone. Is Gamepad Party still running?')
+                  failure:
+                      'Saved on your phone. Is Gamepad Party still running?')
               as Map<String, dynamic>);
 
   /// Asks to be picked up in the lobby: walk your character to your door.

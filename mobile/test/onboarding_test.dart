@@ -114,14 +114,22 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('press-a')), findsOneWidget);
     expect(find.text('Grab a controller\nand press A'), findsOneWidget);
+    expect(find.byKey(const ValueKey('press-y')), findsOneWidget);
+    expect(find.byKey(const ValueKey('step-profile')), findsOneWidget);
     expect(find.byKey(const ValueKey('meet-player')), findsNothing);
     await _capture(tester, 'press-a');
+    await tester.scrollUntilVisible(
+        find.byKey(const ValueKey('room-leave')), 200,
+        scrollable: find.byType(Scrollable).first);
+    await tester.pumpAndSettle();
+    await _capture(tester, 'press-a-below');
 
     // Someone pressed A and took this phone's player.
     server.status = 'connected';
     await state.refreshHostedRoom();
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('press-a')), findsNothing);
+    expect(find.byKey(const ValueKey('room-leave')), findsOneWidget);
     expect(find.byKey(const ValueKey('meet-player')), findsOneWidget);
     expect(find.text('This is you on the TV'), findsOneWidget);
     await _capture(tester, 'meet-player');
@@ -135,6 +143,11 @@ void main() {
     expect(find.byKey(const ValueKey('meet-player')), findsNothing);
     expect(state.metPlayer, isTrue);
     await _capture(tester, 'after-banner');
+    await tester.scrollUntilVisible(
+        find.byKey(const ValueKey('room-leave')), 200,
+        scrollable: find.byType(Scrollable).first);
+    await tester.pumpAndSettle();
+    await _capture(tester, 'room-leave');
     expect(tester.takeException(), isNull);
     state.dispose();
     await tester.pumpWidget(const SizedBox());

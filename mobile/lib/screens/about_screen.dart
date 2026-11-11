@@ -105,8 +105,8 @@ class AboutScreen extends StatelessWidget {
                       key: const ValueKey('about-github'),
                       label: 'GitHub',
                       icon: Icons.code,
-                      onTap: () => launchUrl(
-                          Uri.parse('https://github.com/ontola/gamepad-party'))),
+                      onTap: () => launchUrl(Uri.parse(
+                          'https://github.com/ontola/gamepad-party'))),
                   _Link(
                       key: const ValueKey('about-ontola'),
                       label: 'Made by Ontola',

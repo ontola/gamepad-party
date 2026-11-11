@@ -520,7 +520,8 @@ class CloudRoomControls implements RoomControls {
         'request_id': _requestId(),
         if (start) 'start': true,
       }, errors: {
-        503: 'The Gamepad Party computer is not answering. Try again in a moment.',
+        503:
+            'The Gamepad Party computer is not answering. Try again in a moment.',
         403: 'Join the room first.',
         409: 'The Gamepad Party computer cannot play that game right now.',
       });

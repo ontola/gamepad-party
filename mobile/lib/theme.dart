@@ -208,7 +208,8 @@ class GameNightWordmark extends StatelessWidget {
         excludeSemantics: true,
         child: Text.rich(
           const TextSpan(children: [
-            TextSpan(text: 'Gamepad ', style: TextStyle(color: Color(0xFFFFB454))),
+            TextSpan(
+                text: 'Gamepad ', style: TextStyle(color: Color(0xFFFFB454))),
             TextSpan(text: 'Party', style: TextStyle(color: Color(0xFFA78BFA))),
           ]),
           maxLines: 1,

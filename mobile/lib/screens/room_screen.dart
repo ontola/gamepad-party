@@ -71,7 +71,21 @@ class RoomScreenState extends State<RoomScreen> {
     }
   }
 
+  /// The link being opened now. On the web the launch link arrives twice
+  /// (the page address and the link stream); one name question and one join.
+  String? _opening;
+
   Future<void> openLink(String text) async {
+    if (_opening == text) return;
+    _opening = text;
+    try {
+      await _openLink(text);
+    } finally {
+      if (_opening == text) _opening = null;
+    }
+  }
+
+  Future<void> _openLink(String text) async {
     try {
       final link = parseHostLink(text);
       if (link.appDestination != null) {
@@ -175,7 +189,7 @@ class RoomScreenState extends State<RoomScreen> {
                   ? null
                   : MeetYourPlayer(
                       key: const ValueKey('meet-player-banner'), state: state),
-              below: [...cards, leave]);
+              below: [...cards, if (!state.inHostedRoom) leave]);
           // A game's phone screen fills the page, so the way out stays on top.
           if (state.companion?.url == null) return game;
           return Column(children: [
@@ -291,9 +305,7 @@ class RoomScreenState extends State<RoomScreen> {
     final choosing = room?.canChoosePlayer ?? false;
     return [
       if (!connected && !choosing && (waiting || room?.choosingPlayer == true))
-        const PressAStep(
-            next:
-                'Then pick your player here, or walk it to your door on the TV.'),
+        ...joinSteps(state),
       if (choosing)
         Section(title: 'Choose your player', children: [
           Hint(waiting
@@ -400,25 +412,30 @@ class RoomScreenState extends State<RoomScreen> {
                   title: const Text('Remember me on this Gamepad Party'),
                 ),
             ],
+            // The way out sits with the room it leaves.
+            const SizedBox(height: 12),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: OutlinedButton.icon(
+                key: const ValueKey('room-leave'),
+                onPressed: _busy
+                    ? null
+                    : connected
+                        ? _leave
+                        : () => _run(() async {
+                              await state.leaveHostedRoom();
+                              return waiting
+                                  ? 'Pickup cancelled.'
+                                  : 'You left the room. Your player is kept.';
+                            }),
+                icon: const Icon(Icons.logout, size: 18),
+                label: Text(waiting ? 'Cancel pickup' : 'Leave room'),
+              ),
+            ),
           ]),
       if (connected) RoomLogPeek(state: state),
       if (room != null && room.none)
         Section(title: 'Room code', children: [_codeField(), _rememberBox()]),
-      if (!connected)
-        Section(children: [
-          OutlinedButton.icon(
-            onPressed: _busy
-                ? null
-                : () => _run(() async {
-                      await state.leaveHostedRoom();
-                      return waiting
-                          ? 'Pickup cancelled.'
-                          : 'You left the room. Your player is kept.';
-                    }),
-            icon: const Icon(Icons.logout, size: 18),
-            label: Text(waiting ? 'Cancel pickup' : 'Leave room'),
-          ),
-        ]),
     ];
   }
 
@@ -431,7 +448,8 @@ class RoomScreenState extends State<RoomScreen> {
             : 'Play on this phone instead. You join games that are played on '
                 'phones, also when one has already started.'),
         const SizedBox(height: 12),
-        FilledButton.tonalIcon(
+        OutlinedButton.icon(
+          style: OutlinedButton.styleFrom(foregroundColor: GnColors.muted),
           onPressed: _busy || asked
               ? null
               : () => _run(() async {
@@ -536,10 +554,7 @@ class RoomScreenState extends State<RoomScreen> {
     final linked = s?.linked ?? false;
     final waiting = s?.waiting ?? false;
     return [
-      if (waiting)
-        const PressAStep(
-            next: 'Then walk your character to the door with your name in the '
-                'lobby and stand there.'),
+      if (waiting) ...joinSteps(state),
       Section(title: 'Your session', children: [
         Row(children: [
           Icon(

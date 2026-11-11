@@ -82,7 +82,7 @@ void main() {
       await icons.load();
     }
     _games = [
-      for (final id in ['blast-party', 'bubble-buddies', 'ricochet-club'])
+      for (final id in ['blast-party', 'bubble-buddies', 'volley-trouble'])
         (() {
           final data =
               jsonDecode(File('../catalog/games/$id.json').readAsStringSync())

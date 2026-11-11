@@ -88,8 +88,7 @@ class PhoneStore {
     try {
       final agent = await _store.agent();
       if (agent == null) return;
-      final reply =
-          await cloud.request('POST', '/v1/me/atomic-device', body: {
+      final reply = await cloud.request('POST', '/v1/me/atomic-device', body: {
         'agent': agent,
       }) as Map;
       final base = cloud.base;
@@ -190,15 +189,15 @@ class PhoneStore {
   /// An Assistant request for the running `game` finished: when that game
   /// is one of this player's mods, keep it in the mod's history.
   Future<void> noteRequest(String game,
-      {required String asked,
-      required String answer,
-      required bool ok}) async {
+      {required String asked, required String answer, required bool ok}) async {
     if (!signedIn) return;
     try {
       for (final mod in await mods()) {
         if (mod.game != game) continue;
-        await noteModChange(mod.id,
-            ModChange(at: DateTime.now(), asked: asked, answer: answer, ok: ok));
+        await noteModChange(
+            mod.id,
+            ModChange(
+                at: DateTime.now(), asked: asked, answer: answer, ok: ok));
       }
     } catch (error) {
       debugPrint('Could not keep the mod change: $error');
@@ -230,13 +229,14 @@ class GameMod {
       this.changes = const []});
 
   factory GameMod.fromJson(Map j) => GameMod(
-      id: j['id'] as String,
-      title: j['title'] as String,
-      base: j['base'] as String,
-      game: j['game'] as String,
-      changes: [
-        for (final c in j['changes'] as List? ?? []) ModChange.fromJson(c as Map)
-      ]);
+          id: j['id'] as String,
+          title: j['title'] as String,
+          base: j['base'] as String,
+          game: j['game'] as String,
+          changes: [
+            for (final c in j['changes'] as List? ?? [])
+              ModChange.fromJson(c as Map)
+          ]);
 }
 
 /// One change asked of a mod, and how it went.

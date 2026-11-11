@@ -252,7 +252,8 @@ void main() {
       await close(tester);
     });
 
-    testWidgets('connected to a Gamepad Party but not picked up yet, it says so',
+    testWidgets(
+        'connected to a Gamepad Party but not picked up yet, it says so',
         (tester) async {
       await show(tester);
       expect(find.text('Join a room'), findsNothing);

@@ -46,7 +46,8 @@ void main() {
     await tester.pumpWidget(
         MaterialApp(home: Scaffold(body: UpdateBanner(check: () async => 12))));
     await tester.pump();
-    expect(find.text('A new version of Gamepad Party is ready.'), findsOneWidget);
+    expect(
+        find.text('A new version of Gamepad Party is ready.'), findsOneWidget);
     await tester.tap(find.text('Update'));
     await tester.pump();
     expect(installs, [
@@ -89,7 +90,8 @@ void main() {
     ))));
     await tester.pump();
     expect(
-        find.text('New version ready. It installs when you leave Gamepad Party.'),
+        find.text(
+            'New version ready. It installs when you leave Gamepad Party.'),
         findsOneWidget);
     expect(find.text('Restart now'), findsOneWidget);
 
