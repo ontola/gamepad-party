@@ -1453,6 +1453,20 @@ impl Shared {
     }
 
     fn send_to_game(&mut self, game: &GameId, session: SessionId, command: GameCommand) {
+        // Some games exit once their session is disposed (Sideways does).
+        // We ended it, so that exit is expected: not a quit to respect, or
+        // the game would never warm by itself again after being played.
+        // A new Prepare means the process is wanted again, and from then on
+        // an exit is unexpected once more.
+        match command {
+            GameCommand::Dispose if self.games.contains_key(game) => {
+                self.retired.insert(game.clone());
+            }
+            GameCommand::Prepare { .. } => {
+                self.retired.remove(game);
+            }
+            _ => {}
+        }
         let Some(tx) = self.games.get(game) else {
             // The process vanished between the state change and delivery; the
             // disconnect handler will reconcile the state machine.
@@ -3788,6 +3802,32 @@ mod replacement_lobby_tests {
         assert!(s.game_issues.is_empty());
         assert!(s.pending_launches.contains_key(&game));
         s.kill_all_children();
+    }
+
+    #[test]
+    fn a_game_that_exits_after_dispose_is_not_held() {
+        let mut s = Shared::new(
+            vec![test_game(serde_json::Value::Null)],
+            "127.0.0.1:0".into(),
+            None,
+        );
+        let (tx, _rx) = mpsc::unbounded_channel();
+        let game = GameId::new("test");
+        s.games.insert(game.clone(), tx);
+        s.send_to_game(&game, SessionId::new(), GameCommand::Dispose);
+        assert!(s.retired.contains(&game), "its exit is ours");
+        s.send_to_game(
+            &game,
+            SessionId::new(),
+            GameCommand::Prepare {
+                seats: vec![],
+                players: vec![],
+            },
+        );
+        assert!(
+            !s.retired.contains(&game),
+            "wanted again: a later exit is a crash"
+        );
     }
 
     #[test]
