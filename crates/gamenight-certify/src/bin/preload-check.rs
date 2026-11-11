@@ -9,7 +9,8 @@
 //! lobby and watch for pause/resume flapping, then skip the next entry (X)
 //! and time until the following game is warm. A start of a game that was not
 //! ready, or slower than `--instant`, is a COLD start. Exits 1 on any cold
-//! start or flapping. Plays real games on the TV: run it when nobody plays.
+//! start or flapping. Plays real games on the TV: run it when nobody plays,
+//! leave the controllers alone and keep other windows off the TV's desktop.
 
 use std::time::{Duration, Instant};
 
@@ -93,12 +94,27 @@ struct Host {
     party: watch::Receiver<Value>,
     /// Every party snapshot with its arrival time, for flap counting.
     changes: std::sync::Arc<std::sync::Mutex<Vec<Value>>>,
+    /// The host's `error` replies, in order.
+    errors: std::sync::Arc<std::sync::Mutex<Vec<String>>>,
+    /// The host closed the connection (Gamepad Party was closed).
+    closed: std::sync::Arc<std::sync::atomic::AtomicBool>,
+}
+
+/// Rows are written after each game, so stopping here keeps them.
+fn host_gone() -> ! {
+    println!("the host went away (Gamepad Party closed); stopping");
+    std::process::exit(2)
 }
 
 impl Host {
     async fn send(&mut self, msg: Value) {
-        if let Err(e) = self.sink.send(Message::Text(msg.to_string())).await {
-            die(&format!("send failed: {e}"));
+        if self
+            .sink
+            .send(Message::Text(msg.to_string()))
+            .await
+            .is_err()
+        {
+            host_gone();
         }
     }
 
@@ -110,6 +126,9 @@ impl Host {
     async fn wait(&self, test: impl Fn(&Value) -> bool, timeout: f64) -> Option<f64> {
         let start = Instant::now();
         while start.elapsed().as_secs_f64() < timeout {
+            if self.closed.load(std::sync::atomic::Ordering::Relaxed) {
+                host_gone();
+            }
             let p = self.party();
             if p.is_object() && test(&p) {
                 return Some(start.elapsed().as_secs_f64());
@@ -154,12 +173,22 @@ fn upcoming(p: &Value) -> Vec<(usize, Value)> {
 
 async fn check_game(host: &mut Host, game: &str, a: &Args) -> Value {
     let mut row = json!({ "game": game });
-    // 1. Preload.
+    // 1. Preload. The host refuses games that cannot seat everyone.
+    let errors = host.errors.lock().unwrap().len();
     host.send(json!({"type": "queue_next", "game": game})).await;
+    let refused = || host.errors.lock().unwrap().get(errors).cloned();
     row["preload_s"] = json!(
-        host.wait(|p| has(p, "warm_session", game, "ready"), a.preload_timeout)
-            .await
+        host.wait(
+            |p| has(p, "warm_session", game, "ready") || refused().is_some(),
+            a.preload_timeout
+        )
+        .await
     );
+    if let Some(reason) = refused() {
+        row["skipped_game"] = json!(reason);
+        row["preload_s"] = Value::Null;
+        return row;
+    }
     // 2. Y: start it.
     let at_press = warm_state(&host.party(), game);
     row["at_press"] = json!(at_press);
@@ -187,9 +216,21 @@ async fn check_game(host: &mut Host, game: &str, a: &Args) -> Value {
         .await
     );
     tokio::time::sleep(Duration::from_secs_f64(a.settle)).await;
-    let phases: Vec<Value> = host.changes.lock().unwrap()[mark..]
+    let actives: Vec<Value> = host.changes.lock().unwrap()[mark..]
         .iter()
-        .map(|p| session(p, "active_session").map_or(Value::Null, |s| s["phase"].clone()))
+        .map(|p| session(p, "active_session").cloned().unwrap_or(Value::Null))
+        .collect();
+    // Someone else started another game in the meantime: not this game's flap.
+    row["disturbed"] = json!(actives.iter().any(|s| s.is_object() && s["game"] != game));
+    let phases: Vec<Value> = actives
+        .iter()
+        .map(|s| {
+            if s["game"] == game {
+                s["phase"].clone()
+            } else {
+                Value::Null
+            }
+        })
         .collect();
     let flaps = phases
         .windows(2)
@@ -238,6 +279,10 @@ async fn main() {
     let (tx, rx) = watch::channel(Value::Null);
     let changes = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
     let log = changes.clone();
+    let errors = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
+    let error_log = errors.clone();
+    let closed = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+    let closed_flag = closed.clone();
     let reader = tokio::spawn(async move {
         while let Some(Ok(msg)) = stream.next().await {
             let Message::Text(text) = msg else { continue };
@@ -249,15 +294,21 @@ async fn main() {
                     log.lock().unwrap().push(msg["party"].clone());
                     let _ = tx.send(msg["party"].clone());
                 }
-                Some("error") => eprintln!("  host error: {}", msg["message"]),
+                Some("error") => error_log
+                    .lock()
+                    .unwrap()
+                    .push(msg["message"].as_str().unwrap_or("?").to_string()),
                 _ => {}
             }
         }
+        closed_flag.store(true, std::sync::atomic::Ordering::Relaxed);
     });
     let mut host = Host {
         sink,
         party: rx,
         changes,
+        errors,
+        closed,
     };
     if host.wait(|_| true, 10.0).await.is_none() {
         die("no welcome from the host");
@@ -278,6 +329,17 @@ async fn main() {
         use std::io::Write;
         let _ = std::io::stdout().flush();
         let row = check_game(&mut host, game, &a).await;
+        rows.push(row.clone());
+        if let Some(path) = &a.out {
+            // Per row, so a host that quits keeps what was measured.
+            let body = serde_json::to_string_pretty(&rows).unwrap();
+            std::fs::write(path, body)
+                .unwrap_or_else(|e| die(&format!("cannot write {path}: {e}")));
+        }
+        if let Some(reason) = row["skipped_game"].as_str() {
+            println!("skipped: {reason}");
+            continue;
+        }
         let mut parts = vec![
             format!("preload {} s", fmt(&row["preload_s"])),
             format!("at Y {}", row["at_press"].as_str().unwrap_or("")),
@@ -291,6 +353,9 @@ async fn main() {
         if row["back_flaps"].as_u64().unwrap_or(0) > 0 {
             parts.push(format!("BACK FLAPPED x{}", row["back_flaps"]));
         }
+        if row["disturbed"] == true {
+            parts.push("DISTURBED (another game started: someone used a controller?)".into());
+        }
         if let Some(skipped) = row["skipped"].as_str() {
             parts.push(format!(
                 "skip {skipped} -> {} warm in {} s",
@@ -299,7 +364,6 @@ async fn main() {
             ));
         }
         println!("{}", parts.join(", "));
-        rows.push(row);
     }
     reader.abort();
     let cold: Vec<&str> = rows
@@ -339,10 +403,6 @@ async fn main() {
         for line in &lines[lines.len().saturating_sub(4 * rows.len())..] {
             println!("  {line}");
         }
-    }
-    if let Some(path) = &a.out {
-        let body = serde_json::to_string_pretty(&rows).unwrap();
-        std::fs::write(path, body).unwrap_or_else(|e| die(&format!("cannot write {path}: {e}")));
     }
     std::process::exit(if cold.is_empty() && flapped.is_empty() {
         0

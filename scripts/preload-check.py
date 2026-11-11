@@ -27,7 +27,9 @@ No Python? The same check in Rust:
   cargo run --release -p gamenight-certify --bin preload-check -- --log daemon.log
 
 Needs `pip install websockets`. Plays real games on the TV: run it when
-nobody is in the middle of one.
+nobody is in the middle of one, leave the controllers alone and keep other
+windows (a chat app, a terminal) off the TV's desktop: a Back or Y press or a
+window taking the front during the run shows up as flapping or DISTURBED.
 """
 
 import argparse
@@ -46,29 +48,45 @@ class Host:
         self.ws = ws
         self.party = {}
         self.changes = []  # (monotonic time, party)
+        self.errors = []
+        self.closed = False
         self.reader = asyncio.create_task(self.read())
 
     async def read(self):
-        async for raw in self.ws:
-            msg = json.loads(raw)
-            party = msg.get("party")
-            if msg.get("type") in ("welcome", "party_state") and isinstance(party, dict):
-                self.party = party
-                self.changes.append((time.monotonic(), party))
-            elif msg.get("type") == "error":
-                print(f"  host error: {msg.get('message')}", file=sys.stderr)
+        try:
+            async for raw in self.ws:
+                msg = json.loads(raw)
+                party = msg.get("party")
+                if msg.get("type") in ("welcome", "party_state") and isinstance(party, dict):
+                    self.party = party
+                    self.changes.append((time.monotonic(), party))
+                elif msg.get("type") == "error":
+                    self.errors.append(str(msg.get("message")))
+        except websockets.ConnectionClosed:
+            pass
+        self.closed = True
 
     async def send(self, msg):
-        await self.ws.send(json.dumps(msg))
+        try:
+            await self.ws.send(json.dumps(msg))
+        except websockets.ConnectionClosed:
+            self.closed = True
+            raise HostGone()
 
     async def wait(self, test, timeout):
         """Seconds until test(party) holds, or None on timeout."""
         start = time.monotonic()
         while time.monotonic() - start < timeout:
+            if self.closed:
+                raise HostGone()
             if self.party and test(self.party):
                 return time.monotonic() - start
             await asyncio.sleep(0.02)
         return None
+
+
+class HostGone(Exception):
+    """The host closed the connection (Gamepad Party was closed)."""
 
 
 def session(party, key):
@@ -109,9 +127,15 @@ def upcoming(party):
 
 async def check_game(host, game, args):
     row = {"game": game}
-    # 1. Preload.
+    # 1. Preload. The host refuses games that cannot seat everyone.
+    errors = len(host.errors)
     await host.send({"type": "queue_next", "game": game})
-    row["preload_s"] = await host.wait(is_ready(game), args.preload_timeout)
+    refused = lambda p: len(host.errors) > errors
+    row["preload_s"] = await host.wait(lambda p: is_ready(game)(p) or refused(p), args.preload_timeout)
+    if refused(None):
+        row["skipped_game"] = host.errors[errors]
+        row["preload_s"] = None
+        return row
     # 2. Y: start it.
     row["at_press"] = warm_state(host.party, game)
     await host.send({"type": "next"})
@@ -125,7 +149,10 @@ async def check_game(host, game, args):
     await host.send({"type": "open_overlay"})
     row["back_s"] = await host.wait(is_paused(game), args.start_timeout)
     await asyncio.sleep(args.settle)
-    phases = [session(p, "active_session") and session(p, "active_session")["phase"] for _, p in host.changes[mark:]]
+    actives = [session(p, "active_session") for _, p in host.changes[mark:]]
+    # Someone else started another game in the meantime: not this game's flap.
+    row["disturbed"] = any(a is not None and a["game"] != game for a in actives)
+    phases = [a and a["game"] == game and a["phase"] for a in actives]
     row["back_flaps"] = sum(1 for a, b in zip(phases, phases[1:]) if a != b and b == "running")
     # 4. X: skip next, time until the next game is warm.
     entries = upcoming(host.party)
@@ -183,13 +210,25 @@ async def main():
         rows = []
         for game in games:
             print(f"{game}: ", end="", flush=True)
-            row = await check_game(host, game, args)
+            try:
+                row = await check_game(host, game, args)
+            except HostGone:
+                print("the host went away (Gamepad Party closed); stopping")
+                break
             rows.append(row)
+            if args.out:  # per row, so a host that quits keeps what was measured
+                with open(args.out, "w", encoding="utf-8") as f:
+                    json.dump(rows, f, indent=2)
+            if row.get("skipped_game"):
+                print(f"skipped: {row['skipped_game']}")
+                continue
             parts = [f"preload {fmt(row.get('preload_s'))} s", f"at Y {row['at_press']}",
                      f"start {fmt(row.get('start_s'))} s" + (" COLD" if row.get("cold") else ""),
                      f"back {fmt(row.get('back_s'))} s"]
             if row.get("back_flaps"):
                 parts.append(f"BACK FLAPPED x{row['back_flaps']}")
+            if row.get("disturbed"):
+                parts.append("DISTURBED (another game started: someone used a controller?)")
             if row.get("skipped"):
                 parts.append(f"skip {row['skipped']} -> {row.get('after_skip')} warm in {fmt(row.get('skip_ready_s'))} s")
             print(", ".join(parts))
@@ -202,9 +241,6 @@ async def main():
         print("\nFirst frames and starts from the log:")
         for line in first_frames(args.log)[-4 * len(rows):]:
             print("  " + line)
-    if args.out:
-        with open(args.out, "w", encoding="utf-8") as f:
-            json.dump(rows, f, indent=2)
     sys.exit(1 if cold or flapped else 0)
 
 
