@@ -37,8 +37,16 @@ const output=process.env.GAMENIGHT_TEST_SCREENSHOTS;
   await page.goto('https://gamenight.ontola.io/app/#/assistant',{waitUntil:'networkidle',timeout:90000});
   await page.evaluate(()=>document.querySelector('flt-semantics-placeholder')?.click());
   await page.getByText('What shall we change?',{exact:true}).waitFor({timeout:30000});
-  await page.getByRole('textbox').fill('Make us jump a little higher');
-  await page.getByRole('button',{name:'Review request',exact:true}).click();
+  // On a slow runner the first fill can land before Flutter's field
+  // listens; type again until Review request enables.
+  const review=page.getByRole('button',{name:'Review request',exact:true});
+  for(let attempt=0;attempt<10;attempt++){
+   await page.getByRole('textbox').click();
+   await page.getByRole('textbox').fill('Make us jump a little higher');
+   await page.waitForTimeout(500);
+   if(await review.isEnabled())break;
+  }
+  await review.click();
   await page.getByText('Up to 3 credits. Unused credits are returned.',{exact:true}).waitFor();
   assert.equal(posts.length,0,'quote must not send a paid request');assert.equal(quoted,1);
   if(output){fs.mkdirSync(output,{recursive:true});await page.screenshot({path:path.join(output,'assistant-phone-review.png')});}
