@@ -5,109 +5,114 @@ import '../player_face.dart';
 import '../screens/face_editor_screen.dart';
 import '../theme.dart';
 
-/// The first thing a new player sees after scanning the QR: two steps of
-/// the same size. Nothing happens on the TV until someone presses A on a
-/// controller, then Y there picks up this phone's player, shown in step 2.
+/// The first thing a new player sees after scanning the QR: one card with
+/// two steps. Nothing happens on the TV until someone presses A on a
+/// controller; then Y there picks up this phone's player, shown in step 2.
 List<Widget> joinSteps(AppState state) => [
-      const _StepCard(
-        key: ValueKey('press-a'),
-        number: 1,
-        button: _PadButton('A', Color(0xFF22A45D), Color(0xFF7CF0AE)),
-        title: 'Grab a controller\nand press A',
-        hint: 'A player appears on the TV.',
-      ),
-      _StepCard(
-        key: const ValueKey('press-y'),
-        number: 2,
-        button: const _PadButton('Y', Color(0xFFE0A100), Color(0xFFFFE08A)),
-        title: 'Press Y to pick up\nyour player',
-        hint: 'This one, from this phone:',
-        child: _Profile(state: state),
+      Container(
+        key: const ValueKey('press-a'),
+        margin: const EdgeInsets.only(top: 8, bottom: 8),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFF2A2366), GnColors.card]),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: GnColors.accent, width: 2),
+        ),
+        child:
+            Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          const _Step(
+            picture: Icon(Icons.sports_esports, size: 52, color: GnColors.text),
+            button: _PadButton('A', Color(0xFF22A45D), Color(0xFF7CF0AE)),
+            title: '1. Grab a controller and press A',
+            hint: 'A player appears on the TV.',
+          ),
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 14),
+            child: Divider(color: GnColors.border, height: 1),
+          ),
+          _Step(
+            key: const ValueKey('press-y'),
+            picture: SizedBox.square(
+              dimension: 52,
+              child: FittedBox(
+                  child:
+                      PlayerFaceIcon(face: state.face, skin: state.skinColor)),
+            ),
+            button: const _PadButton('Y', Color(0xFFE0A100), Color(0xFFFFE08A)),
+            title: '2. Press Y to pick up your player',
+            hint: 'You join the TV as:',
+            child: _Profile(state: state),
+          ),
+        ]),
       ),
     ];
 
-class _StepCard extends StatelessWidget {
-  final int number;
+class _Step extends StatelessWidget {
+  final Widget picture;
   final Widget button;
   final String title;
   final String hint;
   final Widget? child;
-  const _StepCard(
+  const _Step(
       {super.key,
-      required this.number,
+      required this.picture,
       required this.button,
       required this.title,
       required this.hint,
       this.child});
 
   @override
-  Widget build(BuildContext context) => Container(
-        margin: const EdgeInsets.only(top: 8, bottom: 8),
-        padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [Color(0xFF2A2366), GnColors.card]),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: GnColors.accent, width: 2),
-        ),
-        child: Column(children: [
-          Row(children: [
-            _StepNumber(number),
-            const Spacer(),
-            const Icon(Icons.sports_esports, size: 56, color: GnColors.text),
-            const SizedBox(width: 12),
-            button,
-            const Spacer(),
-            const SizedBox(width: 32),
+  Widget build(BuildContext context) =>
+      Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        SizedBox(
+          width: 68,
+          height: 64,
+          child: Stack(clipBehavior: Clip.none, children: [
+            Positioned(left: 0, top: 0, child: picture),
+            Positioned(right: 0, bottom: 0, child: button),
           ]),
-          const SizedBox(height: 16),
-          Text(title,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                  fontSize: 28, height: 1.15, fontWeight: FontWeight.w800)),
-          const SizedBox(height: 8),
-          Text(hint,
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 16, color: GnColors.muted)),
-          if (child case final child?) ...[const SizedBox(height: 12), child],
-        ]),
-      );
+        ),
+        const SizedBox(width: 14),
+        Expanded(
+          child:
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(title,
+                style: const TextStyle(
+                    fontSize: 20, height: 1.2, fontWeight: FontWeight.w800)),
+            const SizedBox(height: 4),
+            Text(hint,
+                style: const TextStyle(fontSize: 14, color: GnColors.muted)),
+            if (child case final child?) child,
+          ]),
+        ),
+      ]);
 }
 
-/// This phone's player as the TV will show it.
+/// This phone's player name as the TV will show it; tap to change the face.
 class _Profile extends StatelessWidget {
   final AppState state;
   const _Profile({required this.state});
   @override
-  Widget build(BuildContext context) => Material(
-        color: GnColors.field,
-        borderRadius: BorderRadius.circular(14),
-        child: InkWell(
-          key: const ValueKey('step-profile'),
-          borderRadius: BorderRadius.circular(14),
-          onTap: () => FaceEditorScreen.open(context, state),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(10, 10, 14, 10),
-            child: Row(children: [
-              SizedBox.square(
-                dimension: 56,
-                child: FittedBox(
-                    child: PlayerFaceIcon(
-                        face: state.face, skin: state.skinColor)),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(state.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                        fontSize: 22, fontWeight: FontWeight.w800)),
-              ),
-              const Icon(Icons.brush, size: 18, color: GnColors.muted),
-            ]),
-          ),
+  Widget build(BuildContext context) => InkWell(
+        key: const ValueKey('step-profile'),
+        borderRadius: BorderRadius.circular(8),
+        onTap: () => FaceEditorScreen.open(context, state),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 2),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            Flexible(
+              child: Text(state.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                      fontSize: 18, fontWeight: FontWeight.w800)),
+            ),
+            const SizedBox(width: 8),
+            const Icon(Icons.brush, size: 16, color: GnColors.muted),
+          ]),
         ),
       );
 }
@@ -117,7 +122,7 @@ class _PadButton extends StatelessWidget {
   final Color fill;
   final Color rim;
   const _PadButton(this.label, this.fill, this.rim);
-  static const size = 56.0;
+  static const size = 30.0;
   @override
   Widget build(BuildContext context) => Container(
         width: size,
@@ -126,12 +131,12 @@ class _PadButton extends StatelessWidget {
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           color: fill,
-          border: Border.all(color: rim, width: 3),
+          border: Border.all(color: rim, width: 2),
           boxShadow: [
             BoxShadow(
                 color: fill.withValues(alpha: .4),
-                blurRadius: 18,
-                spreadRadius: 2)
+                blurRadius: 8,
+                spreadRadius: 1)
           ],
         ),
         child: Text(label,
@@ -139,21 +144,6 @@ class _PadButton extends StatelessWidget {
                 fontSize: size * 0.5,
                 fontWeight: FontWeight.w900,
                 color: Colors.white)),
-      );
-}
-
-class _StepNumber extends StatelessWidget {
-  final int n;
-  const _StepNumber(this.n);
-  @override
-  Widget build(BuildContext context) => Container(
-        width: 32,
-        height: 32,
-        alignment: Alignment.center,
-        decoration:
-            const BoxDecoration(shape: BoxShape.circle, color: GnColors.field),
-        child: Text('$n',
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
       );
 }
 

@@ -113,7 +113,7 @@ void main() {
             initialLink: Uri.parse('$hostedOrigin/app/?room=ABC234'))));
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('press-a')), findsOneWidget);
-    expect(find.text('Grab a controller\nand press A'), findsOneWidget);
+    expect(find.text('1. Grab a controller and press A'), findsOneWidget);
     expect(find.byKey(const ValueKey('press-y')), findsOneWidget);
     expect(find.byKey(const ValueKey('step-profile')), findsOneWidget);
     expect(find.byKey(const ValueKey('meet-player')), findsNothing);
