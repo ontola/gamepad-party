@@ -2377,6 +2377,51 @@ mod night_tests {
     }
 
     #[test]
+    fn autoplay_warms_past_a_game_the_host_holds() {
+        let mut night = GameNight::default();
+        night.set_lobby_game(Some(GameId::new("lobby")));
+        let launchable = |id: &str| {
+            let mut game = meta(id);
+            game.launch = Some(gamenight_protocol::LaunchSpec {
+                command: format!("{id}-game"),
+                args: vec![],
+                cwd: None,
+                env: Default::default(),
+            });
+            game
+        };
+        night.set_library(vec![
+            meta("lobby"),
+            launchable("first"),
+            launchable("second"),
+        ]);
+        let launched = |fx: &[Effect]| {
+            fx.iter()
+                .filter_map(|e| match e {
+                    Effect::Launch { game } => Some(game.0.clone()),
+                    _ => None,
+                })
+                .collect::<Vec<_>>()
+        };
+        let first = launched(&night.ensure_warm());
+        assert_eq!(first.len(), 1);
+        let held = GameId::new(&first[0]);
+        // The host refuses to start it again (it crashed): warm the other one.
+        let fx = night.set_held_games([held.clone()].into_iter().collect());
+        let other = launched(&fx);
+        assert_eq!(other.len(), 1, "another game warms");
+        assert_ne!(other[0], held.0);
+        assert_eq!(
+            night.snapshot().warming.map(|e| e.game.0),
+            Some(other[0].clone()),
+            "the lobby shows the game that is really loading"
+        );
+        // A player's pick of the held game still asks for it.
+        night.handle(Command::QueueNext { game: held.clone() });
+        assert_eq!(night.snapshot().warming.map(|e| e.game), Some(held));
+    }
+
+    #[test]
     fn startup_preloads_the_first_game_before_play_next() {
         let mut night = GameNight::default();
         night.set_lobby_game(Some(GameId::new("lobby")));

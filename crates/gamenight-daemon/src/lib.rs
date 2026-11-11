@@ -873,8 +873,10 @@ impl Shared {
                 }
             }
         }
+        self.sync_held_games();
         let effects = self.night.handle(command);
         self.apply_effects(effects, origin);
+        self.sync_held_games();
         // Games need live host-music state, including pause/stop, so they
         // can yield only their soundtrack. Do not stream large catalog art
         // or every unrelated party update to background games.
@@ -891,6 +893,17 @@ impl Shared {
             }
         }
         self.sync_prewarm_players();
+    }
+
+    /// Tell the night which games we won't start by ourselves, so autoplay
+    /// warms another one instead of waiting on a launch we refuse.
+    fn sync_held_games(&mut self) {
+        let fx = self
+            .night
+            .set_held_games(self.quit_games.iter().cloned().collect());
+        if !fx.is_empty() {
+            self.apply_effects(fx, None);
+        }
     }
 
     /// Carry out the state machine's effects.
@@ -1618,6 +1631,7 @@ impl Shared {
             self.quit_builds.remove(game);
             self.game_issues.remove(game);
         }
+        self.sync_held_games();
         let fx = self.night.ensure_warm();
         self.apply_effects(fx, None);
         self.apply_effects(vec![Effect::StateChanged], None);
@@ -1940,6 +1954,25 @@ fn with_catalog_art(mut meta: GameMeta) -> GameMeta {
     meta
 }
 
+/// Fields the store keeps on a catalogue entry for itself (see the cloud's
+/// catalog.rs): not part of the schema a host checks.
+const STORE_ONLY_FIELDS: &[&str] = &["artifact_hashes", "platforms", "origin", "entry_source"];
+
+/// A playtest's catalogue entry. The store's own bookkeeping rides along on
+/// its entries; it is not part of the catalogue schema, which rejects unknown
+/// fields. Every playtest used to be ignored once the store started sending
+/// `artifact_hashes`.
+fn playtest_catalog_entry(
+    mut raw: serde_json::Value,
+) -> Result<gamenight_catalog::CatalogEntry, serde_json::Error> {
+    if let Some(fields) = raw.as_object_mut() {
+        for key in STORE_ONLY_FIELDS {
+            fields.remove(*key);
+        }
+    }
+    serde_json::from_value(raw)
+}
+
 /// Install a playtest the cloud announced and put it on the shelf, replacing
 /// a released version of the same game for the rest of the night. Repeated
 /// announcements of the same build do nothing; a new preview build replaces
@@ -1951,7 +1984,7 @@ fn start_playtest(
     playtest: gamenight_protocol::Playtest,
 ) {
     let platform = gamenight_catalog::current_platform();
-    let entry = match serde_json::from_value::<gamenight_catalog::CatalogEntry>(playtest.entry) {
+    let entry = match playtest_catalog_entry(playtest.entry) {
         Ok(entry) => entry,
         Err(error) => {
             warn!(%error, "ignoring a playtest with an invalid catalogue entry");
@@ -3700,6 +3733,20 @@ mod replacement_lobby_tests {
         assert!(s.game_issues.is_empty());
         assert!(s.pending_launches.contains_key(&game));
         s.kill_all_children();
+    }
+
+    #[test]
+    fn playtest_entries_with_store_fields_are_accepted() {
+        let entry = serde_json::json!({
+            "id": "growing-guns", "title": "Growing Guns",
+            "players": {"min": 1, "max": 4}, "price": "free",
+            "integration": {"level": "integrated", "protocol": 1},
+            "artifact_hashes": {"windows": "abc"}, "platforms": ["windows"],
+            "origin": "portal", "entry_source": "editor"
+        });
+        let parsed = playtest_catalog_entry(entry).expect("store fields are dropped");
+        assert_eq!(parsed.id, "growing-guns");
+        assert!(playtest_catalog_entry(serde_json::json!({"id": "x", "nonsense": 1})).is_err());
     }
 
     #[cfg(not(windows))]

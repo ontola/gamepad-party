@@ -453,6 +453,10 @@ pub struct GameNight {
     seats: Vec<Seat>,
     playlist: Playlist,
     connected_games: HashSet<GameId>,
+    /// Games the host will not start on its own (they crashed or were
+    /// closed, see the daemon's `quit_games`). Autoplay warms something
+    /// else; a player's pick still asks for them.
+    held_games: HashSet<GameId>,
     active: Option<Session>,
     warm: Option<Session>,
     /// The seats the warm session was `prepare`d with. Kept so we can notice
@@ -531,6 +535,7 @@ impl GameNight {
                 .collect(),
             playlist: Playlist::default(),
             connected_games: HashSet::new(),
+            held_games: HashSet::new(),
             active: None,
             warm: None,
             warm_seats: Vec::new(),
@@ -651,6 +656,21 @@ impl GameNight {
     /// boot there is a shelf and no warm session — the lobby would sit on
     /// "Nothing queued" until some game happened to connect. The daemon calls
     /// this once it is ready to act on effects.
+    /// The host's games that it will not start by itself. A held game in
+    /// autoplay used to stay the warm target, so the host refused to launch
+    /// it and nothing else warmed: the next game always loaded cold.
+    pub fn set_held_games(&mut self, held: HashSet<GameId>) -> Vec<Effect> {
+        let mut fx = Vec::new();
+        if held == self.held_games {
+            return fx;
+        }
+        self.held_games = held;
+        // No state broadcast of its own: the command that changed what the
+        // host holds (a crash, a pick) announces the result.
+        self.reconcile_warm(&mut fx);
+        fx
+    }
+
     pub fn ensure_warm(&mut self) -> Vec<Effect> {
         let mut fx = Vec::new();
         self.refresh_autoplay(&mut fx);
@@ -2194,6 +2214,9 @@ impl GameNight {
     /// the shelf knows how to launch it. Games the shelf doesn't know are
     /// given the benefit of the doubt.
     fn can_warm(&self, game: &GameId) -> bool {
+        if self.held_games.contains(game) {
+            return false;
+        }
         self.connected_games.contains(game)
             || self
                 .library
