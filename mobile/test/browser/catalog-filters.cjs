@@ -3,7 +3,7 @@ const {chromium,devices}=require('playwright');
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
 const build=process.env.GAMENIGHT_WEB_BUILD || path.resolve(__dirname,'../../build/web');
 const out=process.env.GAMENIGHT_TEST_SCREENSHOTS;
-const ids=['blast-party','bubble-buddies','ricochet-club'];
+const ids=['blast-party','bubble-buddies','volley-trouble'];
 const games=ids.map(id=>{
  const g=JSON.parse(fs.readFileSync(path.resolve(__dirname,'../../../catalog/games',id+'.json')));
  const png=path.resolve(__dirname,'../../../catalog/art',id,'screenshot.png');
@@ -29,7 +29,7 @@ games[0].tags=['party','action'];games[1].tags=['co-op','party'];games[2].tags=[
     '/v1/catalog':games,
     '/v1/me':{id:'test-account',profile:{display_name:'Test player'}},
     '/v1/me/studio':{revision:0,profile:{display_name:'Test player'}},
-    '/v1/me/game-ratings':{'blast-party':1,'bubble-buddies':1,'ricochet-club':-1},
+    '/v1/me/game-ratings':{'blast-party':1,'bubble-buddies':1,'volley-trouble':-1},
     '/v1/me/play-profile':{window_days:90,games:[{game:'blast-party',active_ms:2000,rounds_reported:0}]},
     '/v1/me/last-played':{'blast-party':1700000000},
     '/v1/rooms/status':{status:'none'},
