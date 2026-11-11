@@ -23,6 +23,9 @@ those lines matched to each start.
   python scripts/preload-check.py                       # every shelf game
   python scripts/preload-check.py --games sideways,spellstorm --out report.json
 
+No Python? The same check in Rust:
+  cargo run --release -p gamenight-certify --bin preload-check -- --log daemon.log
+
 Needs `pip install websockets`. Plays real games on the TV: run it when
 nobody is in the middle of one.
 """
