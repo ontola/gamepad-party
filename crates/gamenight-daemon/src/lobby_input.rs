@@ -218,7 +218,13 @@ impl FrameFilter {
             if controller.buttons & 1 == 0 {
                 self.held_on_connect.remove(&controller.controller);
             }
-            controller.buttons &= !(1 << 6); // Back belongs to the runtime.
+            // Back belongs to the runtime, and so does RB while Back is
+            // held: Back+RB skips to the next game, and the lobby or game
+            // must not also act on that RB.
+            if controller.buttons & BACK != 0 {
+                controller.buttons &= !RB;
+            }
+            controller.buttons &= !BACK;
             if self.held_on_connect.contains(&controller.controller) {
                 controller.buttons &= !1;
             }
@@ -234,6 +240,11 @@ impl FrameFilter {
 /// as the same press.
 const BACK_ECHO_WINDOW: Duration = Duration::from_millis(600);
 
+/// Back (Select/View) in the runtime button bits.
+const BACK: u32 = 1 << 6;
+/// Right bumper (RB/R1) in the runtime button bits.
+const RB: u32 = 1 << 5;
+
 /// A, B, X, Y and Start: the presses that join an unseated controller.
 const JOIN_BUTTONS: u32 = 1 | 2 | 4 | 8 | 128;
 
@@ -242,6 +253,8 @@ struct InputRouter {
     previous: HashMap<String, u32>,
     consumed_join: HashSet<String>,
     activity: HashMap<String, Instant>,
+    /// Back+RB skips sent, for tests.
+    skips: usize,
 }
 
 impl InputRouter {
@@ -250,11 +263,28 @@ impl InputRouter {
             previous,
             consumed_join,
             activity,
+            skips,
         } = self;
+        // Back+RB on one controller skips straight to the next game, from
+        // any game or the lobby. Either order counts: hold Back and press
+        // RB (Back already opened the lobby, the skip closes it again), or
+        // hold RB and press Back (then the lobby never opens).
+        let skip = controllers.iter().any(|c| {
+            let pressed = c.buttons & !previous.get(&c.controller).copied().unwrap_or(0);
+            c.buttons & (BACK | RB) == BACK | RB && pressed & (BACK | RB) != 0
+        });
+        if skip {
+            info!("Back+RB pressed on a controller; skipping to the next game");
+            s.overlay_opened_by_request = None;
+            *skips += 1;
+            s.skipped_by_combo = Some(Instant::now());
+            s.dispatch(Command::Next, None);
+        }
         // Several people may press Back together. It is one party action.
-        if controllers
-            .iter()
-            .any(|c| c.buttons & !previous.get(&c.controller).copied().unwrap_or(0) & (1 << 6) != 0)
+        if !skip
+            && controllers
+                .iter()
+                .any(|c| c.buttons & !previous.get(&c.controller).copied().unwrap_or(0) & BACK != 0)
         {
             let open = s.night.snapshot().overlay_open;
             // Games may echo Back as `request_overlay`, and their event often
@@ -288,7 +318,11 @@ impl InputRouter {
             let lobby_active = snapshot.overlay_open || snapshot.active_session.is_none();
             // The runtime consumes Back; SDKs must not echo the same
             // press and bounce a just-resumed game into the lobby again.
-            controller.buttons &= !(1 << 6);
+            // RB under a held Back is the skip combo, not game input.
+            if held & BACK != 0 {
+                controller.buttons &= !RB;
+            }
+            controller.buttons &= !BACK;
             if lobby_active
                 && pressed & JOIN_BUTTONS != 0
                 && snapshot
@@ -542,5 +576,75 @@ mod tests {
         });
         router.route(&mut s, controllers);
         assert!(s.night.snapshot().overlay_open);
+    }
+
+    #[tokio::test]
+    async fn back_then_rb_skips_once_and_back_alone_still_toggles() {
+        let mut s = Shared::new(Vec::new(), "127.0.0.1:0".into(), None);
+        let (tx, mut rx) = mpsc::unbounded_channel();
+        s.games.insert(GameId::new("test-game"), tx);
+        let mut router = InputRouter::default();
+        router.route(&mut s, frame(0));
+        rx.recv().await.unwrap();
+        router.route(&mut s, frame(BACK));
+        rx.recv().await.unwrap();
+        assert!(
+            s.night.snapshot().overlay_open,
+            "Back alone opens the lobby"
+        );
+        assert_eq!(router.skips, 0);
+        for _ in 0..3 {
+            router.route(&mut s, frame(BACK | RB));
+            let message: ServerMessage = serde_json::from_str(&rx.recv().await.unwrap()).unwrap();
+            assert!(
+                matches!(message, ServerMessage::ControllerFrame { controllers } if controllers[0].buttons == 0),
+                "RB under Back is the combo, not input"
+            );
+        }
+        assert_eq!(router.skips, 1, "a held combo skips once");
+        router.route(&mut s, frame(0));
+        rx.recv().await.unwrap();
+        router.route(&mut s, frame(RB));
+        let message: ServerMessage = serde_json::from_str(&rx.recv().await.unwrap()).unwrap();
+        assert!(
+            matches!(message, ServerMessage::ControllerFrame { controllers } if controllers[0].buttons == RB),
+            "RB alone reaches the game"
+        );
+        assert_eq!(router.skips, 1);
+    }
+
+    #[tokio::test]
+    async fn rb_then_back_skips_without_opening_the_lobby() {
+        let mut s = Shared::new(Vec::new(), "127.0.0.1:0".into(), None);
+        let mut router = InputRouter::default();
+        router.route(&mut s, frame(RB));
+        router.route(&mut s, frame(RB | BACK));
+        assert_eq!(router.skips, 1);
+        assert!(!s.night.snapshot().overlay_open);
+        router.route(&mut s, frame(0));
+        router.route(&mut s, frame(BACK));
+        assert!(
+            s.night.snapshot().overlay_open,
+            "Back alone still opens the lobby"
+        );
+        assert_eq!(router.skips, 1);
+    }
+
+    #[test]
+    fn sampled_frames_hide_rb_only_while_back_is_held() {
+        let mut filter = FrameFilter::default();
+        assert_eq!(filter.apply(frame(BACK | RB | 4))[0].buttons, 4);
+        assert_eq!(filter.apply(frame(RB | 4))[0].buttons, RB | 4);
+    }
+
+    #[tokio::test]
+    async fn the_left_game_echoing_back_does_not_reopen_the_lobby_after_a_skip() {
+        let mut s = Shared::new(Vec::new(), "127.0.0.1:0".into(), None);
+        let (game, _rx) = mpsc::unbounded_channel();
+        let mut router = InputRouter::default();
+        router.route(&mut s, frame(RB));
+        router.route(&mut s, frame(RB | BACK));
+        s.dispatch(Command::OverlayOpened, Some(&game));
+        assert!(!s.night.snapshot().overlay_open);
     }
 }

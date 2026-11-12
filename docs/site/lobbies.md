@@ -30,7 +30,8 @@ moves between controls. On a game card, A queues the game after earlier picks;
 X plays it now (it goes on top of the queue and starts once it has loaded). The
 merged queue panel shows its first entry as Up next, with the remaining games
 alongside it. Select Start game to launch the head of the queue. Back returns to
-the lobby or resumes an overlay-paused game. Y leaves that controller's seat.
+the lobby or resumes an overlay-paused game. Back+RB skips straight to the next
+game, from any game or the lobby. Y leaves that controller's seat.
 
 The controller hint bar shows **X Play now · A Queue · LT Previous · RT Next**
 with Xbox-style face-button and trigger icons. These hints are not selectable;

@@ -292,7 +292,9 @@ seconds)` with 0 to 1 strengths.
 `finished` is an optional round notification. It never advances the playlist,
 opens the lobby, pauses the game or hides its window. The game owns its score
 screen and starts the next round itself. Players can keep playing indefinitely.
-Back/Select pauses and opens the lobby; Resume continues. Play next explicitly
+Back/Select pauses and opens the lobby; Resume continues. Back+RB (hold Back,
+press RB, or the other way round) skips straight to the next game in the queue
+from any game; the host handles it, games need no code. Play next explicitly
 switches games, while Skip changes only the queued next game. A prepared next
 session stays ready across rounds. Pausing also freezes the game's results timer.
 

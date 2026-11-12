@@ -132,6 +132,10 @@ struct Shared {
     /// overlay. The runtime samples the same physical Back press a few frames
     /// later and must not read it as a second press that closes it again.
     overlay_opened_by_request: Option<std::time::Instant>,
+    /// When a controller last pressed Back+RB to skip to the next game. The
+    /// game that was left may still echo that Back as `request_overlay`; it
+    /// must not open the lobby over the game the skip just started.
+    skipped_by_combo: Option<std::time::Instant>,
     shutdown_requested: bool,
     lobby_restarts: u8,
     lobby_recovery_opened: bool,
@@ -397,6 +401,7 @@ impl Shared {
             lobby_connections: Default::default(),
             runtime_input: false,
             overlay_opened_by_request: None,
+            skipped_by_combo: None,
             shutdown_requested: false,
             lobby_restarts: 0,
             lobby_recovery_opened: false,
@@ -797,6 +802,15 @@ impl Shared {
     /// `origin` receives any `Reject` effects.
     fn dispatch(&mut self, command: Command, origin: Option<&Tx>) {
         debug!(?command, "dispatch");
+        if matches!(command, Command::OverlayOpened)
+            && origin.is_some()
+            && self
+                .skipped_by_combo
+                .is_some_and(|at| at.elapsed() < std::time::Duration::from_millis(600))
+        {
+            info!("ignoring a game's request_overlay: that Back was part of Back+RB");
+            return;
+        }
         if matches!(command, Command::OverlayOpened)
             && origin.is_some()
             && !self.night.snapshot().overlay_open
