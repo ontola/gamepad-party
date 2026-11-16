@@ -3414,7 +3414,7 @@ mod player_count_fit_tests {
         );
     }
 
-    /// Prepare carries profiles, so a changed name must reach the warm game.
+    /// A changed name reaches the warm game without preparing it again.
     #[test]
     fn a_rename_refreshes_the_warm_profile() {
         let mut night = GameNight::default();
@@ -3431,8 +3431,15 @@ mod player_count_fit_tests {
             player_id,
             name: "Ada".into(),
         });
-        assert_ne!(night.snapshot().warm_session.map(|s| s.id), before);
-        assert!(fx.iter().any(|e| matches!(e, Effect::ToGame { command: GameCommand::Prepare { players, .. }, .. } if players.iter().any(|p| p.name == "Ada"))));
+        assert_eq!(night.snapshot().warm_session.map(|s| s.id), before);
+        assert!(fx.iter().any(|e| matches!(e, Effect::ToGame { command: GameCommand::PlayersUpdated { players }, .. } if players.iter().any(|p| p.name == "Ada"))));
+        assert!(!fx.iter().any(|e| matches!(
+            e,
+            Effect::ToGame {
+                command: GameCommand::Prepare { .. },
+                ..
+            }
+        )));
     }
 
     /// Games recognise a profile between nights by its per-game key, never by

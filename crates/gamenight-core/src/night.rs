@@ -3197,9 +3197,27 @@ impl GameNight {
             self.maybe_warm(fx);
             return;
         }
-        if self.warm_seats != self.seats_for(&warm.game) || self.warm_players != self.players {
+        if self.warm_seats != self.seats_for(&warm.game)
+            || !same_profiles(&self.warm_players, &self.players)
+        {
             self.dispose_warm(fx);
             self.maybe_warm(fx);
+            return;
+        }
+        // The same people and profiles with a new name, colour or face is
+        // not a new roster: tell the warm game instead of preparing it again
+        // (a big scene takes seconds to build). A new profile key does need
+        // a fresh prepare: that is when a game loads someone's saves.
+        if self.warm_players != self.players {
+            let warm = self.warm.as_ref().expect("checked");
+            fx.push(Effect::ToGame {
+                game: warm.game.clone(),
+                session: warm.id,
+                command: GameCommand::PlayersUpdated {
+                    players: self.players.clone(),
+                },
+            });
+            self.warm_players = self.players.clone();
         }
     }
 
@@ -3304,6 +3322,7 @@ impl GameNight {
                 || self.warm_seats != self.seats_for(&warm.game)
                 || self.warm_players != self.players
         }) {
+            // Refits a stale roster, and passes new names and faces on.
             self.rewarm_if_misfit(fx);
         }
         match &self.warm {
@@ -3390,6 +3409,11 @@ impl GameNight {
 }
 
 /// The same people, whatever they are called or look like now.
+/// The same people with the same profiles (what a game loads saves by).
+fn same_profiles(a: &[Player], b: &[Player]) -> bool {
+    same_people(a, b) && a.iter().zip(b).all(|(a, b)| a.profile_key == b.profile_key)
+}
+
 fn same_people(a: &[Player], b: &[Player]) -> bool {
     a.len() == b.len() && a.iter().zip(b).all(|(a, b)| a.id == b.id)
 }
