@@ -191,13 +191,19 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
         title: Text(entry.title,
             style: const TextStyle(fontWeight: FontWeight.w600)),
         subtitle: badges.isEmpty ? null : Text(badges.join(' · ')),
-        trailing: playing
-            ? const Icon(Icons.chevron_right, color: GnColors.muted)
-            : IconButton(
-                tooltip: 'Remove ${entry.title}',
-                icon: const Icon(Icons.close),
-                onPressed: _busy ? null : () => _remove(i),
-              ),
+        trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+          GameSettingsButton(
+              state: state,
+              game: entry.game,
+              title: entry.title,
+              playing: playing),
+          if (!playing)
+            IconButton(
+              tooltip: 'Remove ${entry.title}',
+              icon: const Icon(Icons.close),
+              onPressed: _busy ? null : () => _remove(i),
+            ),
+        ]),
       ),
     );
   }
@@ -245,17 +251,8 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
 
   void _open(PlaylistView view, int i) {
     final entry = view.entries[i];
-    final playing = view.current == i;
-    final upcoming = (view.current ?? -1) + 1;
-    final status = playing
-        ? EntryStatus.playing
-        : view.next == entry.game
-            ? EntryStatus.upNext
-            : i < upcoming
-                ? EntryStatus.played
-                : i < upcoming + view.queued
-                    ? EntryStatus.queued
-                    : EntryStatus.autoplay;
+    final status = entryStatus(view, i);
+    final playing = status == EntryStatus.playing;
     final current = view.current == null ? null : view.entries[view.current!];
     showModalBottomSheet<void>(
       context: context,
@@ -287,6 +284,87 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
 
 /// [queued] games a player picked; [autoplay] ones the host picked.
 enum EntryStatus { playing, upNext, queued, autoplay, played }
+
+/// Where entry [i] stands in [view].
+EntryStatus entryStatus(PlaylistView view, int i) {
+  final upcoming = (view.current ?? -1) + 1;
+  if (view.current == i) return EntryStatus.playing;
+  if (view.next == view.entries[i].game) return EntryStatus.upNext;
+  if (i < upcoming) return EntryStatus.played;
+  return i < upcoming + view.queued ? EntryStatus.queued : EntryStatus.autoplay;
+}
+
+/// What a game says when it has no settings to show (yet).
+String noSettingsHint(String title, {required bool playing}) => playing
+    ? 'This game has no settings to change.'
+    : '$title has not shared its settings with this Gamepad Party yet. '
+        'They show up here once it has loaded one time.';
+
+/// The settings of one game, current or still in the queue, in a sheet:
+/// its buttons (only while it plays), your own settings, then the room's.
+Future<void> showGameSettings(BuildContext context, AppState state,
+    {String? game, required String title, bool playing = false}) {
+  final controls = roomControlsFor(state);
+  return showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    showDragHandle: true,
+    builder: (context) => SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        child:
+            Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          if (playing && controls != null)
+            GameActionsSection(
+                key: const ValueKey('game-actions'), controls: controls),
+          if (controls != null)
+            MySettingsSection(
+                key: ValueKey('my-settings-${game ?? ''}'),
+                controls: controls,
+                game: game,
+                store: PhoneSettingsStore(state.prefs),
+                signedIn: state.signedIn),
+          SettingsSection(
+              key: ValueKey('settings-${game ?? ''}'),
+              controls: controls,
+              game: game,
+              title: title,
+              showEmpty: true,
+              emptyHint: noSettingsHint(title, playing: playing)),
+        ]),
+      ),
+    ),
+  );
+}
+
+/// The gear next to a game: opens its settings. Hidden for guests and
+/// phones that cannot change the room.
+class GameSettingsButton extends StatelessWidget {
+  final AppState state;
+  final String? game;
+  final String title;
+  final bool playing;
+  const GameSettingsButton(
+      {super.key,
+      required this.state,
+      required this.game,
+      required this.title,
+      this.playing = false});
+
+  @override
+  Widget build(BuildContext context) {
+    if (state.isGuest || roomControlsFor(state) == null) {
+      return const SizedBox.shrink();
+    }
+    return IconButton(
+      key: ValueKey('settings-button-${game ?? ''}'),
+      tooltip: '$title settings',
+      icon: const Icon(Icons.settings_outlined),
+      onPressed: () => showGameSettings(context, state,
+          game: game, title: title, playing: playing),
+    );
+  }
+}
 
 /// One game from the playlist: start it now, make it the next game, change
 /// its settings, or open its store page.
@@ -400,8 +478,7 @@ class _PlaylistGameSheetState extends State<PlaylistGameSheet> {
       EntryStatus.upNext =>
         'No settings to change yet. They show up here once ${entry.title} has loaded, '
             'if it has any.',
-      _ =>
-        'Settings can be changed once ${entry.title} is up next and has loaded.',
+      _ => noSettingsHint(entry.title, playing: false),
     };
     return SafeArea(
       child: SingleChildScrollView(
@@ -480,22 +557,26 @@ class _PlaylistGameSheetState extends State<PlaylistGameSheet> {
   }
 }
 
-/// The playlist cut short: what plays now and the next two. A tap opens the
-/// whole playlist to reorder and change it.
-class PlaylistPeek extends StatefulWidget {
+/// The game on the TV and what comes after it, in one card: each with a gear
+/// for its settings, so a game can be set up before it starts. A tap on a
+/// game opens it (play now, queue, store page); the whole playlist is one
+/// tap further.
+class NowAndNext extends StatefulWidget {
   final AppState state;
 
   /// One line instead of a card, above a game's phone screen.
   final bool compact;
-  const PlaylistPeek({super.key, required this.state, this.compact = false});
+  const NowAndNext({super.key, required this.state, this.compact = false});
 
   @override
-  State<PlaylistPeek> createState() => _PlaylistPeekState();
+  State<NowAndNext> createState() => _NowAndNextState();
 }
 
-class _PlaylistPeekState extends State<PlaylistPeek> {
+class _NowAndNextState extends State<NowAndNext> {
   PlaylistView? _view;
   Timer? _timer;
+
+  AppState get state => widget.state;
 
   @override
   void initState() {
@@ -511,7 +592,7 @@ class _PlaylistPeekState extends State<PlaylistPeek> {
   }
 
   Future<void> _load() async {
-    final api = roomControlsFor(widget.state);
+    final api = roomControlsFor(state);
     if (api == null) return;
     try {
       final view = await api.playlist();
@@ -522,20 +603,99 @@ class _PlaylistPeekState extends State<PlaylistPeek> {
   }
 
   Future<void> _openAll() async {
-    await PlaylistScreen.open(context, widget.state);
+    await PlaylistScreen.open(context, state);
     unawaited(_load());
+  }
+
+  Future<void> _play(PlaylistEntry entry, {bool start = false}) async {
+    final controls = roomControlsFor(state);
+    if (controls == null) return;
+    try {
+      if (start) {
+        await controls.playNext(entry.game, start: true);
+      } else {
+        await controls.addToQueue(entry.game);
+      }
+      if (mounted) {
+        toast(
+            context,
+            start
+                ? '${entry.title} starts as soon as it has loaded'
+                : '${entry.title} is in the queue');
+      }
+    } on ApiError catch (e) {
+      if (mounted) toast(context, e.message);
+    } finally {
+      unawaited(_load());
+    }
+  }
+
+  Future<void> _remove(PlaylistView view, int i) async {
+    final controls = roomControlsFor(state);
+    if (controls == null) return;
+    try {
+      final next = await controls.removePlaylistEntry(view, i);
+      if (mounted) setState(() => _view = next);
+    } on ApiError catch (e) {
+      if (mounted) toast(context, e.message);
+    } finally {
+      unawaited(_load());
+    }
+  }
+
+  void _open(PlaylistView view, int i) {
+    final entry = view.entries[i];
+    final status = entryStatus(view, i);
+    final playing = view.playing == null
+        ? null
+        : view.entries
+            .where((e) => e.game == view.playing)
+            .map((e) => e.title)
+            .firstOrNull;
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (sheet) => PlaylistGameSheet(
+        entry: entry,
+        status: status,
+        controls: roomControlsFor(state),
+        playingTitle: status == EntryStatus.playing ? null : playing,
+        onStart: () {
+          Navigator.of(sheet).pop();
+          _play(entry, start: true);
+        },
+        onQueue: () {
+          Navigator.of(sheet).pop();
+          _play(entry);
+        },
+        onRemove: status != EntryStatus.playing && status != EntryStatus.played
+            ? () {
+                Navigator.of(sheet).pop();
+                _remove(view, i);
+              }
+            : null,
+      ),
+    );
+  }
+
+  /// The entry on the TV now, if a game is being played.
+  int? _playingIndex(PlaylistView view) {
+    final c = view.current;
+    if (c == null || view.playing == null) return null;
+    return view.entries[c].game == view.playing ? c : null;
   }
 
   @override
   Widget build(BuildContext context) {
     final view = _view;
-    final start = view?.current ?? 0;
-    final shown = view == null
+    final playing = view == null ? null : _playingIndex(view);
+    final start = view == null ? 0 : (view.current ?? -1) + 1;
+    final upcoming = view == null
         ? const <int>[]
-        : [
-            for (var i = start; i < view.entries.length && i < start + 3; i++) i
-          ];
-    final more = view == null ? 0 : view.entries.length - start - shown.length;
+        : [for (var i = start; i < view.entries.length; i++) i];
+    final shown = upcoming.take(3).toList();
+    final more = upcoming.length - shown.length;
     if (widget.compact) {
       final titles = [for (final i in shown) view!.entries[i].title];
       return InkWell(
@@ -558,60 +718,103 @@ class _PlaylistPeekState extends State<PlaylistPeek> {
         ),
       );
     }
+    // Before the first poll, the room's own idea of the current game.
+    final fallbackTitle = state.inHostedRoom
+        ? state.hostedRoom?.currentTitle
+        : state.session?.currentTitle;
+    final nowTitle =
+        playing != null ? view!.entries[playing].title : fallbackTitle;
+    final nowGame = playing != null ? view!.entries[playing].game : null;
     return Card(
-      key: const ValueKey('playlist-peek'),
+      key: const ValueKey('now-and-next'),
       clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: _openAll,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 14, 8, 10),
-          child:
-              Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            const Row(children: [
-              Expanded(
-                child: Text('Tonight’s playlist',
-                    style:
-                        TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(4, 8, 4, 8),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          ListTile(
+            key: const ValueKey('now-playing'),
+            onTap: playing == null ? null : () => _open(view!, playing),
+            leading: Icon(
+                nowTitle == null ? Icons.weekend_outlined : Icons.play_circle,
+                size: 32,
+                color: nowTitle == null ? GnColors.muted : GnColors.ok),
+            title: Text(nowTitle ?? 'In the lobby',
+                style:
+                    const TextStyle(fontSize: 19, fontWeight: FontWeight.w800)),
+            subtitle: Text(nowTitle == null
+                ? 'Phone screens open here.'
+                : 'On the TV now'),
+            trailing: nowTitle == null
+                ? null
+                : GameSettingsButton(
+                    state: state,
+                    game: nowGame,
+                    title: nowTitle,
+                    playing: true),
+          ),
+          const Divider(height: 8, indent: 16, endIndent: 16),
+          const Padding(
+            padding: EdgeInsets.fromLTRB(16, 8, 16, 0),
+            child: Text('UP NEXT',
+                style: TextStyle(
+                    color: GnColors.muted,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1)),
+          ),
+          if (view == null)
+            const Padding(
+                padding: EdgeInsets.fromLTRB(16, 8, 16, 8),
+                child: Hint('Loading…'))
+          else if (shown.isEmpty)
+            const Padding(
+                padding: EdgeInsets.fromLTRB(16, 8, 16, 8),
+                child: Hint('No games queued yet.'))
+          else
+            for (final i in shown) _upcomingRow(view, i),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(8, 0, 8, 0),
+            child: Row(children: [
+              TextButton.icon(
+                key: const ValueKey('playlist-peek'),
+                onPressed: _openAll,
+                icon: const Icon(Icons.queue_music, size: 18),
+                label: Text(more > 0
+                    ? 'Whole playlist (+$more more)'
+                    : 'Whole playlist'),
               ),
-              Icon(Icons.chevron_right, color: GnColors.muted),
             ]),
-            const SizedBox(height: 6),
-            if (view == null)
-              const Hint('Loading…')
-            else if (shown.isEmpty)
-              const Hint('No games queued yet. Tap to add one.')
-            else
-              for (final i in shown)
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  child: Row(children: [
-                    Icon(
-                        view.current == i
-                            ? Icons.play_circle
-                            : Icons.circle_outlined,
-                        size: 18,
-                        color:
-                            view.current == i ? GnColors.ok : GnColors.muted),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(view.entries[i].title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                              fontWeight: view.current == i
-                                  ? FontWeight.w700
-                                  : FontWeight.w500)),
-                    ),
-                  ]),
-                ),
-            if (more > 0)
-              Padding(
-                padding: const EdgeInsets.only(top: 4),
-                child: Hint('+ $more more'),
-              ),
-          ]),
-        ),
+          ),
+        ]),
       ),
+    );
+  }
+
+  Widget _upcomingRow(PlaylistView view, int i) {
+    final entry = view.entries[i];
+    final status = entryStatus(view, i);
+    final label = switch (status) {
+      EntryStatus.upNext => 'Up next',
+      EntryStatus.queued => 'Queued',
+      EntryStatus.autoplay => 'Autoplay',
+      _ => null,
+    };
+    return ListTile(
+      key: ValueKey('upcoming-${entry.game}-$i'),
+      dense: true,
+      onTap: () => _open(view, i),
+      leading: Icon(
+          status == EntryStatus.upNext
+              ? Icons.skip_next_rounded
+              : Icons.circle_outlined,
+          color: GnColors.muted),
+      title: Text(entry.title,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+      subtitle: label == null ? null : Text(label),
+      trailing: GameSettingsButton(
+          state: state, game: entry.game, title: entry.title),
     );
   }
 }

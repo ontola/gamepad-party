@@ -398,6 +398,10 @@ pub(crate) async fn set_player_setting(
 #[derive(Deserialize)]
 pub struct SettingsRequest {
     profile: String,
+    /// The game to change, for one that is not being played or warmed up
+    /// (`command.instance` is then the nil session).
+    #[serde(default)]
+    game: Option<String>,
     command: settings::Command,
 }
 
@@ -415,9 +419,10 @@ pub(crate) async fn set_settings(
     let Some(seat) = seat(&state, &party, &request.profile) else {
         return StatusCode::FORBIDDEN.into_response();
     };
-    match settings::control(&state, &seat, None, &request.command).await {
-        Ok(()) => Json(settings::controls(
+    match settings::control(&state, &seat, request.game.as_deref(), &request.command).await {
+        Ok(()) => Json(settings::controls_for(
             &daemon::party(&state).await.unwrap_or(party),
+            request.game.as_deref(),
         ))
         .into_response(),
         Err(message) => (StatusCode::CONFLICT, Json(json!({ "error": message }))).into_response(),
@@ -727,6 +732,7 @@ mod tests {
             set_settings(
                 State(state.clone()),
                 Json(SettingsRequest {
+                    game: None,
                     profile: profile.into(),
                     command: serde_json::from_value(command).unwrap(),
                 }),

@@ -42,24 +42,36 @@ pub(crate) fn controls(party: &PartySnapshot) -> Option<Value> {
     controls_for(party, None)
 }
 
-/// Like [`controls`], for `game` when it is being played or warmed up, so a
-/// phone can set up the next game before it starts.
+/// Like [`controls`], for `game`, so a phone can set up a game before it
+/// starts. A game that is not being played or warmed up but declared its
+/// settings before (tonight or on an earlier night) answers with the nil
+/// session and `"waiting": true`: changes wait for it to start.
 pub(crate) fn controls_for(party: &PartySnapshot, game: Option<&str>) -> Option<Value> {
-    let session = match game {
-        None => party
-            .active_session
-            .as_ref()
-            .or(party.warm_session.as_ref())?,
+    let live = match game {
+        None => Some(
+            party
+                .active_session
+                .as_ref()
+                .or(party.warm_session.as_ref())?,
+        ),
         Some(game) => party
             .active_session
             .iter()
             .chain(party.warm_session.iter())
-            .find(|s| s.game.0 == game)?,
+            .find(|s| s.game.0 == game),
     };
-    if !party.connected_games.contains(&session.game) {
-        return None;
-    }
-    let entry = party.settings.iter().find(|s| s.game == session.game)?;
+    let (game, instance) = match (live, game) {
+        (Some(session), _) => {
+            if !party.connected_games.contains(&session.game) {
+                return None;
+            }
+            (session.game.clone(), session.id)
+        }
+        (None, Some(game)) => (GameId(game.to_string()), SessionId::waiting()),
+        (None, None) => return None,
+    };
+    let waiting = live.is_none();
+    let entry = party.settings.iter().find(|s| s.game == game)?;
     if entry.specs.is_empty() {
         return None;
     }
@@ -72,10 +84,12 @@ pub(crate) fn controls_for(party: &PartySnapshot, game: Option<&str>) -> Option<
     if settings.is_empty() {
         return None;
     }
-    Some(
-        json!({"game":session.game,"instance":session.id,"revision":entry.revision,
-        "can_undo":entry.can_undo,"settings":settings}),
-    )
+    let mut controls = json!({"game":game,"instance":instance,"revision":entry.revision,
+        "can_undo":entry.can_undo,"settings":settings});
+    if waiting {
+        controls["waiting"] = json!(true);
+    }
+    Some(controls)
 }
 
 fn item(spec: &gamenight_protocol::SettingSpec, value: &SettingValue) -> Value {
@@ -365,6 +379,25 @@ mod tests {
     use super::*;
     use crate::ServerState;
     use std::sync::{Arc, Mutex};
+
+    #[test]
+    fn a_game_that_is_not_loaded_offers_its_known_settings_as_waiting() {
+        let mut night = gamenight_core::GameNight::default();
+        night.load_known_settings(vec![(
+            GameId::new("later"),
+            vec![serde_json::from_value(
+                json!({"key":"items","label":"Items","kind":"toggle","default":true}),
+            )
+            .unwrap()],
+        )]);
+        let party = night.snapshot();
+        assert!(controls_for(&party, None).is_none(), "nothing is playing");
+        assert!(controls_for(&party, Some("unknown")).is_none());
+        let later = controls_for(&party, Some("later")).unwrap();
+        assert_eq!(later["waiting"], true);
+        assert_eq!(later["instance"], SessionId::waiting().0.to_string());
+        assert_eq!(later["settings"]["items"]["value"], true);
+    }
 
     #[tokio::test]
     async fn plain_text_requests_reach_the_game_and_return_its_answer() {

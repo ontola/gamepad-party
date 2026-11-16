@@ -2162,6 +2162,68 @@ mod night_tests {
     }
 
     #[test]
+    fn a_queued_game_is_set_up_before_it_loads() {
+        use gamenight_protocol::{SessionId, SettingsAction};
+        use std::collections::BTreeMap;
+        let mut night = GameNight::default();
+        night.handle(join_cmd("Player", Some(0), None));
+        let player = night.snapshot().players[0].id;
+        let (g1, g2) = (GameId::new("g1"), GameId::new("g2"));
+        night.set_library(vec![meta("g1"), meta("g2")]);
+        night.handle(Command::GameConnected { game: g1.clone() });
+        night.handle(Command::DeclareSettings {
+            game: g1.clone(),
+            settings: vec![toggle("items", true)],
+        });
+        let warm = night.snapshot().warm_session.unwrap().id;
+        // g2 declared on an earlier night; tonight it has not loaded yet.
+        night.load_known_settings(vec![
+            (g2.clone(), vec![toggle("items", true)]),
+            (g1.clone(), vec![toggle("ignored", true)]),
+        ]);
+        let snap = night.snapshot();
+        assert_eq!(snap.settings.len(), 2);
+        assert!(snap
+            .settings
+            .iter()
+            .any(|s| s.game == g1 && s.values.contains_key("items")));
+        let off = BTreeMap::from([("items".into(), SettingValue::Toggle(false))]);
+        let cmd = |game: &GameId, session, revision| Command::ControlSettings {
+            game: game.clone(),
+            session,
+            player_id: player,
+            expected_revision: revision,
+            action: SettingsAction::Set,
+            values: off.clone(),
+        };
+        // A loaded game is changed against its own session only.
+        assert!(night
+            .handle(cmd(&g1, SessionId::waiting(), 0))
+            .iter()
+            .any(|e| matches!(e, Effect::Reject { .. })));
+        // One that is not loaded, against the waiting session only.
+        assert!(night
+            .handle(cmd(&g2, warm, 0))
+            .iter()
+            .any(|e| matches!(e, Effect::Reject { .. })));
+        let fx = night.handle(cmd(&g2, SessionId::waiting(), 0));
+        assert!(fx.iter().any(|e| matches!(
+            e,
+            Effect::SettingsAccepted { session, revision: 1, .. } if *session == SessionId::waiting()
+        )));
+        // When g2 loads and declares again, it gets the value chosen for it.
+        night.handle(Command::GameConnected { game: g2.clone() });
+        let fx = night.handle(Command::DeclareSettings {
+            game: g2.clone(),
+            settings: vec![toggle("items", true)],
+        });
+        assert_eq!(
+            setting_pushed(&fx),
+            Some((&g2, "items", &SettingValue::Toggle(false)))
+        );
+    }
+
+    #[test]
     fn settings_declare_set_and_validate() {
         let mut night = GameNight::default();
         let g = GameId::new("g1");

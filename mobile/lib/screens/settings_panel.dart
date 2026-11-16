@@ -283,7 +283,11 @@ class _SettingsSectionState extends State<SettingsSection> {
         _status(),
         const SizedBox(height: 4),
         Row(children: [
-          const Expanded(child: Hint('Everyone in the room shares these.')),
+          Expanded(
+              child: Hint(settings.waiting
+                  ? 'Everyone in the room shares these. They take effect when '
+                      '${widget.title ?? 'the game'} starts.'
+                  : 'Everyone in the room shares these.')),
           if (settings.canUndo)
             TextButton.icon(
               onPressed: _saving || _pending.isNotEmpty || _error != null

@@ -601,6 +601,12 @@ Remote controls should use `control_settings` rather than sending independent
 }
 ```
 
+A game that is not active or warm (queued, or played earlier) can be set up
+too, when `party.settings` has an entry for it: send the nil session
+`00000000-0000-0000-0000-000000000000`. The values wait in the night's state
+and reach the game as `setting_changed` after it declares its settings on
+load. A game that is active or warm only takes its own session.
+
 Every key and value is validated before any state or SDK notification changes.
 Wrong types, unknown keys, stale revisions and departed players receive `error`.
 A successful request sends **only its requesting overlay**:

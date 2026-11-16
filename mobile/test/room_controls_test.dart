@@ -26,6 +26,25 @@ class FakeRoom {
   bool items = true;
   int stock = 3;
   int revision = 1;
+  int rounds = 3;
+  int neonRevision = 0;
+
+  /// Neon Siege is queued, not loaded: its settings wait for it to start.
+  Map<String, dynamic> get neonControls => {
+        'game': 'neon-siege',
+        'instance': '00000000-0000-0000-0000-000000000000',
+        'revision': neonRevision,
+        'waiting': true,
+        'settings': {
+          'rounds': {
+            'kind': 'number',
+            'label': 'Rounds',
+            'value': rounds,
+            'min': 1,
+            'max': 9
+          },
+        },
+      };
 
   Map<String, dynamic> get controls => {
         'game': 'ballkickers',
@@ -86,13 +105,42 @@ class FakeRoom {
               'playlist': {'entries': []}
             }),
             200);
+      case 'GET /api/playlist':
+        return http.Response(
+            jsonEncode({
+              'playlist': {
+                'entries': [
+                  {'game': 'ballkickers', 'title': 'Ballkickers'},
+                  {'game': 'neon-siege', 'title': 'Neon Siege'},
+                  {'game': 'growing-guns', 'title': 'Growing Guns'},
+                ],
+                'current': 0,
+                'queued': 1,
+              },
+              'playing': 'ballkickers',
+              'next': 'neon-siege',
+            }),
+            200);
       case 'GET /api/settings':
         final game = request.url.queryParameters['game'];
         return http.Response(
-            jsonEncode(game == null || game == 'ballkickers' ? controls : null),
+            jsonEncode(game == null || game == 'ballkickers'
+                ? controls
+                : game == 'neon-siege'
+                    ? neonControls
+                    : null),
             200);
       case 'POST /api/settings':
-        final command = jsonDecode(request.body)['command'] as Map;
+        final body = jsonDecode(request.body) as Map;
+        final command = body['command'] as Map;
+        if (body['game'] == 'neon-siege') {
+          if (command['expected_revision'] != neonRevision) {
+            return http.Response('{"error":"stale"}', 409);
+          }
+          rounds = (command['values'] as Map)['rounds'] as int? ?? rounds;
+          neonRevision++;
+          return http.Response(jsonEncode(neonControls), 200);
+        }
         if (command['expected_revision'] != revision) {
           return http.Response('{"error":"stale"}', 409);
         }
@@ -152,6 +200,7 @@ void main() {
         await controls.applySettings(settings, values: {'items': false});
     expect(room.bodies['POST /api/settings'], {
       'profile': 'prof_me',
+      'game': 'ballkickers',
       'command': {
         'action': 'set',
         'instance': 'session-1',
@@ -268,8 +317,7 @@ void main() {
           HostedRoom({'status': 'connected', 'players': 2, 'discovery': {}});
       await show(tester);
       expect(find.text('Join a room'), findsNothing);
-      expect(
-          find.text('In the lobby. Phone screens open here.'), findsOneWidget);
+      expect(find.text('Phone screens open here.'), findsOneWidget);
 
       state.hostedRoom = HostedRoom({'status': 'waiting'});
       state.notifyListeners();
@@ -318,9 +366,14 @@ void main() {
           linked: true, playerId: 'p1', currentTitle: 'Ballkickers');
       await show(tester);
 
-      // A game's settings open from one button, never as a long list.
+      // The game on the TV and the queue are one card, each game with a
+      // gear for its settings; never a long list on the page itself.
+      expect(find.text('On the TV now'), findsOneWidget);
+      expect(find.text('UP NEXT'), findsOneWidget);
+      expect(find.text('Neon Siege'), findsOneWidget);
       expect(find.text('Ballkickers settings'), findsNothing);
-      await tester.tap(find.text('Edit game settings'));
+      await tester
+          .tap(find.byKey(const ValueKey('settings-button-ballkickers')));
       await tester.pumpAndSettle();
       expect(find.text('Ballkickers settings'), findsOneWidget);
       await tester.tapAt(const Offset(10, 10));
@@ -338,7 +391,8 @@ void main() {
       expect(find.text('Ballkickers is in the queue'), findsOneWidget);
 
       await show(tester);
-      await tester.tap(find.text('Edit game settings'));
+      await tester
+          .tap(find.byKey(const ValueKey('settings-button-ballkickers')));
       await tester.pumpAndSettle();
       await tester.tap(find.byType(Switch));
       await tester.pump();
@@ -353,6 +407,36 @@ void main() {
       expect(room.stock, 4);
       expect(find.text('4'), findsOneWidget);
       expect(find.text('Undo'), findsOneWidget);
+      await close(tester);
+    });
+
+    testWidgets('a queued game can be set up before it has loaded',
+        (tester) async {
+      state.session = const SessionInfo(
+          linked: true, playerId: 'p1', currentTitle: 'Ballkickers');
+      await show(tester);
+      await tester
+          .tap(find.byKey(const ValueKey('settings-button-neon-siege')));
+      await tester.pumpAndSettle();
+      expect(find.text('Neon Siege settings'), findsOneWidget);
+      expect(find.textContaining('They take effect when Neon Siege starts.'),
+          findsOneWidget);
+      await tester.tap(find.byTooltip('More Rounds'));
+      await tester.pump();
+      await tester.pump();
+      expect(room.bodies['POST /api/settings']['game'], 'neon-siege');
+      expect((room.bodies['POST /api/settings']['command'] as Map)['instance'],
+          '00000000-0000-0000-0000-000000000000');
+      expect(room.rounds, 4);
+      await tester.tapAt(const Offset(10, 10));
+      await tester.pumpAndSettle();
+
+      // A game that never loaded here says why there is nothing yet.
+      await tester
+          .tap(find.byKey(const ValueKey('settings-button-growing-guns')));
+      await tester.pumpAndSettle();
+      expect(
+          find.textContaining('once it has loaded one time'), findsOneWidget);
       await close(tester);
     });
   });
@@ -426,7 +510,8 @@ void main() {
         (tester) async {
       final actions = await show(tester, 'growing-guns', EntryStatus.autoplay);
       expect(find.text('Autoplay pick'), findsOneWidget);
-      expect(find.textContaining('is up next and has loaded'), findsOneWidget);
+      expect(
+          find.textContaining('once it has loaded one time'), findsOneWidget);
 
       await tester.tap(find.text('Play now'));
       await tester.pumpAndSettle();

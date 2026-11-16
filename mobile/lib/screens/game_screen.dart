@@ -14,7 +14,6 @@ import '../layout.dart';
 import 'catalog_view.dart';
 import 'playlist_screen.dart';
 import 'sign_in_screen.dart';
-import 'settings_panel.dart';
 
 /// The Game tab. While the current game has its own phone screen or app,
 /// that comes first. Below it (or on its own) are the game's settings, when
@@ -26,8 +25,7 @@ class GameScreen extends StatelessWidget {
   final VoidCallback? onRequestedGameOpened;
   final VoidCallback onJoin;
 
-  /// The playlist and the room, on the same screen as the game.
-  final Widget? playlist;
+  /// The room, on the same screen as the game and the playlist.
   final List<Widget> below;
 
   /// Shown first, above the game: the new player's "This is you" banner.
@@ -36,7 +34,6 @@ class GameScreen extends StatelessWidget {
       {super.key,
       required this.state,
       required this.onJoin,
-      this.playlist,
       this.below = const [],
       this.above,
       this.catalogOnly = false,
@@ -54,28 +51,6 @@ class GameScreen extends StatelessWidget {
             : state.api!.resolve(url);
         final controls = roomControlsFor(state);
         final session = state.session;
-        final currentTitle = state.inHostedRoom
-            ? state.hostedRoom?.currentTitle
-            : session?.currentTitle;
-        // Games can have a dozen settings: they open from one button.
-        final Widget settings = state.isGuest || controls == null
-            ? const SizedBox.shrink()
-            : OutlinedButton.icon(
-                key: const ValueKey('settings'),
-                onPressed: () => _showSettings(
-                    context, controls, currentTitle ?? 'Game settings'),
-                icon: const Icon(Icons.tune, size: 18),
-                label: const Text('Edit game settings'),
-              );
-        // The player's own settings (their character, their sensitivity)
-        // are few and personal: shown right here.
-        final Widget mine = state.isGuest || controls == null
-            ? const SizedBox.shrink()
-            : MySettingsSection(
-                key: const ValueKey('my-settings'),
-                controls: controls,
-                store: PhoneSettingsStore(state.prefs),
-                signedIn: state.signedIn);
         final catalog = CatalogSection(
             key: const ValueKey('catalog'),
             cloud: state.cloud,
@@ -121,19 +96,16 @@ class GameScreen extends StatelessWidget {
                           icon: const Icon(Icons.fullscreen),
                           onPressed: () => state.setCompanionFullscreen(true),
                         ),
-                      if (companion.url != null &&
-                          controls != null &&
-                          !state.isGuest)
-                        IconButton(
-                          tooltip: 'Game settings',
-                          icon: const Icon(Icons.tune),
-                          onPressed: () =>
-                              _showSettings(context, controls, companion.title),
-                        ),
+                      if (companion.url != null)
+                        GameSettingsButton(
+                            state: state,
+                            game: companion.game,
+                            title: companion.title,
+                            playing: true),
                     ]),
                   )),
-              if (companion.url != null && playlist != null && !fullscreen)
-                PlaylistPeek(state: state, compact: true),
+              if (companion.url != null && !fullscreen)
+                NowAndNext(state: state, compact: true),
               if (companion.app != null)
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
@@ -156,9 +128,7 @@ class GameScreen extends StatelessWidget {
                   child: ListView(
                       padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
                       children: [
-                        mine,
-                        settings,
-                        if (playlist case final playlist?) playlist,
+                        NowAndNext(state: state),
                         ...below,
                       ]),
                 ),
@@ -187,6 +157,21 @@ class GameScreen extends StatelessWidget {
         final waiting =
             (session?.waiting ?? false) || (hosted?.waiting ?? false);
         final playing = hosted?.currentTitle ?? session?.currentTitle;
+        // In the room: the game on the TV and what comes next are one card,
+        // each game with its own settings.
+        if (linked) {
+          return ContentWidth(
+              child: ListView(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+                  children: [
+                if (above case final above?)
+                  Padding(
+                      padding: const EdgeInsets.only(bottom: 8), child: above),
+                NowAndNext(state: state),
+                if (state.companionError case final String error) Hint(error),
+                ...below,
+              ]));
+        }
         return ContentWidth(
             child: ListView(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
@@ -214,37 +199,12 @@ class GameScreen extends StatelessWidget {
                   const SizedBox(height: 12),
                   FilledButton(
                       onPressed: onJoin, child: const Text('Join a room')),
-                ] else if (playing != null)
-                  const Hint('On the TV now.')
-                else
-                  const Hint('In the lobby. Phone screens open here.'),
-                if (linked) ...[const SizedBox(height: 12), mine, settings],
+                ],
               ]),
               if (state.companionError case final String error) Hint(error),
-              if (playlist case final playlist?) playlist,
               ...below,
             ]));
       },
-    );
-  }
-
-  void _showSettings(
-      BuildContext context, RoomControls controls, String title) {
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      builder: (context) => SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-          child:
-              Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            GameActionsSection(
-                key: const ValueKey('game-actions'), controls: controls),
-            SettingsSection(controls: controls, title: title, showEmpty: true),
-          ]),
-        ),
-      ),
     );
   }
 }

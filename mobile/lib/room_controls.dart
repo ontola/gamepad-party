@@ -193,12 +193,16 @@ class GameSettings {
   final bool canUndo;
   final List<Setting> settings;
 
+  /// The game is not being played or warmed up: changes wait for it to start.
+  final bool waiting;
+
   const GameSettings({
     required this.game,
     required this.instance,
     required this.revision,
     this.canUndo = false,
     required this.settings,
+    this.waiting = false,
   });
 
   static GameSettings? fromJson(Object? j) {
@@ -217,6 +221,7 @@ class GameSettings {
       revision: (j['revision'] as num?)?.toInt() ?? 0,
       canUndo: j['can_undo'] == true,
       settings: settings,
+      waiting: j['waiting'] == true,
     );
   }
 }
@@ -366,6 +371,7 @@ class LocalRoomControls implements RoomControls {
     final j = await api.request('POST', '/api/settings',
         body: {
           'profile': profile,
+          'game': current.game,
           'command': {
             'action': action.name,
             'instance': current.instance,

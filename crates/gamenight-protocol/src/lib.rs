@@ -123,6 +123,12 @@ impl Default for PlayerId {
 pub struct SessionId(#[cfg_attr(feature = "schema", schemars(with = "String"))] pub Uuid);
 
 impl SessionId {
+    /// The nil session: settings changes for a game that is not being
+    /// played or warmed up right now, and waits for it to start.
+    pub const fn waiting() -> Self {
+        SessionId(Uuid::nil())
+    }
+
     pub fn new() -> Self {
         Self(Uuid::new_v4())
     }

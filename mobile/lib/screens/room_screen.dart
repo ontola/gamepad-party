@@ -184,7 +184,6 @@ class RoomScreenState extends State<RoomScreen> {
           final game = GameScreen(
               state: state,
               onJoin: () {},
-              playlist: PlaylistPeek(state: state),
               above: state.metPlayer
                   ? null
                   : MeetYourPlayer(

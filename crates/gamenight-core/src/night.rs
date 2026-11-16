@@ -2740,6 +2740,38 @@ impl GameNight {
         });
     }
 
+    /// Settings games declared on earlier nights, so phones can set up a
+    /// queued game before it has loaded tonight. Games that already declared
+    /// tonight keep their own; bad declarations are skipped.
+    pub fn load_known_settings(&mut self, known: Vec<(GameId, Vec<SettingSpec>)>) {
+        for (game, specs) in known {
+            if specs.is_empty() || self.settings.iter().any(|s| s.game == game) {
+                continue;
+            }
+            let mut keys = HashSet::new();
+            if !specs.iter().all(|spec| {
+                keys.insert(spec.key.clone())
+                    && spec.kind.validate(&spec.kind.default_value()).is_ok()
+            }) {
+                continue;
+            }
+            let values = specs
+                .iter()
+                .filter(|s| s.scope.is_party())
+                .map(|s| (s.key.clone(), s.kind.default_value()))
+                .collect();
+            self.settings.push(GameSettings {
+                revision: 0,
+                can_undo: false,
+                game,
+                specs,
+                values,
+                players: Default::default(),
+                changed_by: None,
+            });
+        }
+    }
+
     /// Saved values of players with a profile, for writing to disk.
     pub fn saved_player_settings(&self) -> PlayerSettingsStore {
         self.player_settings
@@ -2923,12 +2955,21 @@ impl GameNight {
                 reason: reason.into(),
             })
         };
-        if !self.connected_games.contains(&game)
-            || !self
-                .active
-                .iter()
-                .chain(self.warm.iter())
-                .any(|s| s.game == game && s.id == session)
+        // A game that is being played or warmed up is changed against that
+        // session. One that is not (still in the queue, or played earlier)
+        // is changed against the nil session: the values wait here and reach
+        // the game when it declares its settings again.
+        let live = self
+            .active
+            .iter()
+            .chain(self.warm.iter())
+            .find(|s| s.game == game)
+            .map(|s| s.id);
+        let session_ok = match live {
+            Some(id) => id == session && self.connected_games.contains(&game),
+            None => session == SessionId::waiting(),
+        };
+        if !session_ok
             || !self
                 .seats
                 .iter()

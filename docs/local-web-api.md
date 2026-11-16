@@ -68,14 +68,22 @@ choosing Next. It answers with the playlist view, or 409 when the host cannot
 play the game.
 
 `GET /api/settings?profile=<id>` returns the match settings of the active or
-warm game; add `&game=<id>` to ask for that game, which must be active or warm.
-The answer has `game`, `instance` (the session), `revision`, `can_undo` and a
-`settings` map of `toggle`, `number` and `choice` controls with their current
-`value`. It returns `null` when that game declared none.
+warm game; add `&game=<id>` to ask for that game. The answer has `game`,
+`instance` (the session), `revision`, `can_undo` and a `settings` map of
+`toggle`, `number` and `choice` controls with their current `value`. It returns
+`null` when that game declared none.
+
+A game that is not active or warm (still in the queue) answers too when the
+host knows its settings: because it ran earlier tonight, or on an earlier night
+on this computer (the host remembers declared settings in
+`gamenight/game-settings.json`). That answer has `"waiting": true` and the nil
+session `00000000-0000-0000-0000-000000000000` as `instance`. Changes made
+against it wait in the night's state and reach the game when it loads.
 
 `POST /api/settings` with
-`{"profile", "command": {"action", "instance", "expected_revision", "values"}}`
+`{"profile", "game", "command": {"action", "instance", "expected_revision", "values"}}`
 sends a [`control_settings`](protocol.md#atomic-settings-batches) batch as the
-profile's player. `action` is `set`, `undo` or `keep`. Success returns the
+profile's player. `game` is optional for the active or warm game and needed
+for a waiting one. `action` is `set`, `undo` or `keep`. Success returns the
 settings afterwards. A stale revision, an invalid value or a session that ended
 returns 409 with `{"error": "..."}` naming the daemon's reason.

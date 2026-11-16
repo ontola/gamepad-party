@@ -271,7 +271,7 @@ void main() {
     await tester.scrollUntilVisible(
         find.byKey(const ValueKey('playlist-peek')), 200,
         scrollable: find.byType(Scrollable).first);
-    expect(find.text('Tonight’s playlist'), findsOneWidget);
+    expect(find.text('UP NEXT'), findsOneWidget);
     expect(find.text('Neon Siege'), findsOneWidget);
     expect(find.text('Join a room'), findsNothing);
     await tester.tap(find.byKey(const ValueKey('playlist-peek')));

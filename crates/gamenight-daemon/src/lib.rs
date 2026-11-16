@@ -63,6 +63,9 @@ struct Shared {
     store_agent: Option<String>,
     /// Profile settings as last handed to `store`, to write only what changed.
     stored_settings: gamenight_core::PlayerSettingsStore,
+    /// Where the settings games declared are remembered between nights, so a
+    /// phone can set up a queued game before it loads. `None` in tests.
+    known_settings: Option<KnownSettings>,
     /// One connection per game title. Second connection for the same title is
     /// rejected.
     games: HashMap<GameId, Tx>,
@@ -393,6 +396,7 @@ impl Shared {
             exit_with_lobby: false,
             store: None,
             stored_settings: Default::default(),
+            known_settings: None,
             store_agent: None,
             lobby_game: None,
             focus_watch: Default::default(),
@@ -829,6 +833,11 @@ impl Shared {
                 self.dismissed_onboarding_error = Some(error);
                 self.apply_effects(vec![Effect::StateChanged], None);
             }
+        }
+        if let (Command::DeclareSettings { game, settings }, Some(known)) =
+            (&command, &mut self.known_settings)
+        {
+            known.remember(game, settings);
         }
         if let Command::SessionFinished { session } = &command {
             if let Some((game, _, _)) = self
@@ -2370,6 +2379,50 @@ pub async fn run_desktop(
     .await
 }
 
+/// The settings each game declared when it last ran on this computer.
+struct KnownSettings {
+    path: std::path::PathBuf,
+    games: HashMap<GameId, Vec<gamenight_protocol::SettingSpec>>,
+}
+
+impl KnownSettings {
+    fn open(path: std::path::PathBuf) -> Self {
+        let games = std::fs::read(&path)
+            .ok()
+            .and_then(|bytes| serde_json::from_slice(&bytes).ok())
+            .unwrap_or_default();
+        KnownSettings { path, games }
+    }
+
+    /// Write `specs` for `game` when they differ from what was saved. A
+    /// failed write only costs setting that game up before it loads.
+    fn remember(&mut self, game: &GameId, specs: &[gamenight_protocol::SettingSpec]) {
+        if self.games.get(game).map(Vec::as_slice) == Some(specs) {
+            return;
+        }
+        if specs.is_empty() {
+            self.games.remove(game);
+        } else {
+            self.games.insert(game.clone(), specs.to_vec());
+        }
+        let Ok(bytes) = serde_json::to_vec_pretty(&self.games) else {
+            return;
+        };
+        let path = self.path.clone();
+        tokio::task::spawn_blocking(move || {
+            let temporary = path.with_extension("json.tmp");
+            let result = path
+                .parent()
+                .map_or(Ok(()), std::fs::create_dir_all)
+                .and_then(|_| std::fs::write(&temporary, bytes))
+                .and_then(|_| std::fs::rename(&temporary, &path));
+            if let Err(error) = result {
+                warn!(%error, path = %path.display(), "could not remember game settings");
+            }
+        });
+    }
+}
+
 /// Open the host's Atomic store (`GAMENIGHT_STORE`, else `gamenight/store`
 /// in the user data directory), bring in settings from the JSON file older
 /// hosts kept, and read everything saved. Without a store the night still
@@ -2595,6 +2648,14 @@ async fn run_inner(
     let addr = listener.local_addr()?;
     info!(%addr, "gamenight daemon listening");
     let shared = Arc::new(Mutex::new(Shared::new(library, addr.to_string(), prewarm)));
+    if music {
+        let known =
+            KnownSettings::open(gamenight_store::data_root().join("gamenight/game-settings.json"));
+        let mut s = shared.lock().await;
+        s.night
+            .load_known_settings(known.games.clone().into_iter().collect());
+        s.known_settings = Some(known);
+    }
     if music {
         if let Some((store, agent, saved, mut synced)) = open_store().await {
             let mut s = shared.lock().await;
