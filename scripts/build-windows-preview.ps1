@@ -2,8 +2,9 @@ param(
     [Parameter(Mandatory=$true)][string]$OutputDir,
     [Parameter(Mandatory=$true)][string]$TargetDir,
     [ValidateSet("dev", "ci", "release")][string]$BuildProfile = "dev",
-    # Godot 4.5 console editor; it exports and runs the Game Room lobby.
-    [Parameter(Mandatory=$true)][string]$Godot
+    # The Warp Game Room lobby: game-room.exe built from ontola/warp-game-engine
+    # (cargo build --release -p game-room). It is the only lobby.
+    [Parameter(Mandatory=$true)][string]$GameRoom
 )
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path -Parent $PSScriptRoot
@@ -13,15 +14,10 @@ if ($LASTEXITCODE -ne 0) { throw 'Daemon build failed' }
 if (Test-Path -LiteralPath $OutputDir) { throw 'Choose a new output directory; packages are never overwritten.' }
 New-Item -ItemType Directory -Path $OutputDir | Out-Null
 $packageDir = Join-Path $OutputDir 'package'
-# The editor runs a same-named PCK next to it, so no export templates are needed.
-$room = Join-Path $repo 'lobbies/game-room'
-$roomOut = Join-Path $OutputDir 'game-room'
+if (!(Test-Path -LiteralPath $GameRoom -PathType Leaf)) { throw "Warp Game Room not found: $GameRoom" }
+$roomOut = Join-Path $OutputDir 'warp-game-room'
 New-Item -ItemType Directory -Path $roomOut | Out-Null
-& $Godot --headless --path $room --editor --import --quit
-if ($LASTEXITCODE -ne 0) { throw 'Game Room import failed' }
-& $Godot --headless --path $room --export-pack 'Windows Desktop' (Join-Path $roomOut 'GameRoom.pck')
-if ($LASTEXITCODE -ne 0) { throw 'Game Room export failed' }
-Copy-Item -LiteralPath $Godot.Replace('_console.exe', '.exe') -Destination (Join-Path $roomOut 'GameRoom.exe')
+Copy-Item -LiteralPath $GameRoom -Destination (Join-Path $roomOut 'game-room.exe')
 $packageArgs = @('--target', $TargetDir, '--output', $packageDir, '--profile', $BuildProfile, '--game-room', $roomOut)
 & python (Join-Path $PSScriptRoot 'package-windows.py') @packageArgs
 if ($LASTEXITCODE -ne 0) { throw 'Packaging failed' }

@@ -14,31 +14,98 @@ use std::{net::SocketAddr, path::Path};
 use tokio_tungstenite::tungstenite::Message;
 
 pub fn choices(path: &Path) -> Vec<GameMeta> {
+    entries(path)
+        .into_iter()
+        .filter(|m| m.id.0 != "lobby" && unrunnable(m).is_none())
+        .collect()
+}
+/// Every entry of a lobby list that parses: one odd entry (a newer field,
+/// a typo) must not hide the others.
+fn entries(path: &Path) -> Vec<GameMeta> {
     std::fs::read(path)
         .ok()
-        .and_then(|v| serde_json::from_slice::<Vec<GameMeta>>(&v).ok())
+        .and_then(|v| serde_json::from_slice::<Vec<Value>>(strip_bom(&v)).ok())
         .unwrap_or_default()
         .into_iter()
-        .filter(|m| {
-            m.id.0 != "lobby"
-                && m.launch.as_ref().is_some_and(|l| {
-                    l.env.get("GAMENIGHT_LOBBY_API").is_some_and(|v| v == "1")
-                        && Path::new(&l.command).is_absolute()
-                        && Path::new(&l.command).is_file()
-                        && l.cwd.as_ref().is_none_or(|cwd| {
-                            Path::new(cwd).is_absolute() && Path::new(cwd).is_dir()
-                        })
-                })
-        })
+        .filter_map(|v| serde_json::from_value::<GameMeta>(v).ok())
         .collect()
+}
+fn strip_bom(bytes: &[u8]) -> &[u8] {
+    bytes.strip_prefix(b"\xEF\xBB\xBF").unwrap_or(bytes)
+}
+/// Why `meta` cannot run as a lobby here, or None when it can.
+fn unrunnable(meta: &GameMeta) -> Option<String> {
+    let Some(launch) = &meta.launch else {
+        return Some("it has no launch command".into());
+    };
+    if launch
+        .env
+        .get("GAMENIGHT_LOBBY_API")
+        .is_none_or(|v| v != "1")
+    {
+        return Some("its launch env lacks GAMENIGHT_LOBBY_API=1".into());
+    }
+    let command = Path::new(&launch.command);
+    if !command.is_absolute() {
+        return Some(format!(
+            "its command {} is not an absolute path",
+            launch.command
+        ));
+    }
+    if !command.is_file() {
+        return Some(format!("its command {} is not a file", launch.command));
+    }
+    if let Some(cwd) = &launch.cwd {
+        if !Path::new(cwd).is_absolute() || !Path::new(cwd).is_dir() {
+            return Some(format!("its working folder {cwd} is not a folder"));
+        }
+    }
+    None
+}
+/// Why the saved lobby choice cannot run now (so the host falls back to the
+/// default), or None when there is no saved choice or it runs.
+pub fn unavailable_choice(
+    config: &Path,
+    registrations: &Path,
+    bundled: Option<&Path>,
+) -> Option<String> {
+    let value: Value = serde_json::from_slice(strip_bom(&std::fs::read(config).ok()?)).ok()?;
+    let id = value["id"].as_str()?;
+    if id == "lobby" {
+        return None;
+    }
+    // The local registration first: a missing local build is worth saying
+    // even when the packaged lobby of the same id takes over.
+    let mut known = entries(registrations);
+    known.extend(bundled.map(entries).unwrap_or_default());
+    let Some(meta) = known.iter().find(|m| m.id.0 == id) else {
+        let readable = std::fs::read(registrations)
+            .map_err(|e| e.to_string())
+            .and_then(|v| {
+                serde_json::from_slice::<Vec<Value>>(strip_bom(&v))
+                    .map(|_| ())
+                    .map_err(|e| e.to_string())
+            });
+        return Some(match readable {
+            Err(error) => format!(
+                "saved lobby {id}: {} is unreadable ({error})",
+                registrations.display()
+            ),
+            Ok(()) => format!("saved lobby {id} is not in {}", registrations.display()),
+        });
+    };
+    unrunnable(meta).map(|why| format!("saved lobby {id} cannot run: {why}"))
 }
 /// Lobbies the app ships with, then locally registered ones. The first
 /// bundled lobby is the default until the host picks another one.
 fn available(registrations: &Path, bundled: Option<&Path>) -> Vec<GameMeta> {
     let mut all = bundled.map(choices).unwrap_or_default();
+    // A runnable local build of a bundled lobby (same id) runs instead of
+    // the packaged one; when it goes missing, the packaged one takes over.
     for meta in choices(registrations) {
-        if !all.iter().any(|m| m.id == meta.id) {
-            all.push(meta);
+        match all.iter_mut().find(|m| m.id == meta.id) {
+            Some(packaged) => *packaged = meta,
+            None => all.push(meta),
         }
     }
     all
@@ -50,7 +117,7 @@ fn available(registrations: &Path, bundled: Option<&Path>) -> Vec<GameMeta> {
 pub fn selected(config: &Path, registrations: &Path, bundled: Option<&Path>) -> Option<GameMeta> {
     let value: Option<Value> = std::fs::read(config)
         .ok()
-        .and_then(|v| serde_json::from_slice(&v).ok());
+        .and_then(|v| serde_json::from_slice(strip_bom(&v)).ok());
     let id = value.as_ref().and_then(|v| v["id"].as_str());
     let all = available(registrations, bundled);
     let default = bundled.map(choices).unwrap_or_default().into_iter().next();
@@ -261,6 +328,40 @@ mod tests {
         assert!(listed[0].current && listed[0].id.0 == "game-room");
         std::fs::write(&config, r#"{"id":"removed"}"#).unwrap();
         assert_eq!(pick(&config).as_deref(), Some("game-room"));
+        assert!(unavailable_choice(&config, &games, Some(&bundled))
+            .unwrap()
+            .contains("not in"));
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+    #[test]
+    fn a_local_build_of_the_bundled_lobby_runs_and_its_absence_is_said() {
+        let dir = std::env::temp_dir().join(format!("lobby-local-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir(&dir).unwrap();
+        let (bundled, games, config) = (
+            dir.join("bundled.json"),
+            dir.join("games.json"),
+            dir.join("selected.json"),
+        );
+        let exe = std::env::current_exe().unwrap();
+        std::fs::write(&bundled, json!([{"id":"warp-game-room","title":"Packaged","launch":{"command":exe,"env":{"GAMENIGHT_LOBBY_API":"1"}}}]).to_string()).unwrap();
+        std::fs::write(&config, "\u{feff}{\"id\":\"warp-game-room\"}").unwrap();
+        // A local build (and one odd entry that must not hide it).
+        std::fs::write(&games, json!([{"id":42},{"id":"warp-game-room","title":"Local","launch":{"command":exe,"env":{"GAMENIGHT_LOBBY_API":"1"}}}]).to_string()).unwrap();
+        assert_eq!(
+            selected(&config, &games, Some(&bundled)).unwrap().title,
+            "Local"
+        );
+        assert!(unavailable_choice(&config, &games, Some(&bundled)).is_none());
+        // Its build folder went away: the packaged one runs, and says why.
+        let gone = dir.join("gone.exe");
+        std::fs::write(&games, json!([{"id":"warp-game-room","title":"Local","launch":{"command":gone,"env":{"GAMENIGHT_LOBBY_API":"1"}}}]).to_string()).unwrap();
+        assert_eq!(
+            selected(&config, &games, Some(&bundled)).unwrap().title,
+            "Packaged"
+        );
+        assert!(unavailable_choice(&config, &games, Some(&bundled))
+            .unwrap()
+            .contains("is not a file"));
         std::fs::remove_dir_all(dir).unwrap();
     }
 }

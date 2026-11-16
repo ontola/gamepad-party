@@ -41,7 +41,7 @@ does not intentionally delete its external user data or the game's saves.
 
 - Gamepad Party: native Windows developer build (unsigned).
 - LÖVE 11.5 (downloaded once and shared by compatible games): official Windows x64 runtime, including its license notices.
-- Game Room lobby: Godot 4.5.2 runs the exported Game Room; Godot's and the fonts' notices are in `notices/game-room`.
+- Game Room lobby: the Warp Game Room (`lobbies/warp-game-room/game-room.exe`), the only lobby; the fonts' notices are in `notices/game-room`. A local build registered in `local-games.json` under the id `warp-game-room` runs instead while its executable exists.
 
 This preview is intended for feedback. Controller mappings and focus should
 be checked on your hardware. Use Windows native, rather than Linux binaries

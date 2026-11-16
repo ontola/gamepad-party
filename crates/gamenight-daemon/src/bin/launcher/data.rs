@@ -27,7 +27,8 @@ pub fn user_dir() -> io::Result<PathBuf> {
 
 /// User-owned registrations survive regeneration of the launcher's shelf.
 /// Downloaded catalogue games still fill gaps after this local overlay. They
-/// never replace a lobby the package ships, nor take the reserved `lobby` id.
+/// never replace a lobby the package ships (except with a local build of that
+/// lobby), nor take the reserved `lobby` id.
 pub fn merge_local_games(
     shelf: &mut serde_json::Value,
     directory: &std::path::Path,
@@ -43,11 +44,16 @@ pub fn merge_local_games(
     for game in games {
         let value = serde_json::to_value(&game).map_err(io::Error::other)?;
         let id = value["id"].as_str().unwrap_or_default();
-        let bundled_lobby = entries.iter().any(|entry| {
-            entry["id"].as_str() == Some(id)
-                && entry["launch"]["env"]["GAMENIGHT_LOBBY_API"].as_str() == Some("1")
-        });
-        if id.is_empty() || id == "lobby" || bundled_lobby {
+        // A local lobby build of a bundled lobby (same id, also a lobby)
+        // replaces it below once it is runnable; anything else leaves the
+        // packaged lobby alone.
+        let lobby_api = |entry: &serde_json::Value| {
+            entry["launch"]["env"]["GAMENIGHT_LOBBY_API"].as_str() == Some("1")
+        };
+        let bundled_lobby = entries
+            .iter()
+            .any(|entry| entry["id"].as_str() == Some(id) && lobby_api(entry));
+        if id.is_empty() || id == "lobby" || (bundled_lobby && !lobby_api(&value)) {
             continue;
         }
         let Some(launch) = &game.launch else {
@@ -84,6 +90,7 @@ mod tests {
             {"id":"game-room","title":"Invalid replacement","launch":{"command":executable}},
             {"id":"missing","title":"Unavailable","launch":{"command":"not-installed.exe"}}
         ]);
+        let local_lobby = serde_json::json!([{"id":"game-room","title":"Local room","launch":{"command":executable,"env":{"GAMENIGHT_LOBBY_API":"1"}}}]);
         std::fs::write(dir.join("local-games.json"), local.to_string()).unwrap();
         for _ in 0..2 {
             let mut shelf = serde_json::json!([
@@ -95,6 +102,11 @@ mod tests {
             assert_eq!(shelf[0]["title"], "Game Room");
             assert_eq!(shelf[1]["title"], "Local Ion Rush");
         }
+        // A local build of the lobby itself runs instead of the packaged one.
+        std::fs::write(dir.join("local-games.json"), local_lobby.to_string()).unwrap();
+        let mut shelf = serde_json::json!([{"id":"game-room","title":"Game Room","launch":{"command":executable,"env":{"GAMENIGHT_LOBBY_API":"1"}}}]);
+        merge_local_games(&mut shelf, &dir).unwrap();
+        assert_eq!(shelf[0]["title"], "Local room");
         std::fs::remove_file(dir.join("local-games.json")).unwrap();
         let mut shelf = serde_json::json!([{"id":"lobby"}]);
         merge_local_games(&mut shelf, &dir).unwrap();

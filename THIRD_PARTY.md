@@ -2,9 +2,10 @@
 
 ## Game Room lobby
 
-`lobbies/game-room` is Gamepad Party's own lobby. Desktop packages run it with the
-unmodified Godot 4.5.2 editor binary (MIT, `lobbies/game-room/GODOT-LICENSE.txt`).
-Its fonts keep their SIL Open Font License notices next to them in
+The Windows package's lobby is the Warp Game Room (`lobbies/warp-game-room/game-room.exe`),
+built from Ontola's own Warp engine. `lobbies/game-room` is the Godot version it was
+ported from (macOS packages, development); it runs with the unmodified Godot 4.5.2
+editor binary (MIT, `lobbies/game-room/GODOT-LICENSE.txt`). The fonts keep their SIL Open Font License notices next to them in
 `lobbies/game-room/assets/fonts`. Packages carry these notices in
 `notices/game-room`.
 

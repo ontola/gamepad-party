@@ -2217,7 +2217,9 @@ pub fn demo_library() -> Vec<GameMeta> {
 /// Load the shelf from a JSON file (an array of `GameMeta`).
 pub fn load_library(path: &str) -> std::io::Result<Vec<GameMeta>> {
     let text = std::fs::read_to_string(path)?;
-    let mut library: Vec<GameMeta> = serde_json::from_str(&text).map_err(|e| {
+    // Windows editors (and PowerShell's utf8) may start the file with a BOM.
+    let text = text.strip_prefix('\u{feff}').unwrap_or(&text);
+    let mut library: Vec<GameMeta> = serde_json::from_str(text).map_err(|e| {
         std::io::Error::new(
             std::io::ErrorKind::InvalidData,
             format!("bad library file {path}: {e}"),

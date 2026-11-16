@@ -82,10 +82,23 @@ jobs:
         with:
           workspaces: . -> target
           key: windows-installer
-      - name: Install pinned Godot 4.5.2 for the Game Room lobby
-        uses: ./.github/actions/setup-godot
+      # The lobby is the Warp Game Room from the private Warp repository;
+      # WARP_READ_TOKEN is a read-only token for ontola/warp-game-engine.
+      - name: Check out the Warp engine for the Game Room lobby
+        uses: actions/checkout@v4
         with:
-          version: 4.5.2
+          repository: ontola/warp-game-engine
+          token: ${{ secrets.WARP_READ_TOKEN }}
+          path: warp
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: warp -> target
+          key: warp-game-room
+      - name: Build the Warp Game Room lobby
+        shell: pwsh
+        run: |
+          cargo build --locked --release --manifest-path warp/Cargo.toml -p game-room
+          if ($LASTEXITCODE -ne 0) { throw 'Warp Game Room build failed' }
       - name: Install pinned packaging tool
         run: dotnet tool install --global vpk --version 1.2.0
       - name: Authenticate for signing
@@ -111,7 +124,7 @@ jobs:
           $params = @{
             Version = $version; Channel = $channel; BuildProfile = $buildProfile
             OutputDir = "$env:RUNNER_TEMP/installer"; TargetDir = "$env:GITHUB_WORKSPACE/target"
-            Godot = $env:GODOT
+            GameRoom = "$env:GITHUB_WORKSPACE/warp/target/release/game-room.exe"
           }
           if (($env:GITHUB_EVENT_NAME -eq 'workflow_dispatch' -or $env:AUTOMATIC_RELEASE -eq 'true') -and $env:GITHUB_REF -eq 'refs/heads/main' -and $env:SIGNING_ENDPOINT) {
             if (!$env:SIGNING_ACCOUNT -or !$env:SIGNING_PROFILE) { throw 'Signing configuration is incomplete' }

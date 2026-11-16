@@ -137,6 +137,12 @@ async fn run() -> std::io::Result<()> {
     // Which game IS the couch: pressing Back/Select with nothing else
     // running launches this one. `GAMENIGHT_NO_LOBBY_WATCH` opts out
     // entirely (e.g. running headless/in CI, or with no controller to watch).
+    if let Some(why) = std::env::var("GAMENIGHT_LOBBY_FALLBACK")
+        .ok()
+        .filter(|v| !v.is_empty())
+    {
+        tracing::warn!(reason = %why, "saved lobby (or its local build) cannot run; running the packaged lobby");
+    }
     let lobby_game = std::env::var_os("GAMENIGHT_NO_LOBBY_WATCH")
         .is_none()
         .then(|| {

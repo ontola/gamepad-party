@@ -80,21 +80,28 @@ fn run(restart: bool) -> Result<Next, Box<dyn std::error::Error>> {
     ];
     #[cfg(not(target_os = "macos"))]
     let daemon = root.join("bin/gamenight-daemon.exe");
+    // Windows: the Warp Game Room, one self-contained executable. It is the
+    // only lobby: there is no other one to fall back to.
     #[cfg(not(target_os = "macos"))]
-    let game_room = root.join("lobbies/game-room");
+    let game_room = root.join("lobbies/warp-game-room");
     #[cfg(not(target_os = "macos"))]
-    let game_room_command = game_room.join("GameRoom.exe");
-    // The editor runs the same-named GameRoom.pck next to it.
-    #[cfg(not(target_os = "macos"))]
-    let game_room_pack = game_room.join("GameRoom.pck");
+    let game_room_command = game_room.join("game-room.exe");
     #[cfg(not(target_os = "macos"))]
     let game_room_args: Vec<String> = Vec::new();
-    for path in [
+    #[cfg(target_os = "macos")]
+    let required = [
         &daemon,
         &game_room_command,
         &game_room_pack,
         &root.join("catalog/games/blast-party.json"),
-    ] {
+    ];
+    #[cfg(not(target_os = "macos"))]
+    let required = [
+        &daemon,
+        &game_room_command,
+        &root.join("catalog/games/blast-party.json"),
+    ];
+    for path in required {
         if !path.is_file() {
             return Err(format!("Missing package file: {}", path.display()).into());
         }
@@ -143,8 +150,12 @@ fn run(restart: bool) -> Result<Next, Box<dyn std::error::Error>> {
     let updates = windows::Updates::start(&local);
     // Lobbies shipped in the package. The first one is the default lobby.
     let bundled_lobbies = local.join("bundled-lobbies.json");
+    #[cfg(target_os = "macos")]
+    let lobby = "game-room";
+    #[cfg(not(target_os = "macos"))]
+    let lobby = "warp-game-room";
     let mut shelf = serde_json::json!([
-        {"id":"game-room", "title":"Game Room", "players":"1-8",
+        {"id":lobby, "title":"Game Room", "players":"1-8",
          "min_players":1, "max_players":8, "emoji":"", "color":"#7c5cff",
          "launch":{"command":game_room_command, "args":game_room_args, "cwd":game_room,
                    "env":{"GAMENIGHT_LOBBY_API":"1"}}}
@@ -153,12 +164,39 @@ fn run(restart: bool) -> Result<Next, Box<dyn std::error::Error>> {
     data::merge_local_games(&mut shelf, &local)?;
     let lobby_config = local.join("selected-lobby.json");
     let registrations = local.join("local-games.json");
+    // A locally built lobby can be missing for a moment (its build is
+    // replacing the executable): give it a moment before falling back,
+    // and say why when it does.
+    let mut lobby_fallback = None;
+    for attempt in 0..6 {
+        lobby_fallback = gamenight_local_web::host_lobby::unavailable_choice(
+            &lobby_config,
+            &registrations,
+            Some(&bundled_lobbies),
+        );
+        // Only a registered lobby whose files are missing may come back.
+        let waiting = lobby_fallback
+            .as_deref()
+            .is_some_and(|why| why.contains("cannot run"));
+        if !waiting || attempt == 5 {
+            if attempt > 0 {
+                // The local build may have appeared meanwhile.
+                shelf = serde_json::from_slice(&fs::read(&bundled_lobbies)?)?;
+                data::merge_local_games(&mut shelf, &local)?;
+            }
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(500));
+    }
     let lobby_id = gamenight_local_web::host_lobby::selected(
         &lobby_config,
         &registrations,
         Some(&bundled_lobbies),
     )
-    .ok_or("The bundled Game Room lobby is not runnable")?
+    .ok_or_else(|| match &lobby_fallback {
+        Some(why) => format!("No Game Room lobby can run: {why}"),
+        None => "No Game Room lobby can run".into(),
+    })?
     .id
     .0;
     shelf
@@ -208,6 +246,10 @@ fn run(restart: bool) -> Result<Next, Box<dyn std::error::Error>> {
         .env("GAMENIGHT_STARTUP_GATE", "1")
         .env("GAMENIGHT_WEB", "1")
         .env("GAMENIGHT_LOBBY_GAME", &lobby_id)
+        .env(
+            "GAMENIGHT_LOBBY_FALLBACK",
+            lobby_fallback.as_deref().unwrap_or_default(),
+        )
         .env("GAMENIGHT_LOBBY_CONFIG", &lobby_config)
         .env("GAMENIGHT_LOCAL_GAMES", &registrations)
         .env("GAMENIGHT_BUNDLED_LOBBIES", &bundled_lobbies)
