@@ -366,10 +366,7 @@ unsafe extern "system" fn cover_proc(
 ) -> windows_sys::Win32::Foundation::LRESULT {
     use windows_sys::Win32::{
         Foundation::RECT,
-        Graphics::Gdi::{
-            BeginPaint, CreateFontW, DeleteObject, DrawTextW, EndPaint, SelectObject, SetBkMode,
-            SetTextColor, DT_CENTER, DT_SINGLELINE, DT_VCENTER, PAINTSTRUCT, TRANSPARENT,
-        },
+        Graphics::Gdi::{BeginPaint, EndPaint, PAINTSTRUCT},
         UI::WindowsAndMessaging::{
             DefWindowProcW, DestroyWindow, GetClientRect, GetSystemMetrics, PostQuitMessage,
             SM_CYSCREEN, WM_DESTROY, WM_PAINT, WM_TIMER,
@@ -390,40 +387,25 @@ unsafe extern "system" fn cover_proc(
             let dc = BeginPaint(window, &mut paint);
             let mut rect: RECT = std::mem::zeroed();
             GetClientRect(window, &mut rect);
-            let face: Vec<u16> = "Segoe UI\0".encode_utf16().collect();
-            let font = CreateFontW(
-                GetSystemMetrics(SM_CYSCREEN) / 18,
-                0,
-                0,
-                0,
-                600,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                5, // CLEARTYPE_QUALITY
-                0,
-                face.as_ptr(),
-            );
-            let previous = SelectObject(dc, font);
-            SetBkMode(dc, TRANSPARENT as i32);
-            SetTextColor(dc, 0x00f8_f1f2);
-            let mut text: Vec<u16> = COVER_TEXT
+            // The brand in the middle of the main screen, what is happening below it.
+            let screen = GetSystemMetrics(SM_CYSCREEN);
+            let width = rect.right - rect.left;
+            let size = screen / 14;
+            let top = screen / 2 - size;
+            paint_brand(dc, width, top, size);
+            let text = COVER_TEXT
                 .get()
-                .map_or("Updating Splitscreen Club\u{2026}", String::as_str)
-                .encode_utf16()
-                .collect();
-            DrawTextW(
+                .map_or("Updating Splitscreen Club\u{2026}", String::as_str);
+            paint_line(
                 dc,
-                text.as_mut_ptr(),
-                text.len() as i32,
-                &mut rect,
-                DT_CENTER | DT_VCENTER | DT_SINGLELINE,
+                text,
+                width,
+                top + size * 2,
+                size / 2,
+                screen / 36,
+                500,
+                TEXT_DIM,
             );
-            SelectObject(dc, previous);
-            DeleteObject(font);
             EndPaint(window, &paint);
             0
         }
@@ -433,6 +415,164 @@ unsafe extern "system" fn cover_proc(
         }
         _ => DefWindowProcW(window, message, wparam, lparam),
     }
+}
+
+/// Bungee (the wordmark) and Outfit (all other text), carried in the binary
+/// so the launcher's windows look like the app, site and lobby.
+const BUNGEE: &[u8] = include_bytes!("../../../../../web/fonts/Bungee-Regular.ttf");
+const OUTFIT_500: &[u8] = include_bytes!("../../../../../mobile/assets/fonts/Outfit-500.ttf");
+
+/// #a6abc3, the site's secondary text, as COLORREF.
+const TEXT_DIM: u32 = 0x00c3_aba6;
+/// The wordmark: "Splitscreen" amber (#ffb454), ".Club" lilac (#a78bfa).
+const WORDMARK: [(&str, u32); 2] = [("Splitscreen", 0x0054_b4ff), (".Club", 0x00fa_8ba7)];
+
+fn load_brand_fonts() {
+    static LOADED: std::sync::Once = std::sync::Once::new();
+    LOADED.call_once(|| unsafe {
+        for data in [BUNGEE, OUTFIT_500] {
+            let mut count = 0u32;
+            windows_sys::Win32::Graphics::Gdi::AddFontMemResourceEx(
+                data.as_ptr().cast(),
+                data.len() as u32,
+                std::ptr::null(),
+                std::ptr::addr_of_mut!(count),
+            );
+        }
+    });
+}
+
+unsafe fn brand_font(
+    face: &str,
+    size: i32,
+    weight: i32,
+) -> windows_sys::Win32::Graphics::Gdi::HFONT {
+    load_brand_fonts();
+    let face: Vec<u16> = face.encode_utf16().chain(Some(0)).collect();
+    // CLEARTYPE_QUALITY
+    windows_sys::Win32::Graphics::Gdi::CreateFontW(
+        size,
+        0,
+        0,
+        0,
+        weight,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        5,
+        0,
+        face.as_ptr(),
+    )
+}
+
+/// The app icon and the Splitscreen.Club wordmark side by side, centred in
+/// `width`, `size` pixels tall from `top`.
+unsafe fn paint_brand(dc: windows_sys::Win32::Graphics::Gdi::HDC, width: i32, top: i32, size: i32) {
+    use windows_sys::Win32::{
+        Foundation::SIZE,
+        Graphics::Gdi::{
+            DeleteObject, GetTextExtentPoint32W, SelectObject, SetBkMode, SetTextColor, TextOutW,
+            TRANSPARENT,
+        },
+        System::LibraryLoader::GetModuleHandleW,
+        UI::WindowsAndMessaging::{DestroyIcon, DrawIconEx, LoadImageW, DI_NORMAL, IMAGE_ICON},
+    };
+    let font = brand_font("Bungee", size * 3 / 5, 400);
+    let previous = SelectObject(dc, font);
+    SetBkMode(dc, TRANSPARENT as i32);
+    let words: Vec<(Vec<u16>, u32, i32, i32)> = WORDMARK
+        .iter()
+        .map(|(word, color)| {
+            let wide: Vec<u16> = word.encode_utf16().collect();
+            let mut extent: SIZE = std::mem::zeroed();
+            GetTextExtentPoint32W(dc, wide.as_ptr(), wide.len() as i32, &mut extent);
+            (wide, *color, extent.cx, extent.cy)
+        })
+        .collect();
+    let gap = size / 4;
+    let total = size + gap + words.iter().map(|w| w.2).sum::<i32>();
+    let mut x = (width - total) / 2;
+    // winres embeds branding/gamenight.ico as resource 1.
+    let icon = LoadImageW(
+        GetModuleHandleW(std::ptr::null()),
+        std::ptr::without_provenance(1),
+        IMAGE_ICON,
+        size,
+        size,
+        0,
+    );
+    if !icon.is_null() {
+        DrawIconEx(
+            dc,
+            x,
+            top,
+            icon,
+            size,
+            size,
+            0,
+            std::ptr::null_mut(),
+            DI_NORMAL,
+        );
+        DestroyIcon(icon);
+    }
+    x += size + gap;
+    for (wide, color, w, h) in &words {
+        SetTextColor(dc, *color);
+        TextOutW(
+            dc,
+            x,
+            top + (size - h) / 2,
+            wide.as_ptr(),
+            wide.len() as i32,
+        );
+        x += w;
+    }
+    SelectObject(dc, previous);
+    DeleteObject(font);
+}
+
+/// One centred line of Outfit text.
+#[allow(clippy::too_many_arguments)]
+unsafe fn paint_line(
+    dc: windows_sys::Win32::Graphics::Gdi::HDC,
+    text: &str,
+    width: i32,
+    top: i32,
+    height: i32,
+    size: i32,
+    weight: i32,
+    color: u32,
+) {
+    use windows_sys::Win32::{
+        Foundation::RECT,
+        Graphics::Gdi::{
+            DeleteObject, DrawTextW, SelectObject, SetBkMode, SetTextColor, DT_CENTER,
+            DT_SINGLELINE, DT_VCENTER, TRANSPARENT,
+        },
+    };
+    let font = brand_font("Outfit", size, weight);
+    let previous = SelectObject(dc, font);
+    SetBkMode(dc, TRANSPARENT as i32);
+    SetTextColor(dc, color);
+    let mut wide: Vec<u16> = text.encode_utf16().collect();
+    let mut rect = RECT {
+        left: 0,
+        top,
+        right: width,
+        bottom: top + height,
+    };
+    DrawTextW(
+        dc,
+        wide.as_mut_ptr(),
+        wide.len() as i32,
+        &mut rect,
+        DT_CENTER | DT_VCENTER | DT_SINGLELINE,
+    );
+    SelectObject(dc, previous);
+    DeleteObject(font);
 }
 
 fn append_log(path: &Path, message: &str) {
@@ -554,9 +694,8 @@ unsafe extern "system" fn welcome_proc(
     use windows_sys::Win32::{
         Foundation::RECT,
         Graphics::Gdi::{
-            BeginPaint, CreateFontW, CreateSolidBrush, DeleteObject, DrawTextW, EndPaint, FillRect,
-            InvalidateRect, SelectObject, SetBkMode, SetTextColor, DT_CENTER, DT_SINGLELINE,
-            DT_VCENTER, PAINTSTRUCT, TRANSPARENT,
+            BeginPaint, CreateSolidBrush, DeleteObject, EndPaint, FillRect, InvalidateRect,
+            PAINTSTRUCT,
         },
         UI::WindowsAndMessaging::{
             DefWindowProcW, DestroyWindow, GetClientRect, PostQuitMessage, WM_DESTROY,
@@ -614,42 +753,16 @@ unsafe extern "system" fn welcome_proc(
                 let shown = WELCOME_SHOWN.lock().unwrap();
                 (shown.0, shown.2.clone())
             };
-            let face: Vec<u16> = "Segoe UI\0".encode_utf16().collect();
-            let font = |size: i32, weight: i32| {
-                CreateFontW(size, 0, 0, 0, weight, 0, 0, 0, 0, 0, 0, 5, 0, face.as_ptr())
-            };
-            SetBkMode(dc, TRANSPARENT as i32);
             let width = client.right - client.left;
-            let draw = |text: &str, top: i32, height: i32, size: i32, weight: i32, color: u32| {
-                let f = font(size, weight);
-                let previous = SelectObject(dc, f);
-                SetTextColor(dc, color);
-                let mut wide: Vec<u16> = text.encode_utf16().collect();
-                let mut rect = RECT {
-                    left: 0,
-                    top,
-                    right: width,
-                    bottom: top + height,
-                };
-                DrawTextW(
-                    dc,
-                    wide.as_mut_ptr(),
-                    wide.len() as i32,
-                    &mut rect,
-                    DT_CENTER | DT_VCENTER | DT_SINGLELINE,
-                );
-                SelectObject(dc, previous);
-                DeleteObject(f);
-            };
-            draw("Splitscreen Club", 54, 64, 54, 700, 0x00f8_f1f2);
+            paint_brand(dc, width, 46, 64);
             let text = if text.is_empty() {
                 "Starting Splitscreen Club\u{2026}".to_owned()
             } else {
                 text
             };
-            draw(&text, 128, 36, 22, 400, 0x00c8_b8b8);
+            paint_line(dc, &text, width, 134, 36, 20, 500, TEXT_DIM);
             // The bar: a dim track and the lobby's violet (#7c5cff).
-            let (left, right, top) = (72, width - 72, 190);
+            let (left, right, top) = (72, width - 72, 196);
             let track = CreateSolidBrush(0x002e_2222);
             FillRect(
                 dc,

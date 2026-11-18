@@ -57,7 +57,9 @@ pub fn register() -> io::Result<()> {
                 .status()?
                 .success()
             {
-                return Err(io::Error::other("Could not register Splitscreen Club links"));
+                return Err(io::Error::other(
+                    "Could not register Splitscreen Club links",
+                ));
             }
         }
     }
