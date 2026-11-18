@@ -1,6 +1,6 @@
-# Gamepad Party for Unity
+# Splitscreen Club for Unity
 
-The Unity package for [Gamepad Party](https://github.com/ontola/gamepad-party): the
+The Unity package for [Splitscreen Club](https://github.com/ontola/gamepad-party): the
 party lifecycle, every player's controller by seat, names, colours and faces,
 match settings, phone buttons, requests in plain words, phone screens, saved
 progress, the room log, rumble and the game window.
@@ -12,7 +12,7 @@ https://github.com/ontola/gamepad-party.git?path=/sdk/unity
 ```
 
 The guide is [docs/site/unity.md](../../docs/site/unity.md), published at
-`/docs/unity` on the Gamepad Party site. The reference game is Orb Rush in
+`/docs/unity` on the Splitscreen Club site. The reference game is Orb Rush in
 [examples/unity-demo](../../examples/unity-demo).
 
 - `Runtime/Core`: plain C#, no UnityEngine. The connection, lifecycle, input,

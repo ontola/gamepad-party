@@ -570,7 +570,7 @@ impl Shared {
         }
         if self.update.is_none() {
             return Err(format!(
-                "{} opens the next time you start Gamepad Party",
+                "{} opens the next time you start Splitscreen Club",
                 choice.title
             ));
         }
@@ -2803,7 +2803,7 @@ async fn run_inner(
                     // (taskbar, window close, its own Quit): GameNight quits
                     // with it instead of bringing the lobby back.
                     if closed {
-                        info!(%lobby, "lobby closed; quitting Gamepad Party");
+                        info!(%lobby, "lobby closed; quitting Splitscreen Club");
                         s.kill_all_children();
                         return Ok(());
                     }

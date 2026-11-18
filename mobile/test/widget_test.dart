@@ -96,7 +96,7 @@ void main() {
     state.dispose();
   });
 
-  testWidgets('first launch opens on joining a Gamepad Party', (tester) async {
+  testWidgets('first launch opens on joining a Splitscreen Club', (tester) async {
     SharedPreferences.setMockInitialValues({});
     final state = AppState(await SharedPreferences.getInstance());
     await tester.pumpWidget(GameNightApp(state: state));
@@ -135,14 +135,14 @@ void main() {
     state.dispose();
   });
 
-  testWidgets('an unreachable Gamepad Party shows a warning, not a green check',
+  testWidgets('an unreachable Splitscreen Club shows a warning, not a green check',
       (tester) async {
     SharedPreferences.setMockInitialValues(
         {'host': 'http://192.168.1.5:3000', 'met_player': true});
     final state = AppState(await SharedPreferences.getInstance());
     state.session = const SessionInfo(linked: true, playerId: 'p1', players: 1);
     state.sessionError =
-        'Gamepad Party is unreachable. Join the same Wi-Fi as the Gamepad Party PC.';
+        'Splitscreen Club is unreachable. Join the same Wi-Fi as the Splitscreen Club PC.';
     await tester.pumpWidget(GameNightApp(state: state));
     await tester.tap(find.widgetWithText(NavigationDestination, 'Room'));
     await tester.pump(const Duration(milliseconds: 400));

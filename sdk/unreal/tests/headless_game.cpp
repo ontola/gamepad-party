@@ -68,7 +68,7 @@ int main() {
 	config.launched = Env(gamenight::protocol::ENV_GAMENIGHT) == "1";
 	const std::string address = Env(gamenight::protocol::ENV_ADDR);
 	if (!config.launched || address.empty() || config.game_id.empty()) {
-		std::printf("[unreal-core] not launched by Gamepad Party; standalone\n");
+		std::printf("[unreal-core] not launched by Splitscreen Club; standalone\n");
 		return 0;
 	}
 	const int fd = Open(address);

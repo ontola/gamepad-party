@@ -484,7 +484,7 @@ class CloudRoomControls implements RoomControls {
       'edit': {'expected': view.snapshot, ...edit},
     }, errors: {
       409: 'Playlist changed. Refresh and try again.',
-      503: 'The Gamepad Party computer is not answering.'
+      503: 'The Splitscreen Club computer is not answering.'
     });
     for (var i = 0; i < 8; i++) {
       await Future<void>.delayed(const Duration(seconds: 1));
@@ -527,9 +527,9 @@ class CloudRoomControls implements RoomControls {
         if (start) 'start': true,
       }, errors: {
         503:
-            'The Gamepad Party computer is not answering. Try again in a moment.',
+            'The Splitscreen Club computer is not answering. Try again in a moment.',
         403: 'Join the room first.',
-        409: 'The Gamepad Party computer cannot play that game right now.',
+        409: 'The Splitscreen Club computer cannot play that game right now.',
       });
 
   /// Online rooms only report the settings of the game on screen.

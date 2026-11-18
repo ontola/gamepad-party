@@ -31,7 +31,7 @@ def publish(bundle, version):
             raise ValueError("Uploaded bundle version does not match this workflow run")
         edits.tracks().update(**args, track="internal", body={
             "track": "internal",
-            "releases": [{"name": f"Gamepad Party {version}",
+            "releases": [{"name": f"Splitscreen Club {version}",
                           "versionCodes": [str(version)], "status": "completed"}],
         }).execute()
         edits.commit(**args).execute()
@@ -42,7 +42,7 @@ def publish(bundle, version):
         except Exception:
             pass
         raise
-    print(f"Gamepad Party build {version} published to Google Play internal testing.")
+    print(f"Splitscreen Club build {version} published to Google Play internal testing.")
 
 
 if __name__ == "__main__":

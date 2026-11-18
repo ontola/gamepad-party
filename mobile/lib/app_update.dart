@@ -159,11 +159,11 @@ class _UpdateBannerState extends State<UpdateBanner>
     if (_latest == null || _dismissed) return const SizedBox.shrink();
     final message = _installing
         ? (_silent
-            ? 'Updating Gamepad Party…'
-            : 'Updating Gamepad Party. Android asks you to confirm once.')
+            ? 'Updating Splitscreen Club…'
+            : 'Updating Splitscreen Club. Android asks you to confirm once.')
         : (_silent
-            ? 'New version ready. It installs when you leave Gamepad Party.'
-            : 'A new version of Gamepad Party is ready.');
+            ? 'New version ready. It installs when you leave Splitscreen Club.'
+            : 'A new version of Splitscreen Club is ready.');
     return Material(
       color: GnColors.button,
       child: Padding(

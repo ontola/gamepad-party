@@ -135,7 +135,7 @@ impl Store {
                 }
             }
             Err(_) => {
-                let (agent, drive) = db.setup("Gamepad Party host").await.map_err(atomic)?;
+                let (agent, drive) = db.setup("Splitscreen Club host").await.map_err(atomic)?;
                 let secret = agent.build_secret().map_err(atomic)?;
                 let temporary = secret_path.with_extension("tmp");
                 std::fs::write(&temporary, secret)?;

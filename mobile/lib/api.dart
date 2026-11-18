@@ -221,7 +221,7 @@ class GameNightApi {
     } catch (_) {
       Diagnostics.failure('Local host $method connection failed');
       throw const ApiError(
-          'Gamepad Party is unreachable. Join the same Wi-Fi as the Gamepad Party PC.');
+          'Splitscreen Club is unreachable. Join the same Wi-Fi as the Splitscreen Club PC.');
     }
     if (response.statusCode >= 500) {
       Diagnostics.failure(
@@ -233,7 +233,7 @@ class GameNightApi {
     }
     if (response.statusCode >= 300) {
       throw ApiError(
-          failure ?? 'Gamepad Party refused the request.', response.statusCode);
+          failure ?? 'Splitscreen Club refused the request.', response.statusCode);
     }
     if (response.statusCode == 204 || response.body.isEmpty) return null;
     return jsonDecode(utf8.decode(response.bodyBytes));
@@ -247,7 +247,7 @@ class GameNightApi {
 
   /// Cheap reachability check used by the connect screen.
   Future<void> ping() => _send('GET', '/api/player-links',
-      failure: 'This address answered, but it is not a Gamepad Party.');
+      failure: 'This address answered, but it is not a Splitscreen Club.');
 
   Future<Profile?> loadProfile(String id) async {
     try {
@@ -291,7 +291,7 @@ class GameNightApi {
                     'link_revision': linkRevision
                   },
                   failure:
-                      'Saved on your phone. Is Gamepad Party still running?')
+                      'Saved on your phone. Is Splitscreen Club still running?')
               as Map<String, dynamic>);
 
   /// Asks to be picked up in the lobby: walk your character to your door.
@@ -315,7 +315,7 @@ class GameNightApi {
   Future<void> phoneSeat(String profile) =>
       _send('POST', '/api/local-room/phone-seat',
           body: {'profile': profile},
-          failure: 'Could not take a seat. Is Gamepad Party still running?');
+          failure: 'Could not take a seat. Is Splitscreen Club still running?');
 
   Future<void> cancelPickup(String profile) =>
       _send('POST', '/api/local-room/cancel/${Uri.encodeComponent(profile)}',

@@ -195,7 +195,7 @@ class GameNightLogo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => SvgPicture.asset('assets/icon.svg',
-      width: size, height: size, semanticsLabel: 'Gamepad Party');
+      width: size, height: size, semanticsLabel: 'Splitscreen Club');
 }
 
 /// Shared wordmark: Bungee and the amber/lilac palette from the intro video.
@@ -204,13 +204,13 @@ class GameNightWordmark extends StatelessWidget {
   const GameNightWordmark({super.key, this.size = 21});
   @override
   Widget build(BuildContext context) => Semantics(
-        label: 'Gamepad Party',
+        label: 'Splitscreen Club',
         excludeSemantics: true,
         child: Text.rich(
           const TextSpan(children: [
             TextSpan(
-                text: 'Gamepad ', style: TextStyle(color: Color(0xFFFFB454))),
-            TextSpan(text: 'Party', style: TextStyle(color: Color(0xFFA78BFA))),
+                text: 'Splitscreen ', style: TextStyle(color: Color(0xFFFFB454))),
+            TextSpan(text: 'Club', style: TextStyle(color: Color(0xFFA78BFA))),
           ]),
           maxLines: 1,
           style: TextStyle(fontFamily: 'Bungee', fontSize: size, height: 1.3),

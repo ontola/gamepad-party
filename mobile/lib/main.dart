@@ -381,7 +381,7 @@ class _GameNightAppState extends State<GameNightApp> {
   @override
   Widget build(BuildContext context) => MaterialApp(
         navigatorKey: kIsWeb ? null : _navigator,
-        title: 'Gamepad Party',
+        title: 'Splitscreen Club',
         debugShowCheckedModeBanner: false,
         theme: gameNightTheme(),
         builder: (context, child) => ListenableBuilder(
@@ -825,7 +825,7 @@ class _BrandButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Semantics(
         button: true,
-        label: 'About Gamepad Party',
+        label: 'About Splitscreen Club',
         excludeSemantics: true,
         child: InkWell(
           key: const ValueKey('about-button'),

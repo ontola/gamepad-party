@@ -1,19 +1,19 @@
-# Gamepad Party Windows developer preview
+# Splitscreen Club Windows developer preview
 
 Experimental local multiplayer for Windows x64. No Rust, Python, .NET, account
 or cloud service is required on the player's computer.
 
 For releases that include **Setup.exe**, run it once. It installs for the current
-user, adds a shortcut, and opens Gamepad Party. No administrator account is required.
+user, adds a shortcut, and opens Splitscreen Club. No administrator account is required.
 The portable ZIP also works: extract it and run **GameNight.exe**. Close the lobby
-to close Gamepad Party and all its games; there is no separate console to manage.
+to close Splitscreen Club and all its games; there is no separate console to manage.
 The older `v0.1.0-preview.1` ZIP uses a console and Enter to exit instead.
 
 On first launch, games in the packaged Windows catalog download automatically
 in the background. This includes native games as well as the shared LÖVE pack.
 The lobby shows progress and remains usable while downloading.
 An internet connection is needed once; cached games work offline on later starts.
-Failed downloads appear in the lobby and are retried the next time Gamepad Party starts.
+Failed downloads appear in the lobby and are retried the next time Splitscreen Club starts.
 
 Connect two controllers and press a button on each to join the lobby. Approach Play and
 press Y. Back/Select pauses and returns to the lobby; another released press can
@@ -33,13 +33,13 @@ Portable builds are updated by downloading a new ZIP.
 Logs and versioned game content live under `%LOCALAPPDATA%\GameNight`, outside
 the replaceable application directory. Game saves remain in the game's own user
 save directory. `shelf.json` in this folder is generated, not a settings file.
-`GAMENIGHT_DATA_DIR` can override the Gamepad Party data directory with an absolute
-path for testing. It does not relocate a game's own saves. Uninstalling Gamepad Party
+`GAMENIGHT_DATA_DIR` can override the Splitscreen Club data directory with an absolute
+path for testing. It does not relocate a game's own saves. Uninstalling Splitscreen Club
 does not intentionally delete its external user data or the game's saves.
 
 ## Application and starter game versions
 
-- Gamepad Party: native Windows developer build (unsigned).
+- Splitscreen Club: native Windows developer build (unsigned).
 - LÖVE 11.5 (downloaded once and shared by compatible games): official Windows x64 runtime, including its license notices.
 - Game Room lobby: the Warp Game Room (`lobbies/warp-game-room/game-room.exe`), the only lobby; the fonts' notices are in `notices/game-room`. A local build registered in `local-games.json` under the id `warp-game-room` runs instead while its executable exists.
 
@@ -55,7 +55,7 @@ From a native Windows checkout with Rust/MSVC and Python 3 installed:
 ./scripts/build-windows-preview.ps1 -OutputDir C:/builds/gamenight-preview -TargetDir C:/builds/gamenight-target
 ```
 
-Use a new output directory. The package contains Gamepad Party, its native runtime
+Use a new output directory. The package contains Splitscreen Club, its native runtime
 DLLs, lobby assets and a small starter catalogue. Game archives are not bundled.
 The background installer verifies each game and runtime against its pinned
 SHA-256 hash; the downloaded archives retain their license notices.

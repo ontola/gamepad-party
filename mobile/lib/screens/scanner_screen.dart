@@ -107,7 +107,7 @@ class _ScannerScreenState extends State<ScannerScreen> {
               child: Column(mainAxisSize: MainAxisSize.min, children: [
                 Text(
                   _hint ??
-                      'Point your camera at the QR code in the Gamepad Party lobby. '
+                      'Point your camera at the QR code in the Splitscreen Club lobby. '
                           'Too small? Zoom in.',
                   textAlign: TextAlign.center,
                 ),

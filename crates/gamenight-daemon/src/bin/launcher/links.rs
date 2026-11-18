@@ -30,7 +30,7 @@ pub fn register() -> io::Result<()> {
             (
                 "HKCU\\Software\\Classes\\gamenight",
                 None,
-                "URL:Gamepad Party",
+                "URL:Splitscreen Club",
             ),
             (
                 "HKCU\\Software\\Classes\\gamenight",
@@ -57,7 +57,7 @@ pub fn register() -> io::Result<()> {
                 .status()?
                 .success()
             {
-                return Err(io::Error::other("Could not register Gamepad Party links"));
+                return Err(io::Error::other("Could not register Splitscreen Club links"));
             }
         }
     }

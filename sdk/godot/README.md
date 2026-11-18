@@ -1,12 +1,12 @@
-# Gamepad Party for Godot 4
+# Splitscreen Club for Godot 4
 
 Start with the [Godot integration guide](../../docs/site/godot.md), published in
-[Gamepad Party Docs](https://gamenight.ontola.io/docs/godot). It covers installation,
+[Splitscreen Club Docs](https://gamenight.ontola.io/docs/godot). It covers installation,
 lifecycle signals, seat-based controller input, faces and release testing.
 
 For the runnable **Living Room lobby**, open this directory's `project.godot`
 and follow [Build a lobby](../../docs/site/lobbies.md), published at
-[Gamepad Party Docs / Lobbies](https://gamenight.ontola.io/docs/lobbies).
+[Splitscreen Club Docs / Lobbies](https://gamenight.ontola.io/docs/lobbies).
 It uses the separate `lobby.gd` client and reusable `face.gd` renderer.
 Run it through `python scripts/run-local.py --lobby godot --godot /path/to/godot`.
 

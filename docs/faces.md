@@ -1,4 +1,4 @@
-# Drawing a Gamepad Party face
+# Drawing a Splitscreen Club face
 
 Put the head where you want it. Pass its centre and radius, not a texture corner.
 
@@ -15,7 +15,7 @@ the graphics state. `skin_color` stays separate from the artwork.
 
 ## Guest faces from the host
 
-When joining a new guest, omit `avatar` in `join_party`. Gamepad Party generates a
+When joining a new guest, omit `avatar` in `join_party`. Splitscreen Club generates a
 face with hair or a hat from its shared guest collection, chooses a skin tone,
 and assigns an unused clothing color while the eight-color palette has room.
 The resulting `avatar`, `skin_color`, and `color` arrive together in the player

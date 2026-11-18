@@ -881,9 +881,9 @@ fn spawn_network(game_id: String, managed: bool) -> Link {
                                         Ok(Some(event)) => { let _ = in_tx.send(Incoming::Event(event)); }
                                         Ok(None) => break,
                                         Err(gamenight_sdk::SdkError::Rejected(message)) => {
-                                            warn!("Gamepad Party host: {message}");
+                                            warn!("Splitscreen Club host: {message}");
                                         }
-                                        Err(e) => { warn!("Gamepad Party connection: {e}"); break }
+                                        Err(e) => { warn!("Splitscreen Club connection: {e}"); break }
                                     },
                                 }
                             }
@@ -891,7 +891,7 @@ fn spawn_network(game_id: String, managed: bool) -> Link {
                                 return;
                             }
                         }
-                        Err(e) => warn!("Gamepad Party: could not connect: {e}"),
+                        Err(e) => warn!("Splitscreen Club: could not connect: {e}"),
                     }
                     if managed {
                         let _ = in_tx.send(Incoming::Disconnected);
@@ -903,7 +903,7 @@ fn spawn_network(game_id: String, managed: bool) -> Link {
                 }
             });
         })
-        .expect("spawn Gamepad Party thread");
+        .expect("spawn Splitscreen Club thread");
     Link {
         incoming: Mutex::new(in_rx),
         outgoing: out_tx,
@@ -950,7 +950,7 @@ fn receive(
                 gn.frames.clear();
                 out.write(GameNightEvent::Disconnected);
                 if gn.launched_by_daemon {
-                    info!("Gamepad Party host went away; exiting");
+                    info!("Splitscreen Club host went away; exiting");
                     exit.write(AppExit::Success);
                 }
             }

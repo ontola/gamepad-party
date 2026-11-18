@@ -29,10 +29,10 @@ sounds are synthesised in code.
 
 Windows packages include the Microsoft Visual C++ Runtime DLLs from the build
 machine's licensed Visual Studio redistributable directory, under Microsoft's
-license terms. These files are not part of Gamepad Party's MIT-licensed source.
+license terms. These files are not part of Splitscreen Club's MIT-licensed source.
 `notices/msvc-runtime.txt` in each package identifies the runtime version.
 See Microsoft's [redistribution documentation](https://learn.microsoft.com/cpp/windows/redistributing-visual-cpp-files).
-The app-local copies must be refreshed through Gamepad Party releases when Microsoft
+The app-local copies must be refreshed through Splitscreen Club releases when Microsoft
 updates the runtime; they are not maintained by Windows Update.
 
 The separately downloaded, pinned LOVE distribution includes its own runtime libraries and license

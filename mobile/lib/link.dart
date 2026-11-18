@@ -11,9 +11,13 @@
 const int defaultWebPort = 7913;
 const String hostedOrigin = 'https://gamenight.ontola.io';
 
-/// Origins of the hosted site. gamepad.party is the new name; links on the
-/// old address keep working during the move.
-const Set<String> hostedOrigins = {hostedOrigin, 'https://gamepad.party'};
+/// Origins of the hosted site. splitscreen.club is the new name; links on the
+/// older addresses keep working during the move.
+const Set<String> hostedOrigins = {
+  hostedOrigin,
+  'https://splitscreen.club',
+  'https://gamepad.party'
+};
 
 final RegExp _roomCode = RegExp(r'^[A-HJ-NP-Z2-9]{6}$');
 
@@ -67,12 +71,12 @@ HostLink parseHostLink(String input) {
   try {
     url = Uri.parse(text);
   } on FormatException {
-    throw const LinkError('That is not a Gamepad Party address.');
+    throw const LinkError('That is not a Splitscreen Club address.');
   }
   if (!['http', 'https'].contains(url.scheme) ||
       url.host.isEmpty ||
       url.userInfo.isNotEmpty) {
-    throw const LinkError('That is not a Gamepad Party address.');
+    throw const LinkError('That is not a Splitscreen Club address.');
   }
   final port = url.hasPort
       ? url.port
@@ -85,14 +89,14 @@ HostLink parseHostLink(String input) {
       RegExp(r'^/(session(/[^/]+)?|studio|mobile|join|app)/?$').hasMatch(path);
   if (!known) {
     throw const LinkError(
-        'This is not a Gamepad Party sign-in QR. Try the code in the lobby.');
+        'This is not a Splitscreen Club sign-in QR. Try the code in the lobby.');
   }
   final q = url.queryParameters;
   final Map<String, String> fragment;
   try {
     fragment = Uri.splitQueryString(url.fragment);
   } on FormatException {
-    throw const LinkError('That is not a Gamepad Party address.');
+    throw const LinkError('That is not a Splitscreen Club address.');
   }
   final room = (q['room'] ?? q['r'] ?? fragment['room'])?.toUpperCase();
   final pair = q['pair'] ?? fragment['pair'];

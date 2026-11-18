@@ -81,7 +81,7 @@ void main() {
         await tester.pump();
         expect(calls, ['installed', 'installed', 'open']);
         expect(
-            find.text('Update from the Gamepad Party computer'), findsNothing);
+            find.text('Update from the Splitscreen Club computer'), findsNothing);
       },
       variant: TargetPlatformVariant({TargetPlatform.android}),
     );

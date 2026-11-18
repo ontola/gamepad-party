@@ -249,11 +249,11 @@ class CloudApi {
     } on TimeoutException {
       Diagnostics.failure('Cloud $method timed out');
       throw const ApiError(
-          'Gamepad Party online did not answer. Check your internet.');
+          'Splitscreen Club online did not answer. Check your internet.');
     } catch (_) {
       Diagnostics.failure('Cloud $method connection failed');
       throw const ApiError(
-          'Could not reach Gamepad Party online. Check your internet.');
+          'Could not reach Splitscreen Club online. Check your internet.');
     }
   }
 
@@ -285,7 +285,7 @@ class CloudApi {
       throw const ApiError(
           'Too many attempts. Wait a minute and try again.', 429);
     }
-    throw ApiError('Gamepad Party online answered $status. Try again.', status);
+    throw ApiError('Splitscreen Club online answered $status. Try again.', status);
   }
 
   static String? cookie(http.Response response, String name) {
@@ -517,7 +517,7 @@ class CloudApi {
       'email': email.trim()
     }, errors: const {
       400: 'That does not look like an email address.',
-      409: 'Another Gamepad Party account already uses this email.',
+      409: 'Another Splitscreen Club account already uses this email.',
       422: 'This is already your email.',
       502: 'Could not send the email. Try again.',
     }) as Map;
@@ -532,7 +532,7 @@ class CloudApi {
     }, errors: const {
       400: 'Enter the 8-digit code from the email.',
       403: 'That code is wrong or has expired.',
-      409: 'Another Gamepad Party account already uses this email.',
+      409: 'Another Splitscreen Club account already uses this email.',
     }) as Map;
     return data['email'] as String;
   }
@@ -550,7 +550,7 @@ class CloudApi {
   /// Deletes the account and everything saved to it.
   Future<void> deleteAccount() => _send('DELETE', '/v1/me', errors: const {
         409:
-            'Your games are still in the Gamepad Party store. Withdraw them in the developer portal first, then delete your account.'
+            'Your games are still in the Splitscreen Club store. Withdraw them in the developer portal first, then delete your account.'
       });
 
   Future<StudioDocument> studio() async =>
@@ -587,7 +587,7 @@ class CloudApi {
       case 422:
       case 400:
         throw const ApiError(
-            'Gamepad Party online did not accept this player. Check the name.');
+            'Splitscreen Club online did not accept this player. Check the name.');
       default:
         throw const ApiError(
             'Not synced to your account. Your player is kept on this phone.');

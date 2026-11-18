@@ -1,4 +1,4 @@
-# Gamepad Party Game Room
+# Splitscreen Club Game Room
 
 A replacement lobby in Godot 4.5: the platformer lobby's ideas (run, jump,
 items, stations you use by standing at them) in a 2.5D neon game room. Only
@@ -20,7 +20,7 @@ godot --path lobbies/game-room -- --demo [--scene=action|stations|sleep|empty]
 ```
 
 The project runs from source without an editor import step: the fonts (Outfit
-for all text, Bungee only for the neon Gamepad Party wordmark) are read from their
+for all text, Bungee only for the neon Splitscreen Club wordmark) are read from their
 files at runtime.
 
 ## Controls

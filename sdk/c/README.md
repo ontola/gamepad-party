@@ -1,7 +1,7 @@
 # GameNight for C and C++
 
 Start with the [C/C++ integration guide](../../docs/site/c.md), published in
-[GameNight Docs](https://gamenight.ontola.io/docs/c).
+[Splitscreen Club Docs](https://gamenight.ontola.io/docs/c).
 
 `gamenight.h` supplies a single-header C99 client for newline-delimited JSON over
 TCP. Define `GAMENIGHT_IMPLEMENTATION` in one translation unit. C++ linkage,

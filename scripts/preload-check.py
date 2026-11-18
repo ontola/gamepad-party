@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Measure warm starts, Back and Skip next on a running Gamepad Party host.
+"""Measure warm starts, Back and Skip next on a running Splitscreen Club host.
 
 Connects to the host as an overlay (as the phone app does) and plays every
 game on the shelf once, the way the couch would:
@@ -86,7 +86,7 @@ class Host:
 
 
 class HostGone(Exception):
-    """The host closed the connection (Gamepad Party was closed)."""
+    """The host closed the connection (Splitscreen Club was closed)."""
 
 
 def session(party, key):
@@ -213,7 +213,7 @@ async def main():
             try:
                 row = await check_game(host, game, args)
             except HostGone:
-                print("the host went away (Gamepad Party closed); stopping")
+                print("the host went away (Splitscreen Club closed); stopping")
                 break
             rows.append(row)
             if args.out:  # per row, so a host that quits keeps what was measured

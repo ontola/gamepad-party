@@ -25,7 +25,7 @@ void main() {
     expect(Companion.fromJson({'game': 'x'}), isNull);
   });
 
-  testWidgets('Gamepad Party installs the app, then opens it', (tester) async {
+  testWidgets('Splitscreen Club installs the app, then opens it', (tester) async {
     const channel = MethodChannel('gamenight/apps');
     final calls = <String>[];
     String? version;

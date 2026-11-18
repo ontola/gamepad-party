@@ -14,7 +14,7 @@ def plist(name, identifier, version, background=False):
                 CFBundleShortVersionString=version, CFBundleVersion=version,
                 CFBundleIconFile="GameNight.icns", NSHighResolutionCapable=True,
                 LSMinimumSystemVersion="12.0", LSUIElement=background,
-                NSBluetoothAlwaysUsageDescription="Connect controllers to Gamepad Party.")
+                NSBluetoothAlwaysUsageDescription="Connect controllers to Splitscreen Club.")
 
 
 def package(repo, binaries, game_room, output, version, binary_revision=None):
@@ -62,7 +62,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--binaries", type=Path, required=True)
     parser.add_argument("--game-room", type=Path, required=True,
-                        help="Exported Game Room lobby: universal Godot binary Gamepad Party + GameNight.pck")
+                        help="Exported Game Room lobby: universal Godot binary Splitscreen Club + GameNight.pck")
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--version", required=True)
     parser.add_argument("--binary-revision")
@@ -84,8 +84,8 @@ def main():
     links = app / "Contents/Helpers/GameNight Link.app/Contents"
     (links / "MacOS").mkdir(parents=True)
     (links / "Resources").mkdir()
-    link_plist = plist("Gamepad Party Link", "io.ontola.gamenight.link", args.version, True)
-    link_plist["CFBundleURLTypes"] = [{"CFBundleURLName": "Gamepad Party games", "CFBundleURLSchemes": ["gamenight"]}]
+    link_plist = plist("Splitscreen Club Link", "io.ontola.gamenight.link", args.version, True)
+    link_plist["CFBundleURLTypes"] = [{"CFBundleURLName": "Splitscreen Club games", "CFBundleURLSchemes": ["gamenight"]}]
     (links / "Info.plist").write_bytes(plistlib.dumps(link_plist))
     shutil.copy2(icon, links / "Resources/GameNight.icns")
     architectures = []

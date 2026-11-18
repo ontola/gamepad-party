@@ -7,7 +7,7 @@
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <application
-        android:label="Gamepad Party"
+        android:label="Splitscreen Club"
         android:usesCleartextTraffic="true"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
@@ -43,6 +43,7 @@
                 <category android:name="android.intent.category.DEFAULT"/>
                 <category android:name="android.intent.category.BROWSABLE"/>
                 <data android:scheme="https" android:host="gamenight.ontola.io" android:path="/auth/app"/>
+                <data android:host="splitscreen.club"/>
                 <data android:host="gamepad.party"/>
                 <data android:path="/join"/>
                 <data android:path="/studio"/>

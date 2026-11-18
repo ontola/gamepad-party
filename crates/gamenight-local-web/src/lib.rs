@@ -359,7 +359,7 @@ pub async fn run_server(
     // Log the address a phone can actually use, not just the bind address —
     // `0.0.0.0` is not something anyone can type into a browser.
     tracing::info!(
-        "🌐 Gamepad Party Web Server & Studio bound to {addr}, reachable at {}",
+        "🌐 Splitscreen Club Web Server & Studio bound to {addr}, reachable at {}",
         gamenight_protocol::web_base_url()
     );
     axum::serve(
@@ -857,7 +857,7 @@ async fn join_session_inner(
             })))
         }
         Err(e) => {
-            tracing::error!("Failed to connect to Gamepad Party daemon at {ws_url}: {e}");
+            tracing::error!("Failed to connect to Splitscreen Club daemon at {ws_url}: {e}");
             Err(StatusCode::BAD_GATEWAY)
         }
     }

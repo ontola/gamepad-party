@@ -1,4 +1,4 @@
-"""Check that a completed race restarts without ending the Gamepad Party session."""
+"""Check that a completed race restarts without ending the Splitscreen Club session."""
 import argparse
 import importlib.util
 import json
@@ -45,7 +45,7 @@ def main():
             assert host.process.poll() is None, 'Game process exited after the first race'
             host.disconnect()
             assert host.exit_code(timeout=8) == 0
-            print('PASS race finished, restarted and kept the same Gamepad Party session and process')
+            print('PASS race finished, restarted and kept the same Splitscreen Club session and process')
 
 
 if __name__ == '__main__':

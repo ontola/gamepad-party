@@ -38,6 +38,7 @@ void main() {
   test('sign-in links work on the old and the new address', () {
     for (final origin in [
       'https://gamenight.ontola.io',
+      'https://splitscreen.club',
       'https://gamepad.party'
     ]) {
       expect(

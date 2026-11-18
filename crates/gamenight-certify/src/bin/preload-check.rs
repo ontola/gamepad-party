@@ -1,4 +1,4 @@
-//! Measure warm starts, Back and Skip next on a running Gamepad Party host.
+//! Measure warm starts, Back and Skip next on a running Splitscreen Club host.
 //!
 //! The Rust twin of `scripts/preload-check.py`, for machines without Python:
 //!
@@ -96,13 +96,13 @@ struct Host {
     changes: std::sync::Arc<std::sync::Mutex<Vec<Value>>>,
     /// The host's `error` replies, in order.
     errors: std::sync::Arc<std::sync::Mutex<Vec<String>>>,
-    /// The host closed the connection (Gamepad Party was closed).
+    /// The host closed the connection (Splitscreen Club was closed).
     closed: std::sync::Arc<std::sync::atomic::AtomicBool>,
 }
 
 /// Rows are written after each game, so stopping here keeps them.
 fn host_gone() -> ! {
-    println!("the host went away (Gamepad Party closed); stopping");
+    println!("the host went away (Splitscreen Club closed); stopping");
     std::process::exit(2)
 }
 

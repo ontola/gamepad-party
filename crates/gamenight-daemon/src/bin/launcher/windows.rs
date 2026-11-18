@@ -170,7 +170,7 @@ impl Updates {
                         append_log(
                             &log,
                             &format!(
-                                "Update downloaded ({version}); waiting for Gamepad Party to close."
+                                "Update downloaded ({version}); waiting for Splitscreen Club to close."
                             ),
                         );
                         return;
@@ -215,7 +215,7 @@ impl Updates {
             append_log(&self.log, "Restart requested but no update is pending.");
             return false;
         };
-        if let Err(error) = spawn_splash(&self.files.splash, "Updating Gamepad Party\u{2026}") {
+        if let Err(error) = spawn_splash(&self.files.splash, "Updating Splitscreen Club\u{2026}") {
             append_log(&self.log, &format!("Update cover unavailable: {error}"));
         }
         // Silent: the cover is the progress, and nobody is at a keyboard.
@@ -314,7 +314,7 @@ pub fn show_update_cover(flag: PathBuf, text: String) {
     let _ = COVER_FLAG.set((flag, std::time::Instant::now()));
     let _ = COVER_TEXT.set(text);
     let class: Vec<u16> = "GameNightUpdateCover\0".encode_utf16().collect();
-    let title: Vec<u16> = "GameNight\0".encode_utf16().collect();
+    let title: Vec<u16> = "Splitscreen Club\0".encode_utf16().collect();
     unsafe {
         let instance = GetModuleHandleW(std::ptr::null());
         let mut window_class: WNDCLASSW = std::mem::zeroed();
@@ -412,7 +412,7 @@ unsafe extern "system" fn cover_proc(
             SetTextColor(dc, 0x00f8_f1f2);
             let mut text: Vec<u16> = COVER_TEXT
                 .get()
-                .map_or("Updating Gamepad Party\u{2026}", String::as_str)
+                .map_or("Updating Splitscreen Club\u{2026}", String::as_str)
                 .encode_utf16()
                 .collect();
             DrawTextW(
@@ -466,11 +466,11 @@ fn utc_now() -> String {
 }
 pub fn show_error(message: &str) {
     use windows_sys::Win32::UI::WindowsAndMessaging::{MessageBoxW, MB_ICONERROR, MB_OK};
-    let text: Vec<u16> = format!("Gamepad Party could not start or close.\n\n{message}")
+    let text: Vec<u16> = format!("Splitscreen Club could not start or close.\n\n{message}")
         .encode_utf16()
         .chain(Some(0))
         .collect();
-    let title: Vec<u16> = "Gamepad Party".encode_utf16().chain(Some(0)).collect();
+    let title: Vec<u16> = "Splitscreen Club".encode_utf16().chain(Some(0)).collect();
     unsafe {
         MessageBoxW(
             std::ptr::null_mut(),
@@ -503,7 +503,7 @@ pub fn show_welcome(flag: PathBuf) {
     };
     let _ = WELCOME.set((flag, std::time::Instant::now()));
     let class: Vec<u16> = "GameNightWelcome\0".encode_utf16().collect();
-    let title: Vec<u16> = "GameNight\0".encode_utf16().collect();
+    let title: Vec<u16> = "Splitscreen Club\0".encode_utf16().collect();
     unsafe {
         let instance = GetModuleHandleW(std::ptr::null());
         let mut window_class: WNDCLASSW = std::mem::zeroed();
@@ -583,7 +583,7 @@ unsafe extern "system" fn welcome_proc(
                 .clamp(0.0, 1.0);
             let text = lines
                 .next()
-                .unwrap_or("Starting Gamepad Party\u{2026}")
+                .unwrap_or("Starting Splitscreen Club\u{2026}")
                 .to_owned();
             let mut shown = WELCOME_SHOWN.lock().unwrap();
             // Ease toward the step, then creep on while it takes long, so the
@@ -641,9 +641,9 @@ unsafe extern "system" fn welcome_proc(
                 SelectObject(dc, previous);
                 DeleteObject(f);
             };
-            draw("Gamepad Party", 54, 64, 54, 700, 0x00f8_f1f2);
+            draw("Splitscreen Club", 54, 64, 54, 700, 0x00f8_f1f2);
             let text = if text.is_empty() {
-                "Starting Gamepad Party\u{2026}".to_owned()
+                "Starting Splitscreen Club\u{2026}".to_owned()
             } else {
                 text
             };

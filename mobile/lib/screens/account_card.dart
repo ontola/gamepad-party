@@ -63,7 +63,7 @@ class _AccountCardState extends State<AccountCard> {
         builder: (context) => AlertDialog(
               title: const Text('Delete your account?'),
               content: const Text(
-                  'Your saved player, faces, likes, play history and purchases are removed from Gamepad Party for good. The player on this device stays. Records of purchases are kept for 7 years, as tax law requires.'),
+                  'Your saved player, faces, likes, play history and purchases are removed from Splitscreen Club for good. The player on this device stays. Records of purchases are kept for 7 years, as tax law requires.'),
               actions: [
                 TextButton(
                     onPressed: () => Navigator.pop(context, false),

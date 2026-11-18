@@ -297,7 +297,7 @@ EntryStatus entryStatus(PlaylistView view, int i) {
 /// What a game says when it has no settings to show (yet).
 String noSettingsHint(String title, {required bool playing}) => playing
     ? 'This game has no settings to change.'
-    : '$title has not shared its settings with this Gamepad Party yet. '
+    : '$title has not shared its settings with this Splitscreen Club yet. '
         'They show up here once it has loaded one time.';
 
 /// The settings of one game, current or still in the queue, in a sheet:

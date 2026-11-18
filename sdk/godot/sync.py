@@ -68,13 +68,13 @@ def main() -> int:
         print(problem, file=sys.stderr)
     if problems:
         print(
-            "\nThe Gamepad Party addon is out of date. From a gamenight checkout, run:\n"
+            "\nThe Splitscreen Club addon is out of date. From a gamenight checkout, run:\n"
             "    python sdk/godot/sync.py path/to/your/game",
             file=sys.stderr,
         )
         return 1
     if args.check:
-        print("Gamepad Party addon matches the SDK")
+        print("Splitscreen Club addon matches the SDK")
     return 0
 
 

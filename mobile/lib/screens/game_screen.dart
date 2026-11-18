@@ -186,7 +186,7 @@ class GameScreen extends StatelessWidget {
                       'connect. Games with a phone screen open here by themselves.')
                 else if (!linked && state.host != null) ...[
                   const Hint(
-                      'You are connected to a Gamepad Party, but your character has not been '
+                      'You are connected to a Splitscreen Club, but your character has not been '
                       'picked up yet. Enter the room code or scan the QR in the lobby.'),
                   const SizedBox(height: 12),
                   FilledButton(
@@ -333,7 +333,7 @@ class _AppCardState extends State<AppCard> with WidgetsBindingObserver {
         hint = !Apps.supported
             ? 'Get $name from your app store, then open it to play.'
             : canInstall
-                ? 'Gamepad Party installs it from the Gamepad Party computer.'
+                ? 'Splitscreen Club installs it from the Splitscreen Club computer.'
                 : 'Get $name from your app store, then open it to play.';
     }
     return Section(title: name, children: [
@@ -352,7 +352,7 @@ class _AppCardState extends State<AppCard> with WidgetsBindingObserver {
           alignment: Alignment.centerLeft,
           child: TextButton(
               onPressed: _install,
-              child: const Text('Update from the Gamepad Party computer')),
+              child: const Text('Update from the Splitscreen Club computer')),
         ),
     ]);
   }

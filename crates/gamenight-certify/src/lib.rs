@@ -324,7 +324,7 @@ pub async fn certify(config: Config) -> Result<Report, String> {
     let daemon = tokio::spawn(gamenight_daemon::run_with_library(listener, library));
 
     println!("─────────────────────────────────────────────────────");
-    println!(" Gamepad Party conformance · {game}");
+    println!(" Splitscreen Club conformance · {game}");
     println!(" daemon: ws://{addr}");
 
     // Spawn and own the game process ourselves (if launch mode). Token-less:
