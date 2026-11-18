@@ -431,12 +431,11 @@ void main() {
       await tester.tapAt(const Offset(10, 10));
       await tester.pumpAndSettle();
 
-      // A game that never loaded here says why there is nothing yet.
-      await tester
-          .tap(find.byKey(const ValueKey('settings-button-growing-guns')));
-      await tester.pumpAndSettle();
-      expect(
-          find.textContaining('once it has loaded one time'), findsOneWidget);
+      // A game without settings (it never loaded here) has no gear, and
+      // every game shows a picture instead of a status icon.
+      expect(find.byKey(const ValueKey('settings-button-growing-guns')),
+          findsNothing);
+      expect(find.byType(GameThumbnail), findsNWidgets(3));
       await close(tester);
     });
   });

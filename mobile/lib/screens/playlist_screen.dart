@@ -337,9 +337,11 @@ Future<void> showGameSettings(BuildContext context, AppState state,
   );
 }
 
-/// The gear next to a game: opens its settings. Hidden for guests and
-/// phones that cannot change the room.
-class GameSettingsButton extends StatelessWidget {
+/// The gear next to a game: opens its settings. Shown only once the game
+/// is known to have something to set (room settings, your own, or buttons
+/// while it plays), and never for guests or phones that cannot change the
+/// room.
+class GameSettingsButton extends StatefulWidget {
   final AppState state;
   final String? game;
   final String title;
@@ -352,16 +354,125 @@ class GameSettingsButton extends StatelessWidget {
       this.playing = false});
 
   @override
+  State<GameSettingsButton> createState() => _GameSettingsButtonState();
+}
+
+class _GameSettingsButtonState extends State<GameSettingsButton> {
+  bool _has = false;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _check();
+    // A game shares its settings once it loads: look again until it has.
+    _timer = Timer.periodic(const Duration(seconds: 8), (_) {
+      if (!_has) _check();
+    });
+  }
+
+  @override
+  void didUpdateWidget(GameSettingsButton old) {
+    super.didUpdateWidget(old);
+    if (old.game != widget.game || old.playing != widget.playing) {
+      _has = false;
+      _check();
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _check() async {
+    final controls = roomControlsFor(widget.state);
+    if (controls == null || widget.state.isGuest) return;
+    final game = widget.game;
+    var has = false;
+    try {
+      has = await controls.settings(game: game) != null ||
+          await controls.playerSettings(game: game) != null;
+      if (!has && widget.playing) {
+        final actions = await controls.actions();
+        has = actions != null &&
+            actions.actions.isNotEmpty &&
+            (game == null || actions.game == game);
+      }
+    } catch (_) {
+      return; // Keep what we showed; the next check tries again.
+    }
+    if (mounted && game == widget.game && has != _has) {
+      setState(() => _has = has);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    if (state.isGuest || roomControlsFor(state) == null) {
+    if (!_has ||
+        widget.state.isGuest ||
+        roomControlsFor(widget.state) == null) {
       return const SizedBox.shrink();
     }
     return IconButton(
-      key: ValueKey('settings-button-${game ?? ''}'),
-      tooltip: '$title settings',
+      key: ValueKey('settings-button-${widget.game ?? ''}'),
+      tooltip: '${widget.title} settings',
       icon: const Icon(Icons.settings_outlined),
-      onPressed: () => showGameSettings(context, state,
-          game: game, title: title, playing: playing),
+      onPressed: () => showGameSettings(context, widget.state,
+          game: widget.game, title: widget.title, playing: widget.playing),
+    );
+  }
+}
+
+/// A small square picture of a game: its icon from the store, else its
+/// cover, else a tile in its colour with its first letter.
+class GameThumbnail extends StatelessWidget {
+  final CatalogGame? game;
+  final String title;
+  final double size;
+  const GameThumbnail(
+      {super.key, required this.game, required this.title, this.size = 44});
+
+  @override
+  Widget build(BuildContext context) {
+    final game = this.game;
+    Widget letter([BuildContext? _, Object? __, StackTrace? ___]) => ColoredBox(
+          color: game?.color ??
+              HSLColor.fromAHSL(1, (title.hashCode % 360).toDouble(), 0.45, 0.4)
+                  .toColor(),
+          child: Center(
+            child: Text(title.isEmpty ? '?' : title.characters.first.toUpperCase(),
+                style: TextStyle(
+                    fontSize: size * 0.45,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white)),
+          ),
+        );
+    final icon = game?.icon;
+    final Widget image;
+    if (icon?.bytes != null) {
+      image = Image.memory(icon!.bytes!,
+          fit: BoxFit.cover, gaplessPlayback: true, errorBuilder: letter);
+    } else if (icon?.url != null) {
+      image = Image.network(icon!.url.toString(),
+          fit: BoxFit.cover, errorBuilder: letter);
+    } else if (game?.coverBytes != null) {
+      image = Image.memory(game!.coverBytes!,
+          fit: BoxFit.cover, gaplessPlayback: true, errorBuilder: letter);
+    } else if (game?.coverUrl != null) {
+      image = Image.network(game!.coverUrl.toString(),
+          fit: BoxFit.cover, errorBuilder: letter);
+    } else {
+      image = letter();
+    }
+    return Semantics(
+      label: title,
+      image: true,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(size * 0.22),
+        child: SizedBox.square(dimension: size, child: image),
+      ),
     );
   }
 }
@@ -575,6 +686,7 @@ class NowAndNext extends StatefulWidget {
 class _NowAndNextState extends State<NowAndNext> {
   PlaylistView? _view;
   Timer? _timer;
+  var _catalog = const <String, CatalogGame>{};
 
   AppState get state => widget.state;
 
@@ -583,12 +695,23 @@ class _NowAndNextState extends State<NowAndNext> {
     super.initState();
     _load();
     _timer = Timer.periodic(const Duration(seconds: 4), (_) => _load());
+    if (!widget.compact) _loadCatalog();
   }
 
   @override
   void dispose() {
     _timer?.cancel();
     super.dispose();
+  }
+
+  /// Pictures for the games: the store's catalog, loaded once.
+  Future<void> _loadCatalog() async {
+    try {
+      final games = await Catalog.instance.games();
+      if (mounted) setState(() => _catalog = {for (final g in games) g.id: g});
+    } catch (_) {
+      // No pictures: the tiles show the games' first letters.
+    }
   }
 
   Future<void> _load() async {
@@ -734,10 +857,15 @@ class _NowAndNextState extends State<NowAndNext> {
           ListTile(
             key: const ValueKey('now-playing'),
             onTap: playing == null ? null : () => _open(view!, playing),
-            leading: Icon(
-                nowTitle == null ? Icons.weekend_outlined : Icons.play_circle,
-                size: 32,
-                color: nowTitle == null ? GnColors.muted : GnColors.ok),
+            leading: nowTitle == null
+                ? const SizedBox.square(
+                    dimension: 52,
+                    child: Icon(Icons.weekend_outlined,
+                        size: 32, color: GnColors.muted))
+                : GameThumbnail(
+                    game: nowGame == null ? null : _catalog[nowGame],
+                    title: nowTitle,
+                    size: 52),
             title: Text(nowTitle ?? 'In the lobby',
                 style:
                     const TextStyle(fontSize: 19, fontWeight: FontWeight.w800)),
@@ -803,11 +931,7 @@ class _NowAndNextState extends State<NowAndNext> {
       key: ValueKey('upcoming-${entry.game}-$i'),
       dense: true,
       onTap: () => _open(view, i),
-      leading: Icon(
-          status == EntryStatus.upNext
-              ? Icons.skip_next_rounded
-              : Icons.circle_outlined,
-          color: GnColors.muted),
+      leading: GameThumbnail(game: _catalog[entry.game], title: entry.title),
       title: Text(entry.title,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
