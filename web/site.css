@@ -1,4 +1,4 @@
-/* Outfit is the GameNight UI face (app and Game Room lobby); Bungee is the wordmark only. */
+/* Outfit is the Splitscreen Club UI face (app and Game Room lobby); Bungee is the wordmark only. */
 @font-face { font-family:Outfit; src:url(/web/fonts/Outfit-wght.woff2) format("woff2"); font-weight:100 900; font-display:swap; }
 :root { --bg:#0d1020; --text:#eef0fc; --muted:#a8adc4; --accent:#7565ee; --card-bg:#181e30; --border:#343b53; color-scheme:dark; }
 body { margin:0; background:var(--bg); color:var(--text); font:16px/1.6 Outfit,system-ui,-apple-system,"Segoe UI",sans-serif; }

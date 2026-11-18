@@ -209,8 +209,8 @@ class GameNightWordmark extends StatelessWidget {
         child: Text.rich(
           const TextSpan(children: [
             TextSpan(
-                text: 'Splitscreen ', style: TextStyle(color: Color(0xFFFFB454))),
-            TextSpan(text: 'Club', style: TextStyle(color: Color(0xFFA78BFA))),
+                text: 'Splitscreen', style: TextStyle(color: Color(0xFFFFB454))),
+            TextSpan(text: '.Club', style: TextStyle(color: Color(0xFFA78BFA))),
           ]),
           maxLines: 1,
           style: TextStyle(fontFamily: 'Bungee', fontSize: size, height: 1.3),

@@ -21,7 +21,7 @@ const PAD_HOP := 0.35
 var join_hint := false  # nobody in the room yet: keep A Join up
 var font: FontFile
 var bold: FontFile
-var wordmark: FontFile              # Bungee, the GameNight wordmark only
+var wordmark: FontFile              # Bungee, the Splitscreen.Club wordmark only
 var _label_font: FontFile
 var _label_bold: FontFile
 var camera: Camera3D
@@ -85,7 +85,7 @@ func _ready() -> void:
 
 ## Fonts load straight from the files, so the project runs without an editor
 ## import step (.godot/ and *.import are ignored). Outfit is the GameNight UI
-## face; Bungee is the GameNight wordmark, as in the app and on the website.
+## face; Bungee is the Splitscreen.Club wordmark, as in the app and on the website.
 static func load_font(weight := 600, msdf := false) -> FontFile:
 	var f := FontFile.new()
 	f.load_dynamic_font("res://assets/fonts/outfit-%d.woff2" % weight)
@@ -405,7 +405,7 @@ func _logo() -> void:
 	var y := 8.0
 	var z := Layout.BACK + 0.12
 	var sign_texture := screen("logo", Vector2i(1280, 320), func(canvas: Control):
-		var words := [["Splitscreen ", AMBER], ["Club", NIGHT_LILAC]]
+		var words := [["Splitscreen", AMBER], [".Club", NIGHT_LILAC]]
 		var size := 180
 		var widths := words.map(func(w): return wordmark.get_string_size(w[0], HORIZONTAL_ALIGNMENT_LEFT, -1, size).x)
 		var total: float = widths[0] + widths[1]
