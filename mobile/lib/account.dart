@@ -181,8 +181,8 @@ class CloudApi {
       this.token,
       String? origin,
       this.browserCookies = kIsWeb})
-      : base = base ?? Uri.parse(hostedOrigin),
-        origin = origin ?? (base ?? Uri.parse(hostedOrigin)).origin,
+      : base = base ?? Uri.parse(apiOrigin),
+        origin = origin ?? (base ?? Uri.parse(apiOrigin)).origin,
         _client = client ?? http.Client();
 
   static const _timeout = Duration(seconds: 15);

@@ -50,4 +50,19 @@ void main() {
             Uri.parse('https://example.com/auth/app#code=12345678')),
         isNull);
   });
+
+  test('the web build calls the API on the site name it was loaded from', () {
+    // The API sends no CORS headers, so the website's other names must not
+    // be sent across to gamenight.ontola.io.
+    expect(apiOriginFor(Uri.parse('https://splitscreen.club/app/#/room')),
+        'https://splitscreen.club');
+    expect(apiOriginFor(Uri.parse('https://gamenight.ontola.io/app/')),
+        'https://gamenight.ontola.io');
+    // Phones, the GameNight PC's own web server and development builds keep
+    // using the hosted API.
+    expect(apiOriginFor(null), hostedOrigin);
+    expect(apiOriginFor(Uri.parse('http://192.168.1.20:7913/mobile')),
+        hostedOrigin);
+    expect(apiOriginFor(Uri.parse('http://localhost:5000/')), hostedOrigin);
+  });
 }

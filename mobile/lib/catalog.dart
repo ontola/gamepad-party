@@ -6,8 +6,10 @@ import 'dart:ui' show Color;
 
 import 'package:http/http.dart' as http;
 
+import 'link.dart';
+
 /// Where the store and its game pages live.
-final storeBase = Uri.parse('https://gamenight.ontola.io');
+final storeBase = Uri.parse(apiOrigin);
 
 /// An image the catalog links, or embeds as a `data:` URI.
 class CatalogImage {

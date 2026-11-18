@@ -30,7 +30,7 @@ class ReportService {
   ReportService(this.prefs,
       {http.Client? client, Uri? endpoint, this.context, this.requestHeaders})
       : _client = client ?? http.Client(),
-        endpoint = endpoint ?? Uri.parse('$hostedOrigin/v1/reports') {
+        endpoint = endpoint ?? Uri.parse('$apiOrigin/v1/reports') {
     try {
       final saved =
           jsonDecode(prefs.getString('report_outbox') ?? '[]') as List;

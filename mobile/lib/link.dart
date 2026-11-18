@@ -8,6 +8,8 @@
 // When the lobby is online, its QR points at the website instead:
 //   https://gamenight.ontola.io/studio#pair=<ticket>        a seat, needs sign-in
 //   https://gamenight.ontola.io/studio#room=ABC234          a hosted room code
+import 'package:flutter/foundation.dart' show kIsWeb;
+
 const int defaultWebPort = 7913;
 const String hostedOrigin = 'https://gamenight.ontola.io';
 
@@ -18,6 +20,18 @@ const Set<String> hostedOrigins = {
   'https://splitscreen.club',
   'https://gamepad.party'
 };
+
+/// Where the app calls the website's API. The web build is served by the
+/// site itself, under any of its names, and must call the name it was loaded
+/// from: the API sends no CORS headers and the sign-in cookie belongs to that
+/// name. Everywhere else (phones, a web build on the GameNight PC or in
+/// development) it is [hostedOrigin].
+final String apiOrigin = apiOriginFor(kIsWeb ? Uri.base : null);
+
+String apiOriginFor(Uri? page) =>
+    page != null && hostedOrigins.contains(page.origin)
+        ? page.origin
+        : hostedOrigin;
 
 final RegExp _roomCode = RegExp(r'^[A-HJ-NP-Z2-9]{6}$');
 
