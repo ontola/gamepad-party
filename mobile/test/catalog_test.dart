@@ -108,4 +108,13 @@ void main() {
     expect((await catalog.games()).length, 3);
     expect(calls, 2);
   });
+
+  test('images on any of the site names load from the store the app uses', () {
+    // Outside a web build the store is gamenight.ontola.io; on the web it is
+    // the name the app was loaded from, so images never need CORS.
+    expect(onStore(Uri.parse('https://splitscreen.club/v1/game-media/a.png')),
+        Uri.parse('https://gamenight.ontola.io/v1/game-media/a.png'));
+    expect(onStore(Uri.parse('https://example.com/a.png')),
+        Uri.parse('https://example.com/a.png'));
+  });
 }

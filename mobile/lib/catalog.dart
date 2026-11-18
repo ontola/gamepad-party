@@ -11,6 +11,13 @@ import 'link.dart';
 /// Where the store and its game pages live.
 final storeBase = Uri.parse(apiOrigin);
 
+/// The catalog names its images on the site's main address. A web build on
+/// another of the site's names fetches them from its own name instead, since
+/// the site sends no CORS headers and Flutter web loads images with fetch.
+Uri onStore(Uri uri) => hostedOrigins.contains(uri.origin)
+    ? uri.replace(scheme: storeBase.scheme, host: storeBase.host)
+    : uri;
+
 /// An image the catalog links, or embeds as a `data:` URI.
 class CatalogImage {
   final Uri? url;
@@ -32,7 +39,7 @@ class CatalogImage {
       }
     }
     if (uri.scheme == 'https' || uri.scheme == 'http') {
-      return CatalogImage(url: uri);
+      return CatalogImage(url: onStore(uri));
     }
     if (!uri.hasScheme && value.startsWith('/')) {
       return CatalogImage(url: storeBase.resolveUri(uri));
@@ -221,7 +228,7 @@ class CatalogGame {
         }
       } else if (uri != null &&
           (uri.scheme == 'https' || uri.scheme == 'http')) {
-        coverUrl = uri;
+        coverUrl = onStore(uri);
       } else if (uri != null && !uri.hasScheme) {
         coverUrl = storeBase.resolveUri(uri);
       }
