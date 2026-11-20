@@ -6,7 +6,7 @@ De Splitscreen Club player-app (Flutter, `ontola/gamepad-party`, map `mobile/`) 
 
 ## Wat er al is (niet aanpassen tenzij het faalt)
 
-- `.github/workflows/mobile.yml`, job `ios` (runner `macos-latest`, alleen op `main` en `workflow_dispatch`).
+- `.github/workflows/mobile.yml`, job `ios` (runner `xcode-27` met Xcode 27.1, want Apple eist vanaf april 2027 de iOS 27 SDK; alleen op `main` en `workflow_dispatch`).
   - Zonder secrets: `flutter build ios --release --no-codesign` (alleen compilecheck).
   - Met secrets: `mobile/ios/testflight.py prepare` maakt via de App Store Connect API per run een nieuw Apple Distribution-certificaat en een `IOS_APP_STORE`-profiel ("Splitscreen Club CI <run id>"), registreert de bundle ID als die nog niet bestaat, schrijft `ios/Flutter/Signing.xcconfig` en `ExportOptions.plist`, dan `flutter build ipa`, upload met `xcrun altool --upload-app`, en `testflight.py cleanup` trekt certificaat en profiel weer in.
 - Bundle ID: `io.ontola.gamenight`. Buildnummer = `github.run_number` (zelfde als de Android-APK). Versie komt uit `mobile/pubspec.yaml` (`0.1.0`).
