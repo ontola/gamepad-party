@@ -1,10 +1,14 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../app_state.dart';
 import '../assistant.dart';
+import '../app_update.dart';
 import '../layout.dart';
+import '../link.dart';
 import '../room_controls.dart';
 import '../storage/phone_store.dart';
 import '../theme.dart';
@@ -119,8 +123,7 @@ class _ModsScreenState extends State<ModsScreen> {
     final store = _store;
     final children = <Widget>[];
     if (store == null) {
-      children.add(const Hint(
-          'Mods are kept in the Splitscreen Club app on your phone or computer, not in the browser.'));
+      children.add(const GetTheApp());
     } else if (!store.signedIn) {
       children.add(const Hint(
           'Sign in to make mods. They are kept in your account, so you can play them wherever you sit.'));
@@ -413,6 +416,79 @@ class _ModScreenState extends State<ModScreen> {
               ),
           ],
         ]),
+      ),
+    );
+  }
+}
+
+/// Shown in the browser, where mods cannot be kept: the reason to install
+/// the app, with a download for every platform and the visitor's own first.
+class GetTheApp extends StatelessWidget {
+  const GetTheApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final platform = defaultTargetPlatform;
+    void open(Uri url) =>
+        unawaited(launchUrl(url, mode: LaunchMode.externalApplication));
+    final android = (
+      key: 'get-android',
+      label: 'Download for Android',
+      icon: Icons.android,
+      url: AppUpdate.apk,
+      mine: platform == TargetPlatform.android,
+    );
+    final windows = (
+      key: 'get-windows',
+      label: 'Download for Windows',
+      icon: Icons.desktop_windows_outlined,
+      url: Uri.parse('$hostedOrigin/download/GameNight-Setup.exe'),
+      mine: platform == TargetPlatform.windows,
+    );
+    final mac = (
+      key: 'get-mac',
+      label: 'Download for Mac',
+      icon: Icons.laptop_mac,
+      url: Uri.parse('$hostedOrigin/download/GameNight.dmg'),
+      mine: platform == TargetPlatform.macOS,
+    );
+    final links = [android, windows, mac]
+      ..sort((a, b) => (b.mine ? 1 : 0) - (a.mine ? 1 : 0));
+    return Card(
+      key: const ValueKey('get-the-app'),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Make your own games in the app',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+            const SizedBox(height: 6),
+            const Hint(
+                'A mod is your own copy of a game that the Assistant changes '
+                'while you play. Mods live in the Splitscreen Club app on your '
+                'phone or computer, so install it to make one.'),
+            const SizedBox(height: 14),
+            Wrap(spacing: 8, runSpacing: 8, children: [
+              for (final link in links)
+                link.mine
+                    ? FilledButton.icon(
+                        key: ValueKey(link.key),
+                        onPressed: () => open(link.url),
+                        icon: Icon(link.icon, size: 18),
+                        label: Text(link.label))
+                    : OutlinedButton.icon(
+                        key: ValueKey(link.key),
+                        onPressed: () => open(link.url),
+                        icon: Icon(link.icon, size: 18),
+                        label: Text(link.label)),
+            ]),
+            const SizedBox(height: 10),
+            Hint(platform == TargetPlatform.iOS
+                ? 'The iPhone app is in testing. Ask for an invite.'
+                : 'On iPhone? The app is in testing. Ask for an invite.'),
+          ],
+        ),
       ),
     );
   }
