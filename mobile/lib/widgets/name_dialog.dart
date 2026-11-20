@@ -6,7 +6,8 @@ import '../theme.dart';
 
 /// Asks a new player for a name before a scanned room shows them on the TV.
 /// Leaving it empty keeps the random name; either way it asks only once.
-Future<void> askName(BuildContext context, AppState state) async {
+Future<void> askName(BuildContext context, AppState state,
+    {String button = 'Join room'}) async {
   final input = TextEditingController();
   final name = await showDialog<String>(
       context: context,
@@ -42,7 +43,7 @@ Future<void> askName(BuildContext context, AppState state) async {
             ),
           ]),
           actions: [
-            FilledButton(onPressed: done, child: const Text('Join room')),
+            FilledButton(onPressed: done, child: Text(button)),
           ],
         );
       });

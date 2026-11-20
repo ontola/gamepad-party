@@ -491,18 +491,6 @@ class RoomScreenState extends State<RoomScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   const SizedBox(height: 24),
-                  if (!state.joinedRoom) ...[
-                    const Text('Welcome to Splitscreen Club',
-                        key: ValueKey('welcome'),
-                        style: TextStyle(
-                            fontSize: 24, fontWeight: FontWeight.w800)),
-                    const SizedBox(height: 8),
-                    const Hint(
-                        'Games on the TV, played together with controllers. '
-                        'This app is your player: your name, your face and '
-                        "tonight's playlist."),
-                    const SizedBox(height: 20),
-                  ],
                   const Text('Join a room',
                       style:
                           TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
@@ -553,6 +541,8 @@ class RoomScreenState extends State<RoomScreen> {
                     ),
                   ),
                   if (state.host != null) _knownHost(),
+                  const SizedBox(height: 24),
+                  PlayerSetup(state: state),
                   const SizedBox(height: 24),
                   const Center(child: Hint('No room yet?')),
                   const SizedBox(height: 8),

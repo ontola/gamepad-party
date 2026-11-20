@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../app_state.dart';
 import '../player_face.dart';
 import '../screens/face_editor_screen.dart';
+import '../screens/sign_in_screen.dart';
+import 'name_dialog.dart';
 import '../theme.dart';
 
 /// The first thing a new player sees after scanning the QR: one card with
@@ -279,4 +281,95 @@ class _MeetYourPlayerState extends State<MeetYourPlayer> {
       ]),
     );
   }
+}
+
+/// What a new player still can do besides joining: a name, a face and an
+/// account. Shown on the join page until all three are done.
+class PlayerSetup extends StatelessWidget {
+  final AppState state;
+  const PlayerSetup({super.key, required this.state});
+
+  @override
+  Widget build(BuildContext context) {
+    final items = [
+      _SetupItem(
+        key: const ValueKey('setup-name'),
+        done: state.choseName,
+        icon: Icons.badge_outlined,
+        title: 'Pick your player name',
+        hint: 'Everyone sees it on the TV.',
+        action: 'Name',
+        onTap: () => askName(context, state, button: 'Save'),
+      ),
+      _SetupItem(
+        key: const ValueKey('setup-face'),
+        done: state.drewFace,
+        icon: Icons.brush_outlined,
+        title: 'Draw your face',
+        hint: 'It goes on your character in every game.',
+        action: 'Draw',
+        onTap: () => FaceEditorScreen.open(context, state),
+      ),
+      _SetupItem(
+        key: const ValueKey('setup-account'),
+        done: state.signedIn,
+        icon: Icons.mail_outline,
+        title: 'Register your account',
+        hint: 'Keep your player, faces and settings on every device.',
+        action: 'Register',
+        onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
+            builder: (_) => SignInScreen(state: state))),
+      ),
+    ];
+    final left = items.where((t) => !t.done).length;
+    if (left == 0) return const SizedBox.shrink();
+    return Section(
+      key: const ValueKey('player-setup'),
+      title: 'Set up your player',
+      children: items,
+    );
+  }
+}
+
+class _SetupItem extends StatelessWidget {
+  final bool done;
+  final IconData icon;
+  final String title;
+  final String hint;
+  final String action;
+  final VoidCallback onTap;
+  const _SetupItem(
+      {super.key,
+      required this.done,
+      required this.icon,
+      required this.title,
+      required this.hint,
+      required this.action,
+      required this.onTap});
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: Row(children: [
+          Icon(done ? Icons.check_circle : icon,
+              color: done ? GnColors.ok : GnColors.muted),
+          const SizedBox(width: 12),
+          Expanded(
+            child:
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(title,
+                  style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: done ? GnColors.muted : GnColors.text,
+                      decoration: done ? TextDecoration.lineThrough : null,
+                      decorationColor: GnColors.muted)),
+              if (!done) Hint(hint),
+            ]),
+          ),
+          if (!done) ...[
+            const SizedBox(width: 8),
+            OutlinedButton(onPressed: onTap, child: Text(action)),
+          ],
+        ]),
+      );
 }

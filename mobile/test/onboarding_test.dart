@@ -166,13 +166,17 @@ void main() {
     await tester.pumpWidget(
         RepaintBoundary(key: _preview, child: GameNightApp(state: state)));
     await tester.pump(const Duration(milliseconds: 400));
-    expect(find.byKey(const ValueKey('welcome')), findsOneWidget);
     expect(find.text('Scan the QR on the TV'), findsOneWidget);
     expect(find.text('Your session'), findsNothing);
     expect(find.text('Could not reach Splitscreen Club'), findsNothing);
     await tester.scrollUntilVisible(
         find.byKey(const ValueKey('known-host')), 200,
         scrollable: find.byType(Scrollable).first);
+    await tester.scrollUntilVisible(
+        find.byKey(const ValueKey('setup-account')), 200,
+        scrollable: find.byType(Scrollable).first);
+    expect(find.byKey(const ValueKey('player-setup')), findsOneWidget);
+    expect(find.text('Register your account'), findsOneWidget);
     await _capture(tester, 'first-open');
     await tester.tap(find.text('Forget'));
     await tester.pump(const Duration(milliseconds: 400));
