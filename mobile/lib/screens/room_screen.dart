@@ -132,7 +132,7 @@ class RoomScreenState extends State<RoomScreen> {
     await _askNameOnce();
     // On a GameNight's Wi-Fi the code picks up a character there; otherwise
     // it is an online room, like the website's join page.
-    if (state.host != null) {
+    if (state.host != null && state.sessionError == null) {
       await _run(() => state.joinRoom(code, remember: _rememberJoin));
     } else {
       await state.rememberRoomInvitation(
@@ -158,7 +158,11 @@ class RoomScreenState extends State<RoomScreen> {
               ),
             if (state.inHostedRoom)
               ..._hostedCards()
-            else if (!connected)
+            // A Splitscreen Club PC this phone knew, but no character there
+            // yet: the same clean join page, with that PC as a footnote.
+            else if (!connected ||
+                !((state.session?.linked ?? false) ||
+                    (state.session?.waiting ?? false)))
               ..._connectCards()
             else
               ..._roomCards(),
@@ -393,8 +397,8 @@ class RoomScreenState extends State<RoomScreen> {
                               : 'Your player will no longer appear automatically.';
                         }),
                 title: const Text('Main player on this Splitscreen Club'),
-                subtitle:
-                    const Text('Wait at the door when Splitscreen Club starts.'),
+                subtitle: const Text(
+                    'Wait at the door when Splitscreen Club starts.'),
               ),
               if (!room.mainPlayer)
                 SwitchListTile(
@@ -461,7 +465,8 @@ class RoomScreenState extends State<RoomScreen> {
       ]);
 
   List<Widget> _connectCards() => [
-        if (state.sessionError != null)
+        if (state.sessionError != null &&
+            (state.host == null || state.pendingRoomDestination != null))
           Section(
               title: state.pendingRoomDestination != null
                   ? 'Could not join this room'
@@ -486,9 +491,23 @@ class RoomScreenState extends State<RoomScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   const SizedBox(height: 24),
+                  if (!state.joinedRoom) ...[
+                    const Text('Welcome to Splitscreen Club',
+                        key: ValueKey('welcome'),
+                        style: TextStyle(
+                            fontSize: 24, fontWeight: FontWeight.w800)),
+                    const SizedBox(height: 8),
+                    const Hint(
+                        'Games on the TV, played together with controllers. '
+                        'This app is your player: your name, your face and '
+                        "tonight's playlist."),
+                    const SizedBox(height: 20),
+                  ],
                   const Text('Join a room',
                       style:
-                          TextStyle(fontSize: 22, fontWeight: FontWeight.w700)),
+                          TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
+                  const SizedBox(height: 4),
+                  const Hint('The QR and the room code are on the TV.'),
                   const SizedBox(height: 16),
                   FilledButton.icon(
                     style: FilledButton.styleFrom(
@@ -533,6 +552,7 @@ class RoomScreenState extends State<RoomScreen> {
                       ],
                     ),
                   ),
+                  if (state.host != null) _knownHost(),
                   const SizedBox(height: 24),
                   const Center(child: Hint('No room yet?')),
                   const SizedBox(height: 8),
@@ -547,6 +567,35 @@ class RoomScreenState extends State<RoomScreen> {
           ),
         ),
       ];
+
+  /// The Splitscreen Club PC this phone last used on Wi-Fi. Small: it may
+  /// be off or in another house; the code and QR above work either way.
+  Widget _knownHost() {
+    final down = state.sessionError != null;
+    return Padding(
+      key: const ValueKey('known-host'),
+      padding: const EdgeInsets.only(top: 12),
+      child: Row(children: [
+        Icon(down ? Icons.wifi_off : Icons.wifi,
+            size: 18, color: down ? GnColors.warn : GnColors.muted),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Hint(down
+              ? 'Last Splitscreen Club PC (${state.host!.authority}) is not reachable.'
+              : 'On Wi-Fi with Splitscreen Club at ${state.host!.authority}.'),
+        ),
+        TextButton(
+          onPressed: _busy
+              ? null
+              : () => _run(() async {
+                    await state.disconnect();
+                    return 'Forgot that Splitscreen Club PC.';
+                  }),
+          child: const Text('Forget'),
+        ),
+      ]),
+    );
+  }
 
   List<Widget> _roomCards() {
     final s = state.session;
@@ -639,7 +688,8 @@ class RoomScreenState extends State<RoomScreen> {
                           : 'Your player will no longer appear automatically.';
                     }),
             title: const Text('Main player on this Splitscreen Club'),
-            subtitle: const Text('Wait at the door when Splitscreen Club starts.'),
+            subtitle:
+                const Text('Wait at the door when Splitscreen Club starts.'),
           ),
           if (!s.mainPlayer)
             SwitchListTile(

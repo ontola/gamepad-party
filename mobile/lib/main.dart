@@ -240,10 +240,15 @@ class _GameNightAppState extends State<GameNightApp> {
   void _menu() {
     final context = _navigator.currentState?.overlay?.context;
     if (context == null) return;
+    // Eight rows plus the iPhone home bar are taller than a sheet's default
+    // 9/16 of the screen: the last rows were cut off. Let it grow and scroll.
     showModalBottomSheet<void>(
         context: context,
+        isScrollControlled: true,
+        useSafeArea: true,
         builder: (context) => SafeArea(
-              child: Column(mainAxisSize: MainAxisSize.min, children: [
+              child: SingleChildScrollView(
+                  child: Column(mainAxisSize: MainAxisSize.min, children: [
                 if (widget.state.assistantAvailable)
                   ListTile(
                       leading: const Icon(Icons.auto_awesome),
@@ -264,7 +269,7 @@ class _GameNightAppState extends State<GameNightApp> {
                       }),
                 if (widget.reports != null)
                   ListTile(
-                      leading: const Icon(Icons.mic_none),
+                      leading: const Icon(Icons.feedback_outlined),
                       title: const Text('Feedback'),
                       trailing: const Icon(Icons.chevron_right),
                       onTap: () {
@@ -290,7 +295,7 @@ class _GameNightAppState extends State<GameNightApp> {
                         Navigator.pop(context);
                         _openWebsite(entry.$1);
                       }),
-              ]),
+              ])),
             ));
   }
 
@@ -359,7 +364,7 @@ class _GameNightAppState extends State<GameNightApp> {
             if (widget.reports != null)
               _SidebarItem(
                   label: 'Feedback',
-                  icon: const Icon(Icons.mic_none),
+                  icon: const Icon(Icons.feedback_outlined),
                   onTap: _feedback),
             const _SidebarHeading('Website'),
             for (final entry in const [
@@ -457,13 +462,14 @@ class _GameNightAppState extends State<GameNightApp> {
                                           onTap: _feedback,
                                           child: IconButton(
                                               onPressed: _feedback,
-                                              icon:
-                                                  const Icon(Icons.mic_none))),
+                                              icon: const Icon(
+                                                  Icons.feedback_outlined))),
                                     if (widget.reports != null &&
                                         MediaQuery.sizeOf(context).width >= 440)
                                       TextButton.icon(
                                           onPressed: _feedback,
-                                          icon: const Icon(Icons.mic_none,
+                                          icon: const Icon(
+                                              Icons.feedback_outlined,
                                               size: 20),
                                           label: const Text('Feedback')),
                                   ]),

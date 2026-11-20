@@ -152,4 +152,33 @@ void main() {
     state.dispose();
     await tester.pumpWidget(const SizedBox());
   });
+
+  testWidgets(
+      'a phone that once knew a Splitscreen Club PC still opens on the join page',
+      (tester) async {
+    SharedPreferences.setMockInitialValues(
+        {'host': 'http://192.168.0.85:7913'});
+    final state = AppState(await SharedPreferences.getInstance());
+    state.sessionError = 'Splitscreen Club is unreachable.';
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(
+        RepaintBoundary(key: _preview, child: GameNightApp(state: state)));
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.byKey(const ValueKey('welcome')), findsOneWidget);
+    expect(find.text('Scan the QR on the TV'), findsOneWidget);
+    expect(find.text('Your session'), findsNothing);
+    expect(find.text('Could not reach Splitscreen Club'), findsNothing);
+    await tester.scrollUntilVisible(
+        find.byKey(const ValueKey('known-host')), 200,
+        scrollable: find.byType(Scrollable).first);
+    await _capture(tester, 'first-open');
+    await tester.tap(find.text('Forget'));
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(state.host, isNull);
+    expect(find.byKey(const ValueKey('known-host')), findsNothing);
+    state.dispose();
+    await tester.pumpWidget(const SizedBox());
+  });
 }
