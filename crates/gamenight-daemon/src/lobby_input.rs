@@ -251,8 +251,9 @@ const LB: u32 = 1 << 4;
 /// B (East).
 const B_BUTTON: u32 = 1 << 1;
 
-/// A, B, X, Y and Start: the presses that join an unseated controller.
-const JOIN_BUTTONS: u32 = 1 | 2 | 4 | 8 | 128;
+/// A: the press that joins an unseated controller (Joep: only A joins;
+/// any other button or stick just jiggles that controller on the table).
+const JOIN_BUTTONS: u32 = 1;
 
 #[derive(Default)]
 struct InputRouter {
@@ -501,9 +502,8 @@ impl InputRouter {
                         && seat.occupant.player_id().is_some()
                 })
             {
-                // A face button or Start is the join action, never a stick
-                // or D-pad: a drifting stick rejoined a player who had just
-                // left. Claim
+                // A is the join action, never a stick or D-pad: a drifting
+                // stick rejoined a player who had just left. Claim
                 // their first unbound seat before creating another player.
                 let unbound = snapshot
                     .seats
@@ -539,6 +539,25 @@ impl InputRouter {
                     );
                 }
                 consumed_join.insert(controller.controller.clone());
+            }
+            // In a running game nobody sees the table: A from a controller
+            // nobody plays with joins the party, straight into the game when
+            // it takes players live (`participation` with `instant_join`),
+            // else from the next game. Games show the hint themselves.
+            if !lobby_active
+                && pressed & JOIN_BUTTONS != 0
+                && seated_player(&snapshot, &controller.controller).is_none()
+            {
+                s.dispatch(
+                    Command::ControllerJoin {
+                        controller: controller.controller.clone(),
+                    },
+                    None,
+                );
+                if seated_player(&s.night.snapshot(), &controller.controller).is_some() {
+                    info!(controller = %controller.controller, "controller joined during a game");
+                    consumed_join.insert(controller.controller.clone());
+                }
             }
             if held & 1 == 0 {
                 consumed_join.remove(&controller.controller);
@@ -649,7 +668,55 @@ mod tests {
         router.route(&mut s, frame(0));
         assert!(s.night.snapshot().players.is_empty());
         router.route(&mut s, frame(128));
-        assert_eq!(s.night.snapshot().players.len(), 1, "Start joins again");
+        router.route(&mut s, frame(2));
+        assert!(
+            s.night.snapshot().players.is_empty(),
+            "Start or B is no join"
+        );
+        router.route(&mut s, frame(0));
+        router.route(&mut s, frame(1));
+        assert_eq!(s.night.snapshot().players.len(), 1, "A joins again");
+    }
+
+    #[tokio::test]
+    async fn in_a_running_game_only_a_seats_a_spare_controller() {
+        let mut s = Shared::new(Vec::new(), "127.0.0.1:0".into(), None);
+        let game = GameId::new("arena");
+        s.dispatch(Command::GameConnected { game: game.clone() }, None);
+        s.dispatch(
+            Command::SetPlaylist {
+                entries: vec![gamenight_protocol::PlaylistEntry {
+                    game: game.clone(),
+                    title: "Arena".into(),
+                }],
+            },
+            None,
+        );
+        let session = s.night.snapshot().warm_session.unwrap().id;
+        s.dispatch(Command::SessionReady { session }, None);
+        assert!(s.night.snapshot().active_session.is_some());
+        let mut router = InputRouter::default();
+        router.route(&mut s, frame(0));
+        let mut stick = frame(2);
+        stick[0].axes[0] = 30000;
+        router.route(&mut s, stick);
+        router.route(&mut s, frame(128));
+        assert!(
+            s.night.snapshot().players.is_empty(),
+            "B, Start or a stick only show the hint"
+        );
+        router.route(&mut s, frame(1));
+        let party = s.night.snapshot();
+        assert_eq!(party.players.len(), 1, "A joins");
+        assert_eq!(
+            party.active_session.unwrap().id,
+            session,
+            "the game goes on"
+        );
+        assert!(party
+            .seats
+            .iter()
+            .any(|seat| seat.controller.as_deref() == Some("ordinal:7")));
     }
 
     fn frame(buttons: u32) -> Vec<ControllerState> {

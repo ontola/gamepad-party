@@ -23,7 +23,7 @@ Open `sdk/godot/project.godot` in the editor to change the example. Start it
 through the runtime to get an authenticated connection. Opening the project
 alone displays a connecting screen, not a synthetic party.
 
-Controls: press A, B, X, Y or Start on a controller to join. LT/RT cycle games; the
+Controls: press A on a controller to join. LT/RT cycle games; the
 selected game is larger in the centre of its two neighbours. Only games the
 seated players fit are listed. The stick/D-pad
 moves between controls. On a game card, A queues the game after earlier picks;
@@ -217,8 +217,9 @@ keeps the queue filled, so it never stops the night by running out.
 
 Replacement lobbies receive runtime-sampled controller frames. Device tokens
 are opaque, and must be matched against `seats[].controller`. The runtime
-joins a controller when A, B, X, Y or Start is pressed on it (a stick or D-pad
-never joins, so a drifting stick cannot bring back a player who just left),
+joins a controller when A is pressed on it, in the lobby and in a running game
+(any other button, a stick or the D-pad never joins: a drifting stick cannot
+bring back a player who just left, and a stray press only jiggles the pad),
 handles controller activity and Back/Select. It consumes
 an A press held during connection and Back before broadcasting frames so clients cannot accidentally
 start a game while joining or immediately reopen a resumed game.

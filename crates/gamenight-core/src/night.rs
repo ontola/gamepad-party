@@ -35,6 +35,12 @@ pub enum Command {
         session: Option<SessionId>,
         controller: String,
     },
+    /// A controller nobody plays with pressed A while a game runs (the
+    /// host's input router): seat them in the party. Games that take
+    /// players live get them at once, others from the next game.
+    ControllerJoin {
+        controller: String,
+    },
     PresenceTick {
         elapsed: std::time::Duration,
     },
@@ -242,6 +248,7 @@ impl Command {
         matches!(
             self,
             Command::ControllerInput { .. }
+                | Command::ControllerJoin { .. }
                 | Command::JoinParty { .. }
                 | Command::LeaveParty { .. }
                 | Command::JoinPhonePlayer { .. }
@@ -709,6 +716,7 @@ impl GameNight {
                 session,
                 controller,
             } => self.on_controller_input(game, session, controller, &mut fx),
+            Command::ControllerJoin { controller } => self.on_controller_join(controller, &mut fx),
             Command::PresenceTick { elapsed } => {
                 if let Some(active) = &mut self.active {
                     // Bound long suspension gaps; a sleeping host is not active play.
@@ -1192,47 +1200,13 @@ impl GameNight {
         } else if session.is_some() {
             return;
         }
-        let mut player = self
+        // Activity alone never seats anyone: a stray stick or button in a
+        // game only shows the join hint; A joins (`ControllerJoin`).
+        let player = self
             .seats
             .iter()
             .find(|s| s.controller.as_deref() == Some(&controller))
             .and_then(|s| s.occupant.player_id());
-        if player.is_none() {
-            let can_join = self.active.as_ref().is_some_and(|s| {
-                s.phase == SessionPhase::Running
-                    && !self.overlay_open
-                    && (self.participation.get(&s.id) != Some(&true)
-                        || self
-                            .library
-                            .iter()
-                            .find(|m| m.id == s.game)
-                            .and_then(|m| m.max_players)
-                            .is_none_or(|max| self.seated_count() < max))
-            });
-            if !can_join {
-                return;
-            }
-            let Some(index) = self
-                .seats
-                .iter()
-                .find(|s| s.occupant.is_empty())
-                .map(|s| s.index)
-            else {
-                return;
-            };
-            self.on_join(
-                format!("Player {}", index + 1),
-                Some(index),
-                None,
-                None,
-                Vec::new(),
-                fx,
-            );
-            let seat = &mut self.seats[index as usize];
-            seat.controller = Some(controller);
-            player = seat.occupant.player_id();
-            self.rewarm_if_misfit(fx);
-        }
         if let Some(id) = player {
             use gamenight_protocol::PresenceState::Active;
             let previous = self
@@ -1241,6 +1215,65 @@ impl GameNight {
             if previous.is_none_or(|(_, state)| state != Active) {
                 fx.push(Effect::StateChanged);
             }
+        }
+    }
+
+    fn on_controller_join(&mut self, controller: String, fx: &mut Vec<Effect>) {
+        let Some(ordinal) = controller
+            .strip_prefix("ordinal:")
+            .and_then(|v| v.parse::<u8>().ok())
+        else {
+            return;
+        };
+        let controller = format!("ordinal:{ordinal}");
+        if self.seats.iter().any(|s| {
+            s.controller.as_deref() == Some(&controller) && s.occupant.player_id().is_some()
+        }) {
+            return;
+        }
+        let can_join = self.active.as_ref().is_some_and(|s| {
+            s.phase == SessionPhase::Running
+                && !self.overlay_open
+                && (self.participation.get(&s.id) != Some(&true)
+                    || self
+                        .library
+                        .iter()
+                        .find(|m| m.id == s.game)
+                        .and_then(|m| m.max_players)
+                        .is_none_or(|max| self.seated_count() < max))
+        });
+        if !can_join {
+            return;
+        }
+        let Some(index) = self
+            .seats
+            .iter()
+            .find(|s| s.occupant.is_empty())
+            .map(|s| s.index)
+        else {
+            return;
+        };
+        self.on_join(
+            format!("Player {}", index + 1),
+            Some(index),
+            None,
+            None,
+            Vec::new(),
+            fx,
+        );
+        let seat = &mut self.seats[index as usize];
+        seat.controller = Some(controller);
+        let player = seat.occupant.player_id();
+        self.rewarm_if_misfit(fx);
+        if let Some(id) = player {
+            self.presence.insert(
+                id,
+                (
+                    std::time::Duration::ZERO,
+                    gamenight_protocol::PresenceState::Active,
+                ),
+            );
+            fx.push(Effect::StateChanged);
         }
     }
 

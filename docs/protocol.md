@@ -939,10 +939,23 @@ never report activity. A game may report only while its own session is running a
 foreground; reports from stale sessions, warm games and other game IDs are ignored.
 The persistent lobby can report through its overlay connection without `session`.
 
-A previously unseen controller joins the party once, up to the seat limit. Games
-with `instant_join:true` receive the new player in their current match, subject to
-the game's maximum player count. Other games keep their prepared roster; the new
-player joins on the next preparation. Repeated input never creates duplicate players.
+`controller_input` only keeps presence; it never seats anyone. A controller
+nobody plays with joins the party when it presses **A**, in the lobby and in a
+running game alike (any other button or stick does nothing: it only jiggles
+that controller on the lobby table). The host's own input router does this, so
+games need no code and must not run their own join. In a game, games with
+`instant_join:true` receive the new player in their current match, subject to
+the game's maximum player count; other games keep their prepared roster and
+the new player joins on the next preparation. Repeated presses never create
+duplicate players. The A press that joined is held back from the game until it
+is released.
+
+Nobody in front of a running game sees the lobby, so a game should say how to
+join when a spare controller (a token in `controller_frame` that no seat of
+this session holds) is touched: "Press A to join this game", or "Press A to
+join; you play from the next game" for games without instant join. Warp games
+do this in their HUD (`splitscreen_club::party::Party::watch_joins`) and name
+the newcomer ("Nora joined the game") when their seat arrives.
 
 Opted-in games receive a full snapshot on declaration and subsequent changes:
 

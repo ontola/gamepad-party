@@ -180,6 +180,11 @@ mod night_tests {
             controller: controller.into(),
         }
     }
+    fn press_a(controller: &str) -> Command {
+        Command::ControllerJoin {
+            controller: controller.into(),
+        }
+    }
     fn idle(seconds: u64) -> Command {
         Command::PresenceTick {
             elapsed: std::time::Duration::from_secs(seconds),
@@ -341,14 +346,25 @@ mod night_tests {
             controller: "ordinal:1".into(),
         });
         assert_eq!(night.snapshot().players.len(), 1);
-        let fx = night.handle(activity("ordinal:1"));
+        night.handle(activity("ordinal:1"));
+        assert_eq!(
+            night.snapshot().players.len(),
+            1,
+            "a touch only shows the hint"
+        );
+        let fx = night.handle(press_a("ordinal:1"));
         assert_eq!(night.snapshot().players.len(), 2);
         assert_eq!(night.snapshot().active_session.unwrap().id, session);
         assert!(fx.iter().any(|e| matches!(e, Effect::ToGame { command: GameCommand::PartyUpdated { seats, .. }, .. } if seats.iter().filter(|s| s.occupant.player_id().is_some()).count() == 2)));
-        night.handle(activity("ordinal:1"));
-        night.handle(activity("ordinal:2"));
-        assert_eq!(night.snapshot().players.len(), 2);
+        night.handle(press_a("ordinal:1"));
+        night.handle(press_a("ordinal:2"));
+        assert_eq!(
+            night.snapshot().players.len(),
+            2,
+            "no duplicates, and the game is full"
+        );
         night.handle(Command::OverlayOpened);
+        night.handle(press_a("ordinal:3"));
         night.handle(Command::ControllerInput {
             game: Some(GameId::new("arena")),
             session: Some(session),
@@ -401,7 +417,7 @@ mod night_tests {
             instant_join: false,
         });
         night.handle(Command::SessionReady { session });
-        let fx = night.handle(activity("ordinal:1"));
+        let fx = night.handle(press_a("ordinal:1"));
         assert_eq!(night.snapshot().players.len(), 2);
         assert_eq!(night.snapshot().active_session.unwrap().id, session);
         assert!(fx.iter().any(

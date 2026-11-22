@@ -3108,7 +3108,7 @@ Open `sdk/godot/project.godot` in the editor to change the example. Start it
 through the runtime to get an authenticated connection. Opening the project
 alone displays a connecting screen, not a synthetic party.
 
-Controls: press A, B, X, Y or Start on a controller to join. LT/RT cycle games; the
+Controls: press A on a controller to join. LT/RT cycle games; the
 selected game is larger in the centre of its two neighbours. Only games the
 seated players fit are listed. The stick/D-pad
 moves between controls. On a game card, A queues the game after earlier picks;
@@ -3302,8 +3302,9 @@ keeps the queue filled, so it never stops the night by running out.
 
 Replacement lobbies receive runtime-sampled controller frames. Device tokens
 are opaque, and must be matched against `seats[].controller`. The runtime
-joins a controller when A, B, X, Y or Start is pressed on it (a stick or D-pad
-never joins, so a drifting stick cannot bring back a player who just left),
+joins a controller when A is pressed on it, in the lobby and in a running game
+(any other button, a stick or the D-pad never joins: a drifting stick cannot
+bring back a player who just left, and a stray press only jiggles the pad),
 handles controller activity and Back/Select. It consumes
 an A press held during connection and Back before broadcasting frames so clients cannot accidentally
 start a game while joining or immediately reopen a resumed game.
@@ -5851,10 +5852,23 @@ never report activity. A game may report only while its own session is running a
 foreground; reports from stale sessions, warm games and other game IDs are ignored.
 The persistent lobby can report through its overlay connection without `session`.
 
-A previously unseen controller joins the party once, up to the seat limit. Games
-with `instant_join:true` receive the new player in their current match, subject to
-the game's maximum player count. Other games keep their prepared roster; the new
-player joins on the next preparation. Repeated input never creates duplicate players.
+`controller_input` only keeps presence; it never seats anyone. A controller
+nobody plays with joins the party when it presses **A**, in the lobby and in a
+running game alike (any other button or stick does nothing: it only jiggles
+that controller on the lobby table). The host's own input router does this, so
+games need no code and must not run their own join. In a game, games with
+`instant_join:true` receive the new player in their current match, subject to
+the game's maximum player count; other games keep their prepared roster and
+the new player joins on the next preparation. Repeated presses never create
+duplicate players. The A press that joined is held back from the game until it
+is released.
+
+Nobody in front of a running game sees the lobby, so a game should say how to
+join when a spare controller (a token in `controller_frame` that no seat of
+this session holds) is touched: "Press A to join this game", or "Press A to
+join; you play from the next game" for games without instant join. Warp games
+do this in their HUD (`splitscreen_club::party::Party::watch_joins`) and name
+the newcomer ("Nora joined the game") when their seat arrives.
 
 Opted-in games receive a full snapshot on declaration and subsequent changes:
 
