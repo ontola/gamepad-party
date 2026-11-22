@@ -247,6 +247,10 @@
           "maximum": 255,
           "minimum": 0
         },
+        "keyboard": {
+          "description": "One player can also play on the keyboard, for a room with fewer\ncontrollers than people. Nice to have, not required.",
+          "type": "boolean"
+        },
         "max": {
           "description": "Couch seats, not online lobby size.",
           "type": "integer",

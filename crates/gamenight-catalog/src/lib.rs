@@ -78,6 +78,10 @@ pub struct Players {
     /// play on one (`play_with: "controller_or_phone"`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub min_phones: Option<u8>,
+    /// One player can also play on the keyboard, for a room with fewer
+    /// controllers than people. Nice to have, not required.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub keyboard: bool,
 }
 
 /// What a player needs in hand: a controller (default), a linked phone,

@@ -353,6 +353,14 @@ switch games often. The template does all of this; keep it as you build.
   playing. Then Resume, then New round (apply options), then the settings.
   No button hints in the menu (choose, change, select, resume): a highlighted
   row and ‹ › around its value speak for themselves.
+- **The Start menu shows the controls.** Draw the button mapping beside the
+  menu, or add a Controls row that opens it. This is the one place a player
+  who joined mid-game, or never played before, can look up what each button
+  does. During play there are still no control hints.
+- **Keyboard support is a plus.** Not every room has a controller for
+  everyone, so let one player play on the keyboard when you can, and say so
+  with `"keyboard": true` under `players` in `gamenight.json`, so the
+  catalog records which games work that way.
 - **Leave Back alone.** Back (Select) returns to the party; Splitscreen Club handles
   it and pauses your game. Never bind it to anything in the game.
 - **Use the players' colours, names and faces.** Each player picks them once
