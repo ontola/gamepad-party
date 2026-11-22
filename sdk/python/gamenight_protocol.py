@@ -112,6 +112,16 @@ ACTIVITY_KIND_ROUND = "round"
 ACTIVITY_KIND_ACTION = "action"
 ACTIVITY_KIND_GAME = "game"
 
+# BackChordAction
+BACK_CHORD_ACTION_NEXT = "next"
+BACK_CHORD_ACTION_PREVIOUS = "previous"
+BACK_CHORD_ACTION_LEAVE = "leave"
+
+# BackChordButton
+BACK_CHORD_BUTTON_RB = "rb"
+BACK_CHORD_BUTTON_LB = "lb"
+BACK_CHORD_BUTTON_B = "b"
+
 # GameIssueKind
 GAME_ISSUE_KIND_CLOSED = "closed"
 GAME_ISSUE_KIND_DISCONNECTED = "disconnected"
@@ -951,6 +961,16 @@ ENUMS = {
         "round",
         "action",
         "game"
+    ],
+    "BackChordAction": [
+        "next",
+        "previous",
+        "leave"
+    ],
+    "BackChordButton": [
+        "rb",
+        "lb",
+        "b"
     ],
     "GameIssueKind": [
         "closed",

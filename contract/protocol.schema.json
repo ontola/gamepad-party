@@ -77,6 +77,92 @@
         }
       ]
     },
+    "BackChord": {
+      "description": "One chord the Back menu offers right now.",
+      "properties": {
+        "action": {
+          "$ref": "#/$defs/BackChordAction"
+        },
+        "button": {
+          "$ref": "#/$defs/BackChordButton"
+        },
+        "label": {
+          "description": "Short label for the hint, e.g. \"Next: Sideways\".",
+          "type": "string"
+        }
+      },
+      "required": [
+        "button",
+        "action",
+        "label"
+      ],
+      "type": "object"
+    },
+    "BackChordAction": {
+      "description": "What a Back chord does.",
+      "oneOf": [
+        {
+          "const": "next",
+          "description": "Skip straight to the next game in the queue.",
+          "type": "string"
+        },
+        {
+          "const": "previous",
+          "description": "Go back to the game played before this one.",
+          "type": "string"
+        },
+        {
+          "const": "leave",
+          "description": "Take this controller's player out of the party (asks to confirm).",
+          "type": "string"
+        }
+      ]
+    },
+    "BackChordButton": {
+      "description": "A button that does something while Back is held.",
+      "enum": [
+        "rb",
+        "lb",
+        "b"
+      ],
+      "type": "string"
+    },
+    "BackMenu": {
+      "description": "Shown while a controller holds Back: the chords that work right now.\nHost-owned; lobbies only draw it. Absent when nobody holds Back.",
+      "properties": {
+        "chords": {
+          "items": {
+            "$ref": "#/$defs/BackChord"
+          },
+          "type": "array"
+        },
+        "confirm_leave": {
+          "default": false,
+          "description": "B was pressed once: the next B (Back still held) removes the player.",
+          "type": "boolean"
+        },
+        "controller": {
+          "description": "The controller holding Back.",
+          "type": "string"
+        },
+        "player": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PlayerId"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The player on that controller, if it is seated."
+        }
+      },
+      "required": [
+        "controller",
+        "chords"
+      ],
+      "type": "object"
+    },
     "ClientMessage": {
       "oneOf": [
         {
@@ -1990,6 +2076,17 @@
             "$ref": "#/$defs/ActivityEntry"
           },
           "type": "array"
+        },
+        "back_menu": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/BackMenu"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The Back chord menu, while a controller holds Back (see [`BackMenu`])."
         },
         "commands": {
           "description": "Plain-text requests declared by connected games (see [`GameCommands`]).",

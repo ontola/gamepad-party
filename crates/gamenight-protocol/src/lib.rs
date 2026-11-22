@@ -927,10 +927,62 @@ pub struct GameIssue {
     pub kind: GameIssueKind,
 }
 
+/// A button that does something while Back is held.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[serde(rename_all = "snake_case")]
+pub enum BackChordButton {
+    Rb,
+    Lb,
+    B,
+}
+
+/// What a Back chord does.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[serde(rename_all = "snake_case")]
+pub enum BackChordAction {
+    /// Skip straight to the next game in the queue.
+    Next,
+    /// Go back to the game played before this one.
+    Previous,
+    /// Take this controller's player out of the party (asks to confirm).
+    Leave,
+}
+
+/// One chord the Back menu offers right now.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+pub struct BackChord {
+    pub button: BackChordButton,
+    pub action: BackChordAction,
+    /// Short label for the hint, e.g. "Next: Sideways".
+    pub label: String,
+}
+
+/// Shown while a controller holds Back: the chords that work right now.
+/// Host-owned; lobbies only draw it. Absent when nobody holds Back.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+pub struct BackMenu {
+    /// The controller holding Back.
+    pub controller: String,
+    /// The player on that controller, if it is seated.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub player: Option<PlayerId>,
+    pub chords: Vec<BackChord>,
+    /// B was pressed once: the next B (Back still held) removes the player.
+    #[serde(default)]
+    pub confirm_leave: bool,
+}
+
 /// The one big object overlays render from. Sent whenever anything changes.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub struct PartySnapshot {
+    /// The Back chord menu, while a controller holds Back (see [`BackMenu`]).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub back_menu: Option<BackMenu>,
     /// Host-owned failure of a requested first game. Cleared when resolved or
     /// another game is chosen; never creates a synthetic library entry.
     #[serde(default, skip_serializing_if = "Option::is_none")]

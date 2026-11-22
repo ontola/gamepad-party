@@ -139,6 +139,8 @@ struct Shared {
     /// game that was left may still echo that Back as `request_overlay`; it
     /// must not open the lobby over the game the skip just started.
     skipped_by_combo: Option<std::time::Instant>,
+    /// The Back chord menu while a controller holds Back (lobby_input.rs).
+    back_menu: Option<gamenight_protocol::BackMenu>,
     shutdown_requested: bool,
     lobby_restarts: u8,
     lobby_recovery_opened: bool,
@@ -406,6 +408,7 @@ impl Shared {
             runtime_input: false,
             overlay_opened_by_request: None,
             skipped_by_combo: None,
+            back_menu: None,
             shutdown_requested: false,
             lobby_restarts: 0,
             lobby_recovery_opened: false,
@@ -426,6 +429,7 @@ impl Shared {
     fn snapshot(&self) -> gamenight_protocol::PartySnapshot {
         let mut party = self.night.snapshot();
         party.onboarding_error = self.onboarding_error.clone();
+        party.back_menu = self.back_menu.clone();
         party.game_issues = self
             .game_issues
             .iter()

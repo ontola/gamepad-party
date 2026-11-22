@@ -119,6 +119,20 @@ namespace GameNightSdk
             public const string Game = "game";
         }
 
+        public static class BackChordAction
+        {
+            public const string Next = "next";
+            public const string Previous = "previous";
+            public const string Leave = "leave";
+        }
+
+        public static class BackChordButton
+        {
+            public const string Rb = "rb";
+            public const string Lb = "lb";
+            public const string B = "b";
+        }
+
         public static class GameIssueKind
         {
             public const string Closed = "closed";

@@ -1304,6 +1304,7 @@ impl GameNight {
 
     pub fn snapshot(&self) -> PartySnapshot {
         PartySnapshot {
+            back_menu: None,
             onboarding_error: None,
             game_issues: Vec::new(),
             companions: Vec::new(),

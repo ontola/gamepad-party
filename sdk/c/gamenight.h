@@ -173,6 +173,16 @@ extern "C" {
 #define GN_ACTIVITY_KIND_ACTION "action"
 #define GN_ACTIVITY_KIND_GAME "game"
 
+/* BackChordAction */
+#define GN_BACK_CHORD_ACTION_NEXT "next"
+#define GN_BACK_CHORD_ACTION_PREVIOUS "previous"
+#define GN_BACK_CHORD_ACTION_LEAVE "leave"
+
+/* BackChordButton */
+#define GN_BACK_CHORD_BUTTON_RB "rb"
+#define GN_BACK_CHORD_BUTTON_LB "lb"
+#define GN_BACK_CHORD_BUTTON_B "b"
+
 /* GameIssueKind */
 #define GN_GAME_ISSUE_KIND_CLOSED "closed"
 #define GN_GAME_ISSUE_KIND_DISCONNECTED "disconnected"

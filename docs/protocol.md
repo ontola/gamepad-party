@@ -292,9 +292,14 @@ seconds)` with 0 to 1 strengths.
 `finished` is an optional round notification. It never advances the playlist,
 opens the lobby, pauses the game or hides its window. The game owns its score
 screen and starts the next round itself. Players can keep playing indefinitely.
-Back/Select pauses and opens the lobby; Resume continues. Back+RB (hold Back,
-press RB, or the other way round) skips straight to the next game in the queue
-from any game; the host handles it, games need no code. Play next explicitly
+Back/Select pauses and opens the lobby; Resume continues. The host owns Back
+chords, games need no code: while Back is held, RB skips straight to the next
+game in the queue (RB then Back works too, without opening the lobby), LB goes
+back to the previous game, and B twice takes that controller's player out of
+the party. In the lobby a Back tap closes it; holding Back for 300 ms shows
+`back_menu` in the party state (the controller, its player and the chords that
+work right now) for lobbies to draw. RB, LB and B under a held Back never reach
+games or lobbies. Play next explicitly
 switches games, while Skip changes only the queued next game. A prepared next
 session stays ready across rounds. Pausing also freezes the game's results timer.
 

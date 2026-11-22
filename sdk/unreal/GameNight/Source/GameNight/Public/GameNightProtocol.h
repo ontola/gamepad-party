@@ -115,6 +115,16 @@ inline constexpr const char* ACTIVITY_KIND_ROUND = "round";
 inline constexpr const char* ACTIVITY_KIND_ACTION = "action";
 inline constexpr const char* ACTIVITY_KIND_GAME = "game";
 
+// BackChordAction
+inline constexpr const char* BACK_CHORD_ACTION_NEXT = "next";
+inline constexpr const char* BACK_CHORD_ACTION_PREVIOUS = "previous";
+inline constexpr const char* BACK_CHORD_ACTION_LEAVE = "leave";
+
+// BackChordButton
+inline constexpr const char* BACK_CHORD_BUTTON_RB = "rb";
+inline constexpr const char* BACK_CHORD_BUTTON_LB = "lb";
+inline constexpr const char* BACK_CHORD_BUTTON_B = "b";
+
 // GameIssueKind
 inline constexpr const char* GAME_ISSUE_KIND_CLOSED = "closed";
 inline constexpr const char* GAME_ISSUE_KIND_DISCONNECTED = "disconnected";
