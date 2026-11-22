@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../api.dart' show ApiError;
 import '../app_state.dart';
 import '../theme.dart';
-import 'sign_in_screen.dart';
+import '../widgets/email_sign_in.dart';
 
 /// Sign in or out of a GameNight account, on the You tab.
 class AccountCard extends StatefulWidget {
@@ -149,16 +149,9 @@ class _AccountCardState extends State<AccountCard> {
               style: TextStyle(fontSize: 19, fontWeight: FontWeight.w800)),
           const SizedBox(height: 6),
           const Hint(
-              'Optional: keep your name and faces for next time. You can play without an account.'),
+              'Enter your email to keep your name and faces on every device. You can play without an account.'),
           const SizedBox(height: 14),
-          FilledButton.icon(
-            style:
-                FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
-            onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => SignInScreen(state: state))),
-            icon: const Icon(Icons.login, size: 18),
-            label: const Text('Sign in with email'),
-          ),
+          EmailSignIn(state: state),
         ]),
       ),
     );

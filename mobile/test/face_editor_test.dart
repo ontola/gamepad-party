@@ -89,7 +89,12 @@ void main() {
     await tester.pumpAndSettle();
     final name = tester.getTopLeft(find.byType(TextField).first).dy;
     expect(name, lessThan(tester.getTopLeft(find.text('Edit face')).dy));
+    // Signing in comes right under the player, before the faces.
     expect(tester.getTopLeft(find.text('Edit face')).dy,
+        lessThan(tester.getTopLeft(find.text('Save your player')).dy));
+    await tester.scrollUntilVisible(find.text('Your faces'), 200,
+        scrollable: find.byType(Scrollable).first);
+    expect(tester.getTopLeft(find.text('Save your player')).dy,
         lessThan(tester.getTopLeft(find.text('Your faces')).dy));
     expect(find.text('Backup'), findsNothing);
     expect(find.byType(ColorSwatches), findsNothing);
@@ -106,6 +111,8 @@ void main() {
 
     // New opens the editor; the face only joins your faces on Save.
     final before = state.artworks.length;
+    await tester.scrollUntilVisible(find.text('New'), 200,
+        scrollable: find.byType(Scrollable).first);
     await tester.ensureVisible(find.text('New'));
     await tester.tap(find.text('New'));
     await tester.pumpAndSettle();
@@ -127,6 +134,8 @@ void main() {
     await tester.tap(find.text('You'));
     await tester.pumpAndSettle();
     final before = state.artworks.length;
+    await tester.scrollUntilVisible(find.text('New'), 200,
+        scrollable: find.byType(Scrollable).first);
     await tester.ensureVisible(find.text('New'));
     await tester.tap(find.text('New'));
     await tester.pumpAndSettle();

@@ -13,7 +13,7 @@ import '../room_controls.dart';
 import '../storage/phone_store.dart';
 import '../theme.dart';
 import 'assistant_screen.dart';
-import 'sign_in_screen.dart';
+import '../widgets/email_sign_in.dart';
 
 /// The games a mod can be made of: Warp games in Luau, which a host copies
 /// into the player's drive and Claude changes while they play.
@@ -566,14 +566,25 @@ class _MakeGameScreenState extends State<MakeGameScreen> {
   @override
   void initState() {
     super.initState();
+    widget.state.addListener(_onState);
     unawaited(_refresh(sync: true));
     _timer = Timer.periodic(const Duration(seconds: 5), (_) => _refresh());
   }
 
   @override
   void dispose() {
+    widget.state.removeListener(_onState);
     _timer?.cancel();
     super.dispose();
+  }
+
+  late bool _wasSignedIn = widget.state.signedIn;
+
+  /// The link in the sign-in email can finish signing in on this page.
+  void _onState() {
+    if (widget.state.signedIn == _wasSignedIn) return;
+    _wasSignedIn = widget.state.signedIn;
+    unawaited(_signedIn());
   }
 
   Future<void> _refresh({bool sync = false}) async {
@@ -617,11 +628,8 @@ class _MakeGameScreenState extends State<MakeGameScreen> {
     }
   }
 
-  Future<void> _signIn() async {
-    await Navigator.of(context).push(MaterialPageRoute<void>(
-        builder: (_) => SignInScreen(
-            state: widget.state,
-            reason: 'Your games are kept in your account.')));
+  Future<void> _signedIn() async {
+    if (mounted) setState(() {});
     await _refresh(sync: true);
     if (mounted) setState(() {});
   }
@@ -641,17 +649,34 @@ class _MakeGameScreenState extends State<MakeGameScreen> {
       const _HowItWorks(),
       const SizedBox(height: 16),
     ];
+    if (!widget.state.signedIn) {
+      children.add(Card(
+        key: const ValueKey('make-game-sign-in'),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: GnColors.accent, width: 1.5),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child:
+              Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            const Text('Sign in to make a game',
+                style: TextStyle(fontSize: 19, fontWeight: FontWeight.w800)),
+            const SizedBox(height: 6),
+            const Hint('Your games are kept in your account.'),
+            const SizedBox(height: 14),
+            EmailSignIn(state: widget.state, onSignedIn: _signedIn),
+          ]),
+        ),
+      ));
+      children.add(const SizedBox(height: 16));
+    }
     if (store == null) {
       children.add(const GetTheApp());
     } else if (!store.signedIn) {
-      children.add(Align(
-        alignment: Alignment.centerLeft,
-        child: FilledButton.icon(
-            key: const ValueKey('make-game-sign-in'),
-            onPressed: _signIn,
-            icon: const Icon(Icons.login),
-            label: const Text('Sign in to make a game')),
-      ));
+      if (widget.state.signedIn) {
+        children.add(const Hint('Getting your games…'));
+      }
     } else if (!widget.state.assistantAvailable) {
       children.add(const Hint(
           'Making games is not open for your account yet. We are letting '

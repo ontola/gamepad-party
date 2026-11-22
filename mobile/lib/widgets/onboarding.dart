@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../app_state.dart';
 import '../player_face.dart';
 import '../screens/face_editor_screen.dart';
-import '../screens/sign_in_screen.dart';
+import 'email_sign_in.dart';
 import 'name_dialog.dart';
 import '../theme.dart';
 
@@ -316,9 +316,7 @@ class PlayerSetup extends StatelessWidget {
         icon: Icons.mail_outline,
         title: 'Register your account',
         hint: 'Keep your player, faces and settings on every device.',
-        action: 'Register',
-        onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
-            builder: (_) => SignInScreen(state: state))),
+        below: EmailSignIn(state: state),
       ),
     ];
     final left = items.where((t) => !t.done).length;
@@ -336,21 +334,35 @@ class _SetupItem extends StatelessWidget {
   final IconData icon;
   final String title;
   final String hint;
-  final String action;
-  final VoidCallback onTap;
+  final String? action;
+  final VoidCallback? onTap;
+
+  /// Done right here instead of behind a button, under the hint.
+  final Widget? below;
   const _SetupItem(
       {super.key,
       required this.done,
       required this.icon,
       required this.title,
       required this.hint,
-      required this.action,
-      required this.onTap});
+      this.action,
+      this.onTap,
+      this.below});
 
   @override
   Widget build(BuildContext context) => Padding(
         padding: const EdgeInsets.symmetric(vertical: 6),
-        child: Row(children: [
+        child:
+            Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          _row(),
+          if (!done && below != null) ...[
+            const SizedBox(height: 8),
+            below!,
+          ],
+        ]),
+      );
+
+  Widget _row() => Row(children: [
           Icon(done ? Icons.check_circle : icon,
               color: done ? GnColors.ok : GnColors.muted),
           const SizedBox(width: 12),
@@ -366,10 +378,9 @@ class _SetupItem extends StatelessWidget {
               if (!done) Hint(hint),
             ]),
           ),
-          if (!done) ...[
+          if (!done && action != null) ...[
             const SizedBox(width: 8),
-            OutlinedButton(onPressed: onTap, child: Text(action)),
+            OutlinedButton(onPressed: onTap, child: Text(action!)),
           ],
-        ]),
-      );
+        ]);
 }

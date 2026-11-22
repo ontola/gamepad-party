@@ -38,7 +38,17 @@ void main() {
     expect(find.textContaining('You need an account'), findsOneWidget);
     expect(find.textContaining('they run out'), findsOneWidget);
     expect(find.textContaining('share it with others'), findsOneWidget);
+    // Signed out, the email field to sign in is right on the page.
+    expect(find.byKey(const ValueKey('make-game-sign-in')), findsOneWidget);
+    expect(find.byKey(const ValueKey('sign-in-email')), findsOneWidget);
     // Without the app's store (here, as in a browser) it points to the app.
+    await tester.scrollUntilVisible(
+        find.byKey(const ValueKey('get-the-app')), 200,
+        scrollable: find
+            .descendant(
+                of: find.byType(MakeGameScreen),
+                matching: find.byType(Scrollable))
+            .first);
     expect(find.byKey(const ValueKey('get-the-app')), findsOneWidget);
     expect(find.byKey(const ValueKey('new-game')), findsNothing);
   });

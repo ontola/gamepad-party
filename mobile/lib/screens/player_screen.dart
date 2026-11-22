@@ -91,11 +91,19 @@ class _PlayerScreenState extends State<PlayerScreen> {
             const SizedBox(height: 16),
             _character(),
             const SizedBox(height: 24),
+            // Signing in matters: offer it right under the player, and keep
+            // the account settings at the bottom once signed in.
+            if (!state.signedIn) ...[
+              AccountCard(state: state),
+              const SizedBox(height: 24),
+            ],
             _faces(),
             const SizedBox(height: 24),
             _colors(),
-            const SizedBox(height: 24),
-            AccountCard(state: state),
+            if (state.signedIn) ...[
+              const SizedBox(height: 24),
+              AccountCard(state: state),
+            ],
           ],
         ),
       ),

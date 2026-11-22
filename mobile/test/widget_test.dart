@@ -101,19 +101,21 @@ void main() {
     final state = AppState(await SharedPreferences.getInstance());
     await tester.pumpWidget(GameNightApp(state: state));
     expect(find.text('Scan the QR on the TV'), findsOneWidget);
-    expect(find.text('Sign in with email'), findsNothing,
-        reason: 'signing in lives on the You tab');
     await tester.tap(find.text('You'));
     await tester.pumpAndSettle();
     expect(find.byType(TextField), findsWidgets);
-    await tester.scrollUntilVisible(find.text('Sign in with email'), 200,
+    await tester.scrollUntilVisible(find.text('Save your player'), 200,
         scrollable: find
             .descendant(
                 of: find.byType(PlayerScreen),
                 matching: find.byType(Scrollable))
             .first);
-    expect(find.text('Sign in with email'), findsOneWidget,
-        reason: 'signing in lives on the You tab, under the player');
+    expect(
+        find.descendant(
+            of: find.byType(PlayerScreen),
+            matching: find.byKey(const ValueKey('sign-in-email'))),
+        findsOneWidget,
+        reason: 'the You tab asks for an email right under the player');
     state.dispose();
   });
 

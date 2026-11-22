@@ -24,19 +24,18 @@ void main() {
       await tester.pumpWidget(GameNightApp(state: state, links: links.stream));
       await tester.tap(find.text('You'));
       await tester.pumpAndSettle();
-      await tester.scrollUntilVisible(find.text('Sign in with email'), 200,
+      final email = find.descendant(
+          of: find.byType(PlayerScreen),
+          matching: find.byKey(const ValueKey('sign-in-email')));
+      await tester.scrollUntilVisible(email, 200,
           scrollable: find
               .descendant(
                   of: find.byType(PlayerScreen),
                   matching: find.byType(Scrollable))
               .first);
-      await tester.drag(find.byType(PlayerScreen), const Offset(0, -300));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Sign in with email'));
-      await tester.pumpAndSettle();
-      expect(find.text('Email me a code'), findsOneWidget);
-      await tester.enterText(find.byType(TextField).first, 'test@example.com');
-      await tester.tap(find.text('Email me a code'));
+      await tester.enterText(email, 'test@example.com');
+      // The keyboard's send key emails the code, like the button.
+      await tester.testTextInput.receiveAction(TextInputAction.send);
       await tester.pumpAndSettle();
       if (viaLink) {
         links.add(
@@ -44,7 +43,11 @@ void main() {
         links.add(
             Uri.parse('https://gamenight.ontola.io/auth/app#code=12345678'));
       } else {
-        await tester.enterText(find.byType(TextField).last, '12345678');
+        await tester.enterText(
+            find.descendant(
+                of: find.byType(PlayerScreen),
+                matching: find.byKey(const ValueKey('sign-in-code'))),
+            '12345678');
       }
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
