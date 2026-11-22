@@ -1,7 +1,7 @@
 # Working on Template Game
 
 A Splitscreen Club couch game in Godot 4.5 (GL Compatibility). The Splitscreen Club game
-playbook is the full guide: https://gamenight.ontola.io/docs/playbook
+playbook is the full guide: https://splitscreen.club/docs/playbook
 
 ## Couch design rules
 

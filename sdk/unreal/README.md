@@ -1,7 +1,7 @@
 # Splitscreen Club for Unreal Engine
 
 Start with the [Unreal integration guide](../../docs/site/unreal.md), published
-in [Splitscreen Club Docs](https://gamenight.ontola.io/docs/unreal). The demo game
+in [Splitscreen Club Docs](https://splitscreen.club/docs/unreal). The demo game
 [Dash Derby](../../examples/unreal-demo) uses every part of the plugin.
 
 - `GameNight/` is the plugin. Copy it into your project's `Plugins/` folder,
