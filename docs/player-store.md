@@ -150,3 +150,22 @@ and deletes them.
   to it, with its answer, is kept on the project (`projectChanges`, the last 50).
 - The app checks the hub when the page opens; a host syncs about once a
   minute, so a new mod or name can take that long to reach the shelf.
+
+### Make a game
+
+A player's own new game is a mod of a Warp template. "Make a game" sits at
+the top of the app's games catalog; its page says what it takes (an
+account, AI tokens that run out, a room on a computer with Splitscreen
+Club, saving and sharing afterwards), lists the player's own games and
+makes a new one: a starting point, a name and optionally what it should be.
+
+- The base is `warp-template-NAME`: `platformer` and `fps` (from `warp
+  templates`) and `blank` (the plain starter). A host writes each template
+  once with `warp new` into `<data>/gamenight/warp-templates/<build>/NAME`,
+  per Warp runtime build, and offers them as bases next to its Warp games
+  (`project_bases` in `gamenight-daemon`). A warp from before the game kit
+  has no templates and only gives `blank`.
+- From there it is a mod: the host fills it, puts it on the shelf ("A
+  player's own game, made with the Assistant") and the Assistant builds it
+  with the saving tools while it runs. The idea typed when making it is the
+  Assistant's first request. The Mods page lists only mods of real games.

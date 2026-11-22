@@ -6,6 +6,7 @@ import '../api.dart';
 import '../account.dart';
 import '../app_state.dart';
 import 'catalog_filters.dart';
+import 'mods_screen.dart';
 import '../catalog.dart';
 import '../room_controls.dart';
 import '../theme.dart';
@@ -257,10 +258,15 @@ class _CatalogSectionState extends State<CatalogSection> {
                     ? 'Games by $developer'
                     : '${_visible.length} ${_visible.length == 1 ? 'game' : 'games'} by $developer',
                 style: const TextStyle(color: GnColors.muted)))
-      else
+      else ...[
+        if (widget.state != null)
+          Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: MakeGameCard(state: widget.state!)),
         Padding(
             padding: const EdgeInsets.only(bottom: 12),
             child: _filterBar(games != null)),
+      ],
       if (games == null && _error == null)
         const Padding(
           padding: EdgeInsets.all(24),

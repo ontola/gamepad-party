@@ -9,9 +9,13 @@ import '../voice_feedback.dart';
 import 'player_screen.dart';
 
 class AssistantScreen extends StatefulWidget {
-  const AssistantScreen({super.key, required this.state, this.voice});
+  const AssistantScreen(
+      {super.key, required this.state, this.voice, this.initialDraft});
   final AppState state;
   final VoiceFeedback? voice;
+
+  /// A request to start from, such as the idea for a new game.
+  final String? initialDraft;
   @override
   State<AssistantScreen> createState() => _AssistantScreenState();
 }
@@ -34,6 +38,11 @@ class _AssistantScreenState extends State<AssistantScreen>
   void initState() {
     super.initState();
     _agent = Assistant(widget.state.cloud)..addListener(_changed);
+    final first = widget.initialDraft?.trim() ?? '';
+    if (first.isNotEmpty) {
+      _draft.text = first;
+      _agent.setDraft(first);
+    }
     _voice = widget.voice ?? VoiceFeedback.instance;
     _voice.addListener(_speechChanged);
     widget.state.addListener(_roomChanged);

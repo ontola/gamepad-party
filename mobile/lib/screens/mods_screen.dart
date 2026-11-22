@@ -13,12 +13,38 @@ import '../room_controls.dart';
 import '../storage/phone_store.dart';
 import '../theme.dart';
 import 'assistant_screen.dart';
+import 'sign_in_screen.dart';
 
 /// The games a mod can be made of: Warp games in Luau, which a host copies
 /// into the player's drive and Claude changes while they play.
 const moddableGames = {'neon-siege-warp': 'Neon Siege'};
 
-String _baseTitle(String base) => moddableGames[base] ?? gameTitle(base);
+/// What a new game ("Make a game") starts from: Warp's templates, which a
+/// host with the Warp runtime writes for it. A game is a mod of one of these.
+const gameTemplates = {
+  'warp-template-platformer': (
+    title: 'Platformer',
+    about: 'Coin Climb: race up ledges for coins, 1 to 4 players.'
+  ),
+  'warp-template-fps': (
+    title: 'Shooter',
+    about: 'Frag Yard: a first-person deathmatch in split screen, with bots.'
+  ),
+  'warp-template-blank': (
+    title: 'Blank',
+    about: 'Almost nothing yet: say what it should become.'
+  ),
+};
+
+/// Whether this mod is a game of the player's own, made from a template.
+bool isOwnGame(GameMod mod) => gameTemplates.containsKey(mod.base);
+
+String _baseTitle(String base) =>
+    moddableGames[base] ?? gameTemplates[base]?.title ?? gameTitle(base);
+
+String _origin(GameMod mod) => isOwnGame(mod)
+    ? 'Your game, started as ${_baseTitle(mod.base)}'
+    : 'Mod of ${_baseTitle(mod.base)}';
 
 /// What the room this phone plays in has of a mod right now.
 class _Room {
@@ -44,6 +70,9 @@ String _status(GameMod mod, _Room? room) {
   if (room == null) return 'Join a room to play it';
   if (room.playing == mod.game) return 'Playing now';
   if (room.shelf.contains(mod.game)) return 'On the shelf';
+  if (isOwnGame(mod)) {
+    return 'Waiting for the host to set it up (it needs the Warp runtime)';
+  }
   return 'Waiting for the host to make it from ${_baseTitle(mod.base)}';
 }
 
@@ -88,7 +117,10 @@ class _ModsScreenState extends State<ModsScreen> {
     if (store == null || !store.signedIn) return;
     try {
       if (sync) await store.syncNow();
-      final mods = await store.mods();
+      final mods = [
+        for (final m in await store.mods())
+          if (!isOwnGame(m)) m
+      ];
       final room = await _room(widget.state);
       if (!mounted) return;
       setState(() {
@@ -150,8 +182,7 @@ class _ModsScreenState extends State<ModsScreen> {
             key: ValueKey('mod-${mod.id}'),
             leading: const Icon(Icons.extension_outlined),
             title: Text(mod.title),
-            subtitle: Text(
-                'Mod of ${_baseTitle(mod.base)} · ${_status(mod, _roomNow)}'),
+            subtitle: Text('${_origin(mod)} · ${_status(mod, _roomNow)}'),
             trailing: const Icon(Icons.chevron_right),
             onTap: () async {
               await ModScreen.open(context, widget.state, mod);
@@ -240,12 +271,18 @@ class _NewModDialogState extends State<_NewModDialog> {
 class ModScreen extends StatefulWidget {
   final AppState state;
   final GameMod mod;
-  const ModScreen({super.key, required this.state, required this.mod});
 
-  static Future<void> open(BuildContext context, AppState state, GameMod mod) =>
+  /// For a game just made: what the player wants it to become, the first
+  /// request for the Assistant.
+  final String? idea;
+  const ModScreen(
+      {super.key, required this.state, required this.mod, this.idea});
+
+  static Future<void> open(BuildContext context, AppState state, GameMod mod,
+          {String? idea}) =>
       Navigator.of(context).push(MaterialPageRoute<void>(
           settings: const RouteSettings(name: 'mod'),
-          builder: (_) => ModScreen(state: state, mod: mod)));
+          builder: (_) => ModScreen(state: state, mod: mod, idea: idea)));
 
   @override
   State<ModScreen> createState() => _ModScreenState();
@@ -256,6 +293,7 @@ class _ModScreenState extends State<ModScreen> {
   _Room? _roomNow;
   Timer? _timer;
   bool _starting = false;
+  late String? _idea = widget.idea;
 
   @override
   void initState() {
@@ -302,7 +340,9 @@ class _ModScreenState extends State<ModScreen> {
   Future<void> _assistant() async {
     await Navigator.of(context).push(MaterialPageRoute<void>(
         settings: const RouteSettings(name: 'assistant'),
-        builder: (_) => AssistantScreen(state: widget.state)));
+        builder: (_) =>
+            AssistantScreen(state: widget.state, initialDraft: _idea)));
+    _idea = null;
     await _refresh();
   }
 
@@ -377,7 +417,7 @@ class _ModScreenState extends State<ModScreen> {
       ]),
       body: ContentWidth(
         child: ListView(padding: const EdgeInsets.all(16), children: [
-          Text('Mod of ${_baseTitle(_mod.base)} · ${_status(_mod, room)}',
+          Text('${_origin(_mod)} · ${_status(_mod, room)}',
               style: const TextStyle(color: GnColors.muted)),
           const SizedBox(height: 12),
           if (!_playing && onShelf)
@@ -387,9 +427,13 @@ class _ModScreenState extends State<ModScreen> {
                 icon: const Icon(Icons.play_arrow),
                 label: const Text('Play now')),
           const SizedBox(height: 20),
-          Hint(_playing
-              ? 'Tell the Assistant what should change: it changes the code while you play, and keeps it in your mod.'
-              : 'Play your mod, then tell the Assistant what should change.'),
+          Hint(isOwnGame(_mod)
+              ? (_playing
+                  ? 'Tell the Assistant what your game should be or what should change: it writes the code while you play, and keeps it in your account.'
+                  : 'Play your game, then tell the Assistant what it should become.')
+              : (_playing
+                  ? 'Tell the Assistant what should change: it changes the code while you play, and keeps it in your mod.'
+                  : 'Play your mod, then tell the Assistant what should change.')),
           const SizedBox(height: 8),
           Align(
             alignment: Alignment.centerLeft,
@@ -465,9 +509,9 @@ class GetTheApp extends StatelessWidget {
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
             const SizedBox(height: 6),
             const Hint(
-                'A mod is your own copy of a game that the Assistant changes '
-                'while you play. Mods live in the Splitscreen Club app on your '
-                'phone or computer, so install it to make one.'),
+                'Your own games and mods are made by the Assistant while you '
+                'play. They live in the Splitscreen Club app on your phone or '
+                'computer, so install it to make one.'),
             const SizedBox(height: 14),
             Wrap(spacing: 8, runSpacing: 8, children: [
               for (final link in links)
@@ -492,4 +536,302 @@ class GetTheApp extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Make a game: what it takes, the player's own games, and a new one from
+/// a template. The Assistant then builds it while the player plays it.
+class MakeGameScreen extends StatefulWidget {
+  final AppState state;
+  const MakeGameScreen({super.key, required this.state});
+
+  static Future<void> open(BuildContext context, AppState state) =>
+      Navigator.of(context).push(MaterialPageRoute<void>(
+          settings: const RouteSettings(name: 'make-game'),
+          builder: (_) => MakeGameScreen(state: state)));
+
+  @override
+  State<MakeGameScreen> createState() => _MakeGameScreenState();
+}
+
+class _MakeGameScreenState extends State<MakeGameScreen> {
+  List<GameMod>? _games;
+  _Room? _roomNow;
+  String? _error;
+  Timer? _timer;
+
+  PhoneStore? get _store => PhoneStore.instance;
+  bool get _ready =>
+      _store != null && _store!.signedIn && widget.state.assistantAvailable;
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_refresh(sync: true));
+    _timer = Timer.periodic(const Duration(seconds: 5), (_) => _refresh());
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _refresh({bool sync = false}) async {
+    final store = _store;
+    if (store == null || !store.signedIn) return;
+    try {
+      if (sync) await store.syncNow();
+      final games = [
+        for (final m in await store.mods())
+          if (isOwnGame(m)) m
+      ];
+      final room = await _room(widget.state);
+      if (!mounted) return;
+      setState(() {
+        _games = games;
+        _roomNow = room;
+        _error = null;
+      });
+    } catch (error) {
+      if (mounted) setState(() => _error = '$error');
+    }
+  }
+
+  Future<void> _new() async {
+    final made = await showDialog<({String base, String name, String idea})>(
+        context: context, builder: (_) => const _NewGameDialog());
+    final store = _store;
+    if (made == null || store == null) return;
+    try {
+      final id = await store.newMod(made.base, made.name);
+      await _refresh();
+      if (!mounted) return;
+      final game = _games?.where((m) => m.id == id).firstOrNull;
+      if (game != null) {
+        await ModScreen.open(context, widget.state, game,
+            idea: made.idea.isEmpty ? null : made.idea);
+      }
+      await _refresh();
+    } catch (error) {
+      if (mounted) toast(context, '$error');
+    }
+  }
+
+  Future<void> _signIn() async {
+    await Navigator.of(context).push(MaterialPageRoute<void>(
+        builder: (_) => SignInScreen(
+            state: widget.state,
+            reason: 'Your games are kept in your account.')));
+    await _refresh(sync: true);
+    if (mounted) setState(() {});
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final store = _store;
+    final children = <Widget>[
+      const Text('Make your own game',
+          style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700)),
+      const SizedBox(height: 8),
+      const Hint(
+          'Pick a starting point and say what your game should be. Play it on '
+          'the TV while the Assistant writes the code, and ask for changes as '
+          'you go.'),
+      const SizedBox(height: 12),
+      const _HowItWorks(),
+      const SizedBox(height: 16),
+    ];
+    if (store == null) {
+      children.add(const GetTheApp());
+    } else if (!store.signedIn) {
+      children.add(Align(
+        alignment: Alignment.centerLeft,
+        child: FilledButton.icon(
+            key: const ValueKey('make-game-sign-in'),
+            onPressed: _signIn,
+            icon: const Icon(Icons.login),
+            label: const Text('Sign in to make a game')),
+      ));
+    } else if (!widget.state.assistantAvailable) {
+      children.add(const Hint(
+          'Making games is not open for your account yet. We are letting '
+          'people in step by step.'));
+    } else {
+      if (_error != null) {
+        children
+            .add(Text(_error!, style: const TextStyle(color: GnColors.warn)));
+      }
+      final games = _games;
+      if (games != null && games.isNotEmpty) {
+        children.add(const Padding(
+          padding: EdgeInsets.only(bottom: 4),
+          child: Text('Your games',
+              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+        ));
+      }
+      for (final game in games ?? const <GameMod>[]) {
+        children.add(Card(
+          child: ListTile(
+            key: ValueKey('own-game-${game.id}'),
+            leading: const Icon(Icons.videogame_asset_outlined),
+            title: Text(game.title),
+            subtitle: Text(_status(game, _roomNow)),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () async {
+              await ModScreen.open(context, widget.state, game);
+              await _refresh();
+            },
+          ),
+        ));
+      }
+    }
+    return Scaffold(
+      appBar: AppBar(title: const Text('Make a game')),
+      floatingActionButton: _ready
+          ? FloatingActionButton.extended(
+              key: const ValueKey('new-game'),
+              onPressed: _new,
+              icon: const Icon(Icons.add),
+              label: const Text('New game'))
+          : null,
+      body: ContentWidth(
+        child: RefreshIndicator(
+          onRefresh: () => _refresh(sync: true),
+          child: ListView(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
+              children: children),
+        ),
+      ),
+    );
+  }
+}
+
+/// The short version of what making a game takes.
+class _HowItWorks extends StatelessWidget {
+  const _HowItWorks();
+
+  @override
+  Widget build(BuildContext context) {
+    Widget row(IconData icon, String text) => Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Icon(icon, size: 20, color: GnColors.muted),
+            const SizedBox(width: 10),
+            Expanded(child: Text(text)),
+          ]),
+        );
+    return Card(
+      key: const ValueKey('make-game-how'),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          row(Icons.person_outline,
+              'You need an account. Your games are kept in it.'),
+          row(
+              Icons.toll_outlined,
+              'The Assistant uses AI tokens for every change, and they run '
+              'out. Ask for a few big changes rather than many small ones.'),
+          row(
+              Icons.tv,
+              'Join a room on a computer with Splitscreen Club. Your game '
+              'shows up on its shelf, and you play it there while it is made.'),
+          row(
+              Icons.ios_share,
+              'When you are done, your game is saved. Play it wherever you '
+              'sit, and share it with others.'),
+        ]),
+      ),
+    );
+  }
+}
+
+class _NewGameDialog extends StatefulWidget {
+  const _NewGameDialog();
+  @override
+  State<_NewGameDialog> createState() => _NewGameDialogState();
+}
+
+class _NewGameDialogState extends State<_NewGameDialog> {
+  String _base = gameTemplates.keys.first;
+  final _name = TextEditingController(text: 'My game');
+  final _idea = TextEditingController();
+
+  @override
+  void dispose() {
+    _name.dispose();
+    _idea.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+        title: const Text('New game'),
+        content: SingleChildScrollView(
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            for (final e in gameTemplates.entries)
+              RadioListTile<String>(
+                key: ValueKey('template-${e.key}'),
+                contentPadding: EdgeInsets.zero,
+                value: e.key,
+                // ignore: deprecated_member_use
+                groupValue: _base,
+                // ignore: deprecated_member_use
+                onChanged: (v) => setState(() => _base = v ?? _base),
+                title: Text(e.value.title),
+                subtitle: Text(e.value.about),
+              ),
+            const SizedBox(height: 8),
+            TextField(
+              key: const ValueKey('game-name'),
+              controller: _name,
+              maxLength: 80,
+              decoration: const InputDecoration(labelText: 'Name'),
+            ),
+            TextField(
+              key: const ValueKey('game-idea'),
+              controller: _idea,
+              minLines: 2,
+              maxLines: 5,
+              decoration: const InputDecoration(
+                  labelText: 'What should it be? (optional)',
+                  hintText: 'Four penguins push each other off an ice floe'),
+            ),
+          ]),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel')),
+          FilledButton(
+              key: const ValueKey('make-game'),
+              onPressed: () {
+                final name = _name.text.trim();
+                if (name.isNotEmpty) {
+                  Navigator.pop(context,
+                      (base: _base, name: name, idea: _idea.text.trim()));
+                }
+              },
+              child: const Text('Make')),
+        ],
+      );
+}
+
+/// The way into Make a game, at the top of the games catalog.
+class MakeGameCard extends StatelessWidget {
+  final AppState state;
+  const MakeGameCard({super.key, required this.state});
+
+  @override
+  Widget build(BuildContext context) => Card(
+        key: const ValueKey('make-a-game'),
+        child: ListTile(
+          leading: const Icon(Icons.auto_awesome, color: GnColors.accent),
+          title: const Text('Make a game',
+              style: TextStyle(fontWeight: FontWeight.w700)),
+          subtitle: const Text(
+              'Describe a game, play it while the Assistant builds it.'),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => MakeGameScreen.open(context, state),
+        ),
+      );
 }

@@ -2530,7 +2530,126 @@ fn project_bases(s: &Shared) -> std::collections::BTreeMap<String, std::path::Pa
             bases.entry(id).or_insert(dir);
         }
     }
+    if let Some(warp) = warp_runtime(s) {
+        for (id, dir) in warp_templates(&warp) {
+            bases.entry(id).or_insert(dir);
+        }
+    }
     bases
+}
+
+/// What a new game ("Make a game" in the app) starts from: a mod whose base
+/// is `warp-template-NAME` is filled from Warp's template NAME, and
+/// `warp-template-blank` from the plain starter.
+pub const WARP_TEMPLATE_PREFIX: &str = "warp-template-";
+
+/// The templates of the Warp runtime `warp` (`warp templates`), each written
+/// once with `warp new` into the data folder, by base id. Kept per runtime
+/// build, so a newer warp brings its newer templates.
+fn warp_templates(warp: &str) -> std::collections::BTreeMap<String, std::path::PathBuf> {
+    use std::collections::BTreeMap;
+    use std::sync::Mutex as StdMutex;
+    type Cache = Option<(
+        String,
+        Option<std::time::SystemTime>,
+        BTreeMap<String, std::path::PathBuf>,
+    )>;
+    static CACHE: StdMutex<Cache> = StdMutex::new(None);
+    let built = std::fs::metadata(warp).and_then(|m| m.modified()).ok();
+    let mut cache = CACHE.lock().unwrap_or_else(|e| e.into_inner());
+    if let Some((path, at, made)) = cache.as_ref() {
+        if path == warp && *at == built {
+            return made.clone();
+        }
+    }
+    let stamp = {
+        use std::hash::{Hash, Hasher};
+        let mut h = std::collections::hash_map::DefaultHasher::new();
+        warp.hash(&mut h);
+        built.hash(&mut h);
+        format!("{:016x}", h.finish())
+    };
+    let root = gamenight_store::data_root()
+        .join("gamenight/warp-templates")
+        .join(stamp);
+    let made = write_warp_templates(warp, &root);
+    if made.is_empty() {
+        warn!(
+            warp,
+            "the Warp runtime wrote no templates; new games need a newer warp"
+        );
+    } else {
+        info!(templates = made.len(), "Warp templates ready for new games");
+    }
+    *cache = Some((warp.to_string(), built, made.clone()));
+    made
+}
+
+fn warp_command(warp: &str) -> std::process::Command {
+    let mut command = std::process::Command::new(warp);
+    command.stdin(std::process::Stdio::null());
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        command.creation_flags(0x0800_0000); // CREATE_NO_WINDOW
+    }
+    command
+}
+
+/// Write every template of `warp` under `root` (a folder per template, plus
+/// `blank`, the plain starter), skipping ones already there.
+fn write_warp_templates(
+    warp: &str,
+    root: &std::path::Path,
+) -> std::collections::BTreeMap<String, std::path::PathBuf> {
+    let mut names = vec!["blank".to_string()];
+    match warp_command(warp).arg("templates").output() {
+        Ok(out) if out.status.success() => {
+            names.extend(
+                String::from_utf8_lossy(&out.stdout)
+                    .lines()
+                    .filter_map(|line| line.split_whitespace().next())
+                    .filter(|name| {
+                        name.bytes()
+                            .all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_')
+                    })
+                    .map(str::to_string),
+            );
+        }
+        Ok(out) => warn!(status = %out.status, "`warp templates` failed (an older warp?)"),
+        Err(error) => warn!(%error, warp, "could not run `warp templates`"),
+    }
+    let mut made = std::collections::BTreeMap::new();
+    for name in names {
+        let dir = root.join(&name);
+        if !dir.join("game.toml").is_file() {
+            let _ = std::fs::remove_dir_all(&dir);
+            if let Err(error) = std::fs::create_dir_all(root) {
+                warn!(%error, "could not make the Warp templates folder");
+                break;
+            }
+            let mut command = warp_command(warp);
+            command.arg("new").arg(&dir).args(["--title", "My Game"]);
+            if name != "blank" {
+                command.args(["--template", &name]);
+            }
+            match command.output() {
+                Ok(out) if out.status.success() => {}
+                Ok(out) => {
+                    warn!(template = name, stderr = %String::from_utf8_lossy(&out.stderr), "`warp new` failed");
+                    continue;
+                }
+                Err(error) => {
+                    warn!(%error, "could not run `warp new`");
+                    continue;
+                }
+            }
+        }
+        if dir.join("game.toml").is_file() && dir.join("main.luau").is_file() {
+            made.insert(format!("{WARP_TEMPLATE_PREFIX}{name}"), dir);
+        }
+    }
+    made
 }
 
 /// The shelf entry for a seated player's own Warp project.
@@ -2548,6 +2667,13 @@ fn project_meta(
         title: project.title.clone(),
         tagline: Some(match base {
             Some(base) => format!("A player's mod of {}", base.title),
+            None if project
+                .base
+                .as_deref()
+                .is_some_and(|b| b.starts_with(WARP_TEMPLATE_PREFIX)) =>
+            {
+                "A player's own game, made with the Assistant".into()
+            }
             None => "A player's own Warp project".into(),
         }),
         cover: None,
@@ -5216,6 +5342,70 @@ mod project_base_tests {
         );
         let love = spec("love", vec![game.display().to_string()], None);
         assert_eq!(warp_game_dir(&love), None, "only Warp games");
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    /// "Make a game" starts from Warp's templates: each one `warp templates`
+    /// lists, plus the blank starter, written once by `warp new`.
+    #[cfg(unix)]
+    #[test]
+    fn new_games_start_from_the_runtimes_templates() {
+        use std::os::unix::fs::PermissionsExt;
+        let root = std::env::temp_dir().join(format!("gn-templates-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(&root).unwrap();
+        let warp = root.join("warp");
+        // A fake warp: lists two templates and writes a game for `new`.
+        std::fs::write(
+            &warp,
+            r#"#!/bin/sh
+case "$1" in
+  templates) printf 'platformer   Coin Climb: a platformer\nfps          Frag Yard: a shooter\n' ;;
+  new)
+    dir="$2"; t=blank
+    while [ $# -gt 0 ]; do [ "$1" = --template ] && t="$2"; shift; done
+    mkdir -p "$dir"
+    printf 'title = "My Game"\n' > "$dir/game.toml"
+    printf -- '-- %s\n' "$t" > "$dir/main.luau"
+    ;;
+  *) exit 2 ;;
+esac
+"#,
+        )
+        .unwrap();
+        std::fs::set_permissions(&warp, std::fs::Permissions::from_mode(0o755)).unwrap();
+        let out = root.join("templates");
+        let made = write_warp_templates(warp.to_str().unwrap(), &out);
+        let ids: Vec<_> = made.keys().cloned().collect();
+        assert_eq!(
+            ids,
+            [
+                "warp-template-blank",
+                "warp-template-fps",
+                "warp-template-platformer"
+            ]
+        );
+        let fps = std::fs::read_to_string(made["warp-template-fps"].join("main.luau")).unwrap();
+        assert_eq!(fps.trim(), "-- fps");
+        let blank = std::fs::read_to_string(made["warp-template-blank"].join("main.luau")).unwrap();
+        assert_eq!(blank.trim(), "-- blank");
+        // A second time keeps what is there.
+        std::fs::write(made["warp-template-fps"].join("main.luau"), "-- kept").unwrap();
+        let again = write_warp_templates(warp.to_str().unwrap(), &out);
+        assert_eq!(again.len(), 3);
+        let kept = std::fs::read_to_string(again["warp-template-fps"].join("main.luau")).unwrap();
+        assert_eq!(kept, "-- kept");
+        // An old warp without `templates` still gives the blank starter.
+        std::fs::write(
+            &warp,
+            "#!/bin/sh\n[ \"$1\" = new ] || exit 2\nmkdir -p \"$2\"; echo 'title = \"x\"' > \"$2/game.toml\"; echo '' > \"$2/main.luau\"\n",
+        )
+        .unwrap();
+        let old = write_warp_templates(warp.to_str().unwrap(), &root.join("old"));
+        assert_eq!(
+            old.keys().cloned().collect::<Vec<_>>(),
+            ["warp-template-blank"]
+        );
         std::fs::remove_dir_all(root).unwrap();
     }
 }
