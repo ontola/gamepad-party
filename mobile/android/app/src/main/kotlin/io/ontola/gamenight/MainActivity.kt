@@ -88,6 +88,13 @@ class MainActivity : FlutterActivity() {
                         startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(call.argument<String>("url")!!)))
                         result.success(null)
                     }
+                    "host" -> {
+                        startActivity(
+                            Intent(this, HostActivity::class.java)
+                                .putExtra(HostActivity.EXTRA_URL, call.argument<String>("url")!!)
+                        )
+                        result.success(null)
+                    }
                     "status" -> result.success(InstallReceiver.status[call.argument<String>("package")!!])
                     else -> result.notImplemented()
                 }

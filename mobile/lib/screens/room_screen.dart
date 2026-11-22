@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../app_state.dart';
 import '../link.dart';
-import '../navigation/open_website.dart';
+import '../navigation/host_room.dart';
 import '../theme.dart';
 import '../layout.dart';
 import '../widgets/name_dialog.dart';
@@ -549,7 +549,7 @@ class RoomScreenState extends State<RoomScreen> {
                   OutlinedButton.icon(
                     style: OutlinedButton.styleFrom(
                         minimumSize: const Size.fromHeight(48)),
-                    onPressed: () => openWebsite(state.cloud, '/host'),
+                    onPressed: () => hostRoom(context, state.cloud),
                     icon: const Icon(Icons.tv),
                     label: const Text('Host a room'),
                   ),

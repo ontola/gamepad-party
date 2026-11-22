@@ -73,4 +73,9 @@ class Apps {
   /// Opens a store page or other link outside GameNight.
   static Future<void> view(Uri url) =>
       _channel.invokeMethod('view', {'url': url.toString()});
+
+  /// Host mode: runs the browser host at [url] full screen in its own
+  /// Android screen (HostActivity.kt), to mirror or cast to a TV.
+  static Future<void> host(Uri url) =>
+      _channel.invokeMethod('host', {'url': url.toString()});
 }

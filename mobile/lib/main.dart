@@ -16,6 +16,7 @@ import 'link.dart';
 import 'layout.dart';
 import 'player_face.dart';
 import 'navigation/browser_history.dart';
+import 'navigation/host_room.dart';
 import 'navigation/open_website.dart';
 import 'navigation/website_session.dart';
 import 'reports.dart';
@@ -225,7 +226,7 @@ class _GameNightAppState extends State<GameNightApp> {
       settings: const RouteSettings(name: 'about'),
       builder: (_) => AboutScreen(
           state: widget.state,
-          onHost: () => _openWebsite('/host'),
+          onHost: _host,
           onDocs: () => _openWebsite('/docs'),
           onScan: () {
             _selectDestination(0);
@@ -300,7 +301,13 @@ class _GameNightAppState extends State<GameNightApp> {
   }
 
   Future<void> _openWebsite(String path) =>
-      openWebsite(widget.state.cloud, path);
+      path == '/host' ? _host() : openWebsite(widget.state.cloud, path);
+
+  Future<void> _host() async {
+    final context = _navigator.currentState?.overlay?.context;
+    if (context == null) return openWebsite(widget.state.cloud, '/host');
+    await hostRoom(context, widget.state.cloud);
+  }
 
   void _selectDestination(int tab) {
     _navigator.currentState?.popUntil((route) => route.isFirst);

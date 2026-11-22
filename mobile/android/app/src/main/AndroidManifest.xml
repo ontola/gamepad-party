@@ -50,6 +50,14 @@
                 <data android:path="/"/>
             </intent-filter>
         </activity>
+        <!-- Host mode: the browser host full screen, see HostActivity.kt. -->
+        <activity
+            android:name=".HostActivity"
+            android:exported="false"
+            android:theme="@style/NormalTheme"
+            android:screenOrientation="sensorLandscape"
+            android:configChanges="orientation|keyboardHidden|keyboard|navigation|screenSize|smallestScreenSize|screenLayout|density|uiMode"
+            android:hardwareAccelerated="true"/>
         <receiver android:name=".InstallReceiver" android:exported="false"/>
         <receiver android:name=".UpdatedReceiver" android:exported="false">
             <intent-filter>
@@ -76,6 +84,8 @@
             <action android:name="android.intent.action.MAIN"/>
             <category android:name="android.intent.category.LAUNCHER"/>
         </intent>
+        <!-- Host mode offers Chrome when the WebView has no WebGPU. -->
+        <package android:name="com.android.chrome"/>
         <!-- To open store pages in the browser. -->
         <intent>
             <action android:name="android.intent.action.VIEW"/>
