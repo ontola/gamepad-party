@@ -82,13 +82,12 @@ jobs:
         with:
           workspaces: . -> target
           key: windows-installer
-      # The lobby is the Warp Game Room from the private Warp repository;
-      # WARP_READ_TOKEN is a read-only token for ontola/warp-game-engine.
+      # The lobby is the Warp Game Room, built from the Warp repository;
+      # ontola/warp-game-engine is public: no token needed.
       - name: Check out the Warp engine for the Game Room lobby
         uses: actions/checkout@v4
         with:
           repository: ontola/warp-game-engine
-          token: ${{ secrets.WARP_READ_TOKEN }}
           path: warp
       - uses: Swatinem/rust-cache@v2
         with:
