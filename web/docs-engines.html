@@ -8,7 +8,7 @@
 <a class="docs-skip" href="#docs-article">Skip to article</a>
 <a class="docs-portal docs-portal-mobile" href="https://splitscreen.club/developers"><strong>Developer portal</strong><span>Add your game</span></a>
 <button class="docs-menu-toggle" type="button" aria-expanded="false" aria-controls="docs-nav-engines">Documentation <span aria-hidden="true">☰</span></button>
-<nav class="docs-sidebar" id="docs-nav-engines" aria-label="Documentation"><a class="docs-portal" href="https://splitscreen.club/developers"><strong>Developer portal</strong><span>Add your game</span></a><h2>Start here</h2><ul><li><a href="/docs">Get started</a></li><li><a href="/docs/share">Share your game</a></li><li><a href="/docs/playbook">Game playbook</a></li><li><a href="/docs/engines" aria-current="page">Engine support</a></li><li><a href="/docs/lifecycle">Game lifecycle</a></li></ul><h2>Your engine</h2><ul><li><a href="/docs/love">LÖVE / Lua</a></li><li><a href="/docs/bevy">Bevy</a></li><li><a href="/docs/rust">Rust</a></li><li><a href="/docs/godot">Godot 4</a></li><li><a href="/docs/unity">Unity</a></li><li><a href="/docs/unreal">Unreal Engine</a></li><li><a href="/docs/lobbies">Build a lobby</a></li><li><a href="/docs/c">C / C++</a></li><li><a href="/docs/other-engines">Other engines</a></li></ul><h2>Integration</h2><ul><li><a href="/docs/controllers">Controllers &amp; players</a></li><li><a href="/docs/faces">Faces &amp; colours</a></li><li><a href="/docs/phone-screens">Phone screens</a></li></ul><h2>Ship your game</h2><ul><li><a href="/docs/performance">Performance</a></li><li><a href="/docs/testing">Test your integration</a></li><li><a href="/docs/publishing">Publish a game</a></li><li><a href="/docs/store-clip">Store clip</a></li></ul><h2>Reference</h2><ul><li><a href="/docs/settings">Game settings</a></li><li><a href="/docs/protocol">Protocol reference</a></li></ul></nav>
+<nav class="docs-sidebar" id="docs-nav-engines" aria-label="Documentation"><a class="docs-portal" href="https://splitscreen.club/developers"><strong>Developer portal</strong><span>Add your game</span></a><h2>Start here</h2><ul><li><a href="/docs">Get started</a></li><li><a href="/docs/share">Share your game</a></li><li><a href="/docs/playbook">Game playbook</a></li><li><a href="/docs/engines" aria-current="page">Engine support</a></li><li><a href="/docs/lifecycle">Game lifecycle</a></li></ul><h2>Your engine</h2><ul><li><a href="/docs/warp">Warp / Luau</a></li><li><a href="/docs/love">LÖVE / Lua</a></li><li><a href="/docs/bevy">Bevy</a></li><li><a href="/docs/rust">Rust</a></li><li><a href="/docs/godot">Godot 4</a></li><li><a href="/docs/unity">Unity</a></li><li><a href="/docs/unreal">Unreal Engine</a></li><li><a href="/docs/lobbies">Build a lobby</a></li><li><a href="/docs/c">C / C++</a></li><li><a href="/docs/other-engines">Other engines</a></li></ul><h2>Integration</h2><ul><li><a href="/docs/controllers">Controllers &amp; players</a></li><li><a href="/docs/faces">Faces &amp; colours</a></li><li><a href="/docs/phone-screens">Phone screens</a></li></ul><h2>Ship your game</h2><ul><li><a href="/docs/performance">Performance</a></li><li><a href="/docs/testing">Test your integration</a></li><li><a href="/docs/publishing">Publish a game</a></li><li><a href="/docs/store-clip">Store clip</a></li></ul><h2>Reference</h2><ul><li><a href="/docs/settings">Game settings</a></li><li><a href="/docs/protocol">Protocol reference</a></li></ul></nav>
 <article class="docs-article" id="docs-article"><p class="docs-eyebrow">SPLITSCREEN CLUB / DOCUMENTATION</p><h1 id="engine-support">Engine support</h1>
 <p>Which engines Splitscreen Club supports, how far, and where to start. Pick the row for
 your engine, then follow its guide. If your engine is not listed as
@@ -34,6 +34,12 @@ windows or faces into your engine yourself.</li>
 </tr>
 </thead>
 <tbody>
+<tr>
+<td><a href="/docs/warp">Warp / Luau</a></td>
+<td>Full</td>
+<td><code>warp new</code>, no SDK to add</td>
+<td>Neon Siege, Dead Miles, Relay Keepers, Stack Together, Neon Trails</td>
+</tr>
 <tr>
 <td><a href="/docs/godot">Godot 4</a></td>
 <td>Full</td>
@@ -85,7 +91,7 @@ windows or faces into your engine yourself.</li>
 </tbody>
 </table>
 <h2 id="features-per-engine">Features per engine</h2>
-<p>&quot;SDK&quot; means the SDK does it for you. &quot;You&quot; means the protocol carries it but
+<p>&quot;SDK&quot; (or &quot;Runtime&quot; for Warp) means it is done for you. &quot;You&quot; means the protocol carries it but
 your game code must handle it. &quot;No&quot; means the SDK cannot do it yet.</p>
 <table>
 <thead>
@@ -98,6 +104,7 @@ your game code must handle it. &quot;No&quot; means the SDK cannot do it yet.</p
 <th>C / C++</th>
 <th>Unity</th>
 <th>Unreal</th>
+<th>Warp (Luau)</th>
 </tr>
 </thead>
 <tbody>
@@ -110,6 +117,7 @@ your game code must handle it. &quot;No&quot; means the SDK cannot do it yet.</p
 <td>SDK</td>
 <td>SDK</td>
 <td>SDK</td>
+<td>Runtime</td>
 </tr>
 <tr>
 <td>Prepare, Ready, Start, Pause, Resume, Dispose</td>
@@ -120,6 +128,7 @@ your game code must handle it. &quot;No&quot; means the SDK cannot do it yet.</p
 <td>SDK</td>
 <td>SDK</td>
 <td>SDK (also pauses the world)</td>
+<td>Runtime</td>
 </tr>
 <tr>
 <td>Controller input per seat</td>
@@ -130,6 +139,7 @@ your game code must handle it. &quot;No&quot; means the SDK cannot do it yet.</p
 <td>No</td>
 <td>SDK (<code>FrameForSeat</code>, <code>JustPressed</code>, deadzones)</td>
 <td>SDK (<code>GetPad</code>, <code>JustPressed</code>, deadzones)</td>
+<td>Runtime (<code>input[id]</code>)</td>
 </tr>
 <tr>
 <td>Hidden preparation and taking the screen</td>
@@ -140,6 +150,7 @@ your game code must handle it. &quot;No&quot; means the SDK cannot do it yet.</p
 <td>You</td>
 <td>SDK (<code>GameNightScreen</code>; no hiding on Linux)</td>
 <td>SDK (<code>bAutomaticScreen</code>)</td>
+<td>Runtime</td>
 </tr>
 <tr>
 <td>Match settings from the lobby and phone</td>
@@ -150,6 +161,7 @@ your game code must handle it. &quot;No&quot; means the SDK cannot do it yet.</p
 <td>SDK</td>
 <td>SDK</td>
 <td>SDK</td>
+<td>No</td>
 </tr>
 <tr>
 <td>Player names, colours and faces</td>
@@ -160,6 +172,7 @@ your game code must handle it. &quot;No&quot; means the SDK cannot do it yet.</p
 <td>No</td>
 <td>SDK (<code>GameNightFaces</code>)</td>
 <td>SDK (<code>DrawFace</code>, <code>GetFaceTexture</code>)</td>
+<td>Runtime (names and colours; no faces)</td>
 </tr>
 <tr>
 <td><a href="/docs/phone-screens">Phone screens</a> for each player</td>
@@ -170,6 +183,7 @@ your game code must handle it. &quot;No&quot; means the SDK cannot do it yet.</p
 <td>No</td>
 <td>SDK (<code>DeclarePhoneScreen</code>)</td>
 <td>SDK (<code>DeclareCompanionFolder</code>)</td>
+<td>No</td>
 </tr>
 <tr>
 <td>Performance diagnostics</td>
@@ -180,6 +194,7 @@ your game code must handle it. &quot;No&quot; means the SDK cannot do it yet.</p
 <td>No</td>
 <td>SDK</td>
 <td>SDK</td>
+<td>No</td>
 </tr>
 <tr>
 <td>Headless contract test in CI</td>
@@ -190,6 +205,7 @@ your game code must handle it. &quot;No&quot; means the SDK cannot do it yet.</p
 <td>Compile only</td>
 <td>Yes, without Unity (dotnet)</td>
 <td>Protocol core only, without Unreal</td>
+<td>Yes, a fake host in <code>cargo test -p warp</code></td>
 </tr>
 <tr>
 <td>Keep the SDK copy current</td>
@@ -200,6 +216,7 @@ your game code must handle it. &quot;No&quot; means the SDK cannot do it yet.</p
 <td>Copy the header</td>
 <td>Package Manager git URL</td>
 <td>Copy the plugin folder</td>
+<td>Ship a newer <code>warp.exe</code></td>
 </tr>
 </tbody>
 </table>
@@ -224,6 +241,9 @@ themselves.</li>
 Bevy and runs the demo through <code>gamenight-certify</code> on Linux with software
 rendering, but Windows and macOS window behaviour, the Windows foreground
 helper, audio devices and physical pads are not tested on hardware yet.</li>
+<li><strong>Warp (Luau)</strong>: match settings, phone buttons and phone screens, faces
+and performance samples are not exposed to Luau yet. There is no prebuilt
+<code>warp</code> download yet: build it from source.</li>
 <li><strong>Rust without an engine</strong>: the SDK delivers typed events; input, windows and
 faces are left to the game.</li>
 <li><strong>Godot 4</strong>: Godot has no package manager, so each game vendors the addon.
@@ -236,7 +256,7 @@ against the <a href="/docs/protocol">protocol reference</a> and the
 <a href="/docs/controllers">controller rules</a>. Before calling an integration done, run
 the <a href="/docs/testing">integration checks</a>.</p>
 
-<footer class="docs-source"><a href="https://github.com/ontola/gamepad-party/blob/main/docs/site/engines.md">Edit this page</a><span data-source-fingerprint="49d4374f8eb81bd6e8b9296a3082e3550dc7d807d7e397b9faeb42acfbfa939b">Built from repository sources</span></footer>
+<footer class="docs-source"><a href="https://github.com/ontola/gamepad-party/blob/main/docs/site/engines.md">Edit this page</a><span data-source-fingerprint="a98cab1b8e0cc5d1b36b7b6b3b8c2000079d99fdb0ee60e47c2de6c07d5c273b">Built from repository sources</span></footer>
 <nav class="docs-pager" aria-label="Adjacent documentation pages"><a href="/docs/playbook"><small>Previous</small>Game playbook</a><a href="/docs/lifecycle"><small>Next</small>Game lifecycle</a></nav></article>
 <aside class="docs-toc" aria-label="On this page"><strong>On this page</strong><a href="#support-levels">Support levels</a><a href="#features-per-engine">Features per engine</a><a href="#open-work">Open work</a><a href="#for-agents-and-code-generators">For agents and code generators</a></aside>
 <p class="docs-copy-status" role="status" aria-live="polite"></p></main></body></html>

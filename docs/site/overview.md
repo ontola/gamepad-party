@@ -10,6 +10,7 @@ Starting a new game? The [Game playbook](/docs/playbook) gets you from an idea t
 
 | Engine | Starting point | What is included |
 | --- | --- | --- |
+| [Warp / Luau](/docs/warp) | The `warp` runtime, our own open-source engine | Lifecycle, seats, controllers, window, names and colours built in; Luau scripts with hot reload, no compiling |
 | [LÖVE / Lua](/docs/love) | Shared party runner | Lifecycle, controller mapping, window handling and faces |
 | [Bevy](/docs/bevy) | Bevy plugin and demo game | Lifecycle, controllers per seat, window and audio handling, settings, faces and phone screens |
 | [Rust](/docs/rust) | Rust SDK | Typed protocol events; your engine handles input consumption and rendering |

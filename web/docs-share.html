@@ -8,7 +8,7 @@
 <a class="docs-skip" href="#docs-article">Skip to article</a>
 <a class="docs-portal docs-portal-mobile" href="https://splitscreen.club/developers"><strong>Developer portal</strong><span>Add your game</span></a>
 <button class="docs-menu-toggle" type="button" aria-expanded="false" aria-controls="docs-nav-share">Documentation <span aria-hidden="true">☰</span></button>
-<nav class="docs-sidebar" id="docs-nav-share" aria-label="Documentation"><a class="docs-portal" href="https://splitscreen.club/developers"><strong>Developer portal</strong><span>Add your game</span></a><h2>Start here</h2><ul><li><a href="/docs">Get started</a></li><li><a href="/docs/share" aria-current="page">Share your game</a></li><li><a href="/docs/playbook">Game playbook</a></li><li><a href="/docs/engines">Engine support</a></li><li><a href="/docs/lifecycle">Game lifecycle</a></li></ul><h2>Your engine</h2><ul><li><a href="/docs/love">LÖVE / Lua</a></li><li><a href="/docs/bevy">Bevy</a></li><li><a href="/docs/rust">Rust</a></li><li><a href="/docs/godot">Godot 4</a></li><li><a href="/docs/unity">Unity</a></li><li><a href="/docs/unreal">Unreal Engine</a></li><li><a href="/docs/lobbies">Build a lobby</a></li><li><a href="/docs/c">C / C++</a></li><li><a href="/docs/other-engines">Other engines</a></li></ul><h2>Integration</h2><ul><li><a href="/docs/controllers">Controllers &amp; players</a></li><li><a href="/docs/faces">Faces &amp; colours</a></li><li><a href="/docs/phone-screens">Phone screens</a></li></ul><h2>Ship your game</h2><ul><li><a href="/docs/performance">Performance</a></li><li><a href="/docs/testing">Test your integration</a></li><li><a href="/docs/publishing">Publish a game</a></li><li><a href="/docs/store-clip">Store clip</a></li></ul><h2>Reference</h2><ul><li><a href="/docs/settings">Game settings</a></li><li><a href="/docs/protocol">Protocol reference</a></li></ul></nav>
+<nav class="docs-sidebar" id="docs-nav-share" aria-label="Documentation"><a class="docs-portal" href="https://splitscreen.club/developers"><strong>Developer portal</strong><span>Add your game</span></a><h2>Start here</h2><ul><li><a href="/docs">Get started</a></li><li><a href="/docs/share" aria-current="page">Share your game</a></li><li><a href="/docs/playbook">Game playbook</a></li><li><a href="/docs/engines">Engine support</a></li><li><a href="/docs/lifecycle">Game lifecycle</a></li></ul><h2>Your engine</h2><ul><li><a href="/docs/warp">Warp / Luau</a></li><li><a href="/docs/love">LÖVE / Lua</a></li><li><a href="/docs/bevy">Bevy</a></li><li><a href="/docs/rust">Rust</a></li><li><a href="/docs/godot">Godot 4</a></li><li><a href="/docs/unity">Unity</a></li><li><a href="/docs/unreal">Unreal Engine</a></li><li><a href="/docs/lobbies">Build a lobby</a></li><li><a href="/docs/c">C / C++</a></li><li><a href="/docs/other-engines">Other engines</a></li></ul><h2>Integration</h2><ul><li><a href="/docs/controllers">Controllers &amp; players</a></li><li><a href="/docs/faces">Faces &amp; colours</a></li><li><a href="/docs/phone-screens">Phone screens</a></li></ul><h2>Ship your game</h2><ul><li><a href="/docs/performance">Performance</a></li><li><a href="/docs/testing">Test your integration</a></li><li><a href="/docs/publishing">Publish a game</a></li><li><a href="/docs/store-clip">Store clip</a></li></ul><h2>Reference</h2><ul><li><a href="/docs/settings">Game settings</a></li><li><a href="/docs/protocol">Protocol reference</a></li></ul></nav>
 <article class="docs-article" id="docs-article"><p class="docs-eyebrow">SPLITSCREEN CLUB / DOCUMENTATION</p><h1 id="share-your-game">Share your game</h1>
 <p>This page is the whole path from a local multiplayer game on your machine to a
 game that groups can play in Splitscreen Club. Follow the steps in order. Each
@@ -52,6 +52,11 @@ Your engine's SDK does that work. Pick your engine:</p>
 </tr>
 </thead>
 <tbody>
+<tr>
+<td>Warp (Luau)</td>
+<td><a href="/docs/warp">Warp / Luau</a></td>
+<td>nothing: the <code>warp</code> runtime does it. The quickest start for a new game</td>
+</tr>
 <tr>
 <td>Godot 4</td>
 <td><a href="/docs/godot">Godot</a>, or start from the <a href="/docs/playbook">template</a></td>
@@ -200,7 +205,7 @@ against the <a href="/docs/protocol">protocol</a>. Do not invent SDK functions.<
 request. Publishing to players (step 6) is for the game's owner to approve.</li>
 </ul>
 
-<footer class="docs-source"><a href="https://github.com/ontola/gamepad-party/blob/main/docs/site/share.md">Edit this page</a><span data-source-fingerprint="3239f1b8d428a59f291869623ca8581a9a239bc655ff655b7adcd79e68d837f4">Built from repository sources</span></footer>
+<footer class="docs-source"><a href="https://github.com/ontola/gamepad-party/blob/main/docs/site/share.md">Edit this page</a><span data-source-fingerprint="7cc7b1bb5f4617686069fe1d8af2f67850f515c5600243ab04e92ced20e3c9e9">Built from repository sources</span></footer>
 <nav class="docs-pager" aria-label="Adjacent documentation pages"><a href="/docs"><small>Previous</small>Get started</a><a href="/docs/playbook"><small>Next</small>Game playbook</a></nav></article>
 <aside class="docs-toc" aria-label="On this page"><strong>On this page</strong><a href="#what-you-need">What you need</a><a href="#1-tell-us-about-the-game">1. Tell us about the game</a><a href="#2-connect-your-engine">2. Connect your engine</a><a href="#3-test-it">3. Test it</a><a href="#4-upload-a-preview-build">4. Upload a preview build</a><a href="#5-fill-the-store-page">5. Fill the store page</a><a href="#6-playtest-review-publish">6. Playtest, review, publish</a><a href="#for-ai-agents">For AI agents</a></aside>
 <p class="docs-copy-status" role="status" aria-live="polite"></p></main></body></html>

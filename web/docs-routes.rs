@@ -6,6 +6,7 @@ pub fn page(slug: &str) -> Option<&'static str> {
         "playbook" => Some(include_str!("docs-playbook.html")),
         "engines" => Some(include_str!("docs-engines.html")),
         "lifecycle" => Some(include_str!("docs-lifecycle.html")),
+        "warp" => Some(include_str!("docs-warp.html")),
         "love" => Some(include_str!("docs-love.html")),
         "bevy" => Some(include_str!("docs-bevy.html")),
         "rust" => Some(include_str!("docs-rust.html")),

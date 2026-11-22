@@ -43,6 +43,7 @@ Your engine's SDK does that work. Pick your engine:
 
 | Engine | Guide | You add |
 | --- | --- | --- |
+| Warp (Luau) | [Warp / Luau](/docs/warp) | nothing: the `warp` runtime does it. The quickest start for a new game |
 | Godot 4 | [Godot](/docs/godot), or start from the [template](/docs/playbook) | the `sdk/godot` addon |
 | Unity | [Unity](/docs/unity) | the `sdk/unity` package |
 | Unreal Engine 5 | [Unreal](/docs/unreal) | the `sdk/unreal/GameNight` plugin |

@@ -17,6 +17,7 @@ your engine, then follow its guide. If your engine is not listed as
 
 | Engine | Level | Start with | Games using it |
 | --- | --- | --- | --- |
+| [Warp / Luau](/docs/warp) | Full | `warp new`, no SDK to add | Neon Siege, Dead Miles, Relay Keepers, Stack Together, Neon Trails |
 | [Godot 4](/docs/godot) | Full | [Godot template](/docs/playbook) and `sdk/godot` addon | Spaceracer, Ballkickers, Spellstorm, Hexstead, Downhill Rush, Bombing Bugs, The Builders, Growing Guns, Frog Fighter, The Voice and the Will |
 | [LÖVE / Lua](/docs/love) | Full | Shared party runner | Blast Party, Neon Trails, Neon Siege, Volley Trouble, Stack Together, Bubble Buddies |
 | [Bevy](/docs/bevy) | New | `gamenight-bevy` plugin and the Star Catch demo | Star Catch (demo) |
@@ -28,21 +29,21 @@ your engine, then follow its guide. If your engine is not listed as
 
 ## Features per engine
 
-"SDK" means the SDK does it for you. "You" means the protocol carries it but
+"SDK" (or "Runtime" for Warp) means it is done for you. "You" means the protocol carries it but
 your game code must handle it. "No" means the SDK cannot do it yet.
 
-| Feature | Godot 4 | LÖVE | Bevy | Rust | C / C++ | Unity | Unreal |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| Connect, hello and launch token | SDK | SDK | SDK | SDK | SDK | SDK | SDK |
-| Prepare, Ready, Start, Pause, Resume, Dispose | SDK | SDK | SDK (`gameplay_runs`) | SDK | SDK | SDK | SDK (also pauses the world) |
-| Controller input per seat | SDK (`frame_for_seat`, `just_pressed`, deadzones) | SDK | SDK (`pad`, `just_pressed`, deadzones) | You (typed frames) | No | SDK (`FrameForSeat`, `JustPressed`, deadzones) | SDK (`GetPad`, `JustPressed`, deadzones) |
-| Hidden preparation and taking the screen | SDK (`GameNightScreen`) | SDK | SDK (`managed_window`) | You | You | SDK (`GameNightScreen`; no hiding on Linux) | SDK (`bAutomaticScreen`) |
-| Match settings from the lobby and phone | SDK | SDK | SDK | SDK | SDK | SDK | SDK |
-| Player names, colours and faces | SDK (`face.gd`) | SDK (`shared.face`) | SDK (`avatar_image`) | You (avatar decoding included) | No | SDK (`GameNightFaces`) | SDK (`DrawFace`, `GetFaceTexture`) |
-| [Phone screens](/docs/phone-screens) for each player | SDK (`declare_companion_folder`) | SDK (`mode.phone`) | SDK (`declare_companion_folder`) | SDK | No | SDK (`DeclarePhoneScreen`) | SDK (`DeclareCompanionFolder`) |
-| Performance diagnostics | SDK | SDK | SDK | You (manual samples) | No | SDK | SDK |
-| Headless contract test in CI | Yes | Yes | Yes, the demo through `gamenight-certify` with Bevy | Yes | Compile only | Yes, without Unity (dotnet) | Protocol core only, without Unreal |
-| Keep the SDK copy current | `sync.py` and CI check | Pinned game sources | Cargo revision | Cargo revision | Copy the header | Package Manager git URL | Copy the plugin folder |
+| Feature | Godot 4 | LÖVE | Bevy | Rust | C / C++ | Unity | Unreal | Warp (Luau) |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Connect, hello and launch token | SDK | SDK | SDK | SDK | SDK | SDK | SDK | Runtime |
+| Prepare, Ready, Start, Pause, Resume, Dispose | SDK | SDK | SDK (`gameplay_runs`) | SDK | SDK | SDK | SDK (also pauses the world) | Runtime |
+| Controller input per seat | SDK (`frame_for_seat`, `just_pressed`, deadzones) | SDK | SDK (`pad`, `just_pressed`, deadzones) | You (typed frames) | No | SDK (`FrameForSeat`, `JustPressed`, deadzones) | SDK (`GetPad`, `JustPressed`, deadzones) | Runtime (`input[id]`) |
+| Hidden preparation and taking the screen | SDK (`GameNightScreen`) | SDK | SDK (`managed_window`) | You | You | SDK (`GameNightScreen`; no hiding on Linux) | SDK (`bAutomaticScreen`) | Runtime |
+| Match settings from the lobby and phone | SDK | SDK | SDK | SDK | SDK | SDK | SDK | No |
+| Player names, colours and faces | SDK (`face.gd`) | SDK (`shared.face`) | SDK (`avatar_image`) | You (avatar decoding included) | No | SDK (`GameNightFaces`) | SDK (`DrawFace`, `GetFaceTexture`) | Runtime (names and colours; no faces) |
+| [Phone screens](/docs/phone-screens) for each player | SDK (`declare_companion_folder`) | SDK (`mode.phone`) | SDK (`declare_companion_folder`) | SDK | No | SDK (`DeclarePhoneScreen`) | SDK (`DeclareCompanionFolder`) | No |
+| Performance diagnostics | SDK | SDK | SDK | You (manual samples) | No | SDK | SDK | No |
+| Headless contract test in CI | Yes | Yes | Yes, the demo through `gamenight-certify` with Bevy | Yes | Compile only | Yes, without Unity (dotnet) | Protocol core only, without Unreal | Yes, a fake host in `cargo test -p warp` |
+| Keep the SDK copy current | `sync.py` and CI check | Pinned game sources | Cargo revision | Cargo revision | Copy the header | Package Manager git URL | Copy the plugin folder | Ship a newer `warp.exe` |
 
 ## Open work
 
@@ -66,6 +67,9 @@ This list doubles as the roadmap for engine support.
   Bevy and runs the demo through `gamenight-certify` on Linux with software
   rendering, but Windows and macOS window behaviour, the Windows foreground
   helper, audio devices and physical pads are not tested on hardware yet.
+- **Warp (Luau)**: match settings, phone buttons and phone screens, faces
+  and performance samples are not exposed to Luau yet. There is no prebuilt
+  `warp` download yet: build it from source.
 - **Rust without an engine**: the SDK delivers typed events; input, windows and
   faces are left to the game.
 - **Godot 4**: Godot has no package manager, so each game vendors the addon.
