@@ -66,6 +66,9 @@ nav .gh {
 .btn:hover { background: var(--card-hi); }
 .btn.primary { background: var(--accent); border-color: var(--accent); }
 .btn.primary:hover { filter: brightness(1.12); }
+.btn.btn-host { padding: 18px 40px; font-size: 20px; font-weight: 800; background: #ffb454; border-color: #ffd08f; color: #1b1206; box-shadow: 0 10px 36px #ffb45455; }
+.host-note { margin-top: 12px; font-size: 15px; opacity: .8; }
+.cta.cta-download { margin-top: 26px; }
 .dl-note { margin-top: 14px; font-size: 14px; opacity: .72; line-height: 1.7; }
 .dl-other { font-size: 13px; opacity: .8; }
 .dl-other a { color: inherit; }

@@ -1,6 +1,10 @@
 <script lang="ts">
   import { room, route, busy, assistantUrl, guestRoom, guestToken } from './state';
   import { navigate } from './router';
+  // The website hosts in the browser (WebGPU) at /play/; without WebGPU, or in
+  // the local desktop app, Host leads to the download page instead.
+  const hostHref=document.body.dataset.local==='true'?'https://splitscreen.club/host':('gpu' in navigator?'/play/':'/host');
+  const hostTitle=hostHref==='/play/'?'Host a room on this computer, right in your browser':'Host a room';
   let leaveDialog: HTMLDialogElement;
   let menuDialog: HTMLDialogElement;
   function openLeave() {
@@ -60,8 +64,8 @@
     {/if}
   </div>
   <div class="site-room-actions">
-    <a class="site-host site-desktop-action" href={document.body.dataset.local==='true'?'https://gamenight.ontola.io/host':'/host'} aria-current={$route==='/host'?'page':undefined}>Host</a>
-    <button class="btn-primary" data-room-join hidden={$room===true} onclick={join}>Join</button>
+    <a class="site-host site-desktop-action" href={hostHref} aria-current={$route==='/host'?'page':undefined} title={hostTitle}><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l13-7.5z"/></svg>Host</a>
+    <button class="btn-primary site-join" data-room-join hidden={$room===true} onclick={join}>Join</button>
     <button class="btn-primary site-desktop-action" data-room-leave hidden={$room!==true} onclick={openLeave}>Leave room</button>
     <button class="site-menu-toggle" aria-label="Open menu" aria-haspopup="dialog" onclick={()=>menuDialog.showModal()}>
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
@@ -73,7 +77,7 @@
   <nav aria-label="More navigation">
     <a href="/docs" aria-current={$route==='/docs' || $route.startsWith('/docs/')?'page':undefined} onclick={()=>menuDialog.close()}>Docs <span aria-hidden="true">↗</span></a>
     <a href={document.body.dataset.local==='true'?'https://gamenight.ontola.io/developers':'/developers'} aria-current={$route==='/developers' || $route.startsWith('/developers/')?'page':undefined} onclick={()=>menuDialog.close()}>Developer portal <span aria-hidden="true">→</span></a>
-    <a href={document.body.dataset.local==='true'?'https://gamenight.ontola.io/host':'/host'} aria-current={$route==='/host'?'page':undefined} onclick={()=>menuDialog.close()}>Host a room <span aria-hidden="true">→</span></a>
+    <a href={hostHref} aria-current={$route==='/host'?'page':undefined} onclick={()=>menuDialog.close()}>Host a room <span aria-hidden="true">→</span></a>
     {#if $room===true}<button class="site-menu-leave" onclick={openLeave}>Leave room <span aria-hidden="true">→</span></button>{/if}
   </nav>
 </dialog>
