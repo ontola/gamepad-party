@@ -195,7 +195,7 @@
           const intent=JSON.parse(sessionStorage.getItem('gamenight_play_after_join_v1'));
           sessionStorage.removeItem('gamenight_play_after_join_v1');
           if(intent?.expires>Date.now()&&/^[a-z0-9][a-z0-9-]{0,79}$/.test(intent.game)&&!['lobby','demo-game'].includes(intent.game)){
-            location.assign('/play?game='+encodeURIComponent(intent.game));
+            location.assign('/get?game='+encodeURIComponent(intent.game));
           }
         }catch{}
       }
