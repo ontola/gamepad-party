@@ -1,0 +1,43 @@
+# Splitscreen Club developer docs
+
+> Splitscreen Club puts local multiplayer games in one room: players pick a game, keep their controller and profile, and go back to the room with Back. These docs show how to connect a game made in any engine and share it through the platform. Start with Share your game.
+
+All pages in one file: https://splitscreen.club/docs/llms-full.txt
+
+## Start here
+
+- [Get started](https://splitscreen.club/docs)
+- [Share your game](https://splitscreen.club/docs/share)
+- [Game playbook](https://splitscreen.club/docs/playbook)
+- [Engine support](https://splitscreen.club/docs/engines)
+- [Game lifecycle](https://splitscreen.club/docs/lifecycle)
+
+## Your engine
+
+- [LÖVE / Lua](https://splitscreen.club/docs/love)
+- [Bevy](https://splitscreen.club/docs/bevy)
+- [Rust](https://splitscreen.club/docs/rust)
+- [Godot 4](https://splitscreen.club/docs/godot)
+- [Unity](https://splitscreen.club/docs/unity)
+- [Unreal Engine](https://splitscreen.club/docs/unreal)
+- [Build a lobby](https://splitscreen.club/docs/lobbies)
+- [C / C++](https://splitscreen.club/docs/c)
+- [Other engines](https://splitscreen.club/docs/other-engines)
+
+## Integration
+
+- [Controllers & players](https://splitscreen.club/docs/controllers)
+- [Faces & colours](https://splitscreen.club/docs/faces)
+- [Phone screens](https://splitscreen.club/docs/phone-screens)
+
+## Ship your game
+
+- [Performance](https://splitscreen.club/docs/performance)
+- [Test your integration](https://splitscreen.club/docs/testing)
+- [Publish a game](https://splitscreen.club/docs/publishing)
+- [Store clip](https://splitscreen.club/docs/store-clip)
+
+## Reference
+
+- [Game settings](https://splitscreen.club/docs/settings)
+- [Protocol reference](https://splitscreen.club/docs/protocol)

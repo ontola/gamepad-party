@@ -962,12 +962,15 @@ async fn serve_web_asset(Path(asset): Path<String>) -> Response {
 }
 
 async fn serve_docs(Path(page): Path<String>) -> Response {
+    if let Some(text) = docs_pages::text(&page) {
+        return ([("content-type", "text/plain; charset=utf-8")], text).into_response();
+    }
     match docs_pages::page(&page) {
         Some(html) => Html(
             html.replace("<body>", "<body data-local=\"true\">")
                 .replace(
                     "href=\"/developers",
-                    "href=\"https://gamenight.ontola.io/developers",
+                    "href=\"https://splitscreen.club/developers",
                 ),
         )
         .into_response(),

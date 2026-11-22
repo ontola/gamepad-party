@@ -6,16 +6,16 @@
 <script src="/web/shell.js" defer></script><script src="/web/docs.js" defer></script></head><body>
 <div id="site-shell"></div><main class="docs-page">
 <a class="docs-skip" href="#docs-article">Skip to article</a>
-<a class="docs-portal docs-portal-mobile" href="https://gamenight.ontola.io/developers"><strong>Developer portal</strong><span>Add your game</span></a>
+<a class="docs-portal docs-portal-mobile" href="https://splitscreen.club/developers"><strong>Developer portal</strong><span>Add your game</span></a>
 <button class="docs-menu-toggle" type="button" aria-expanded="false" aria-controls="docs-nav-playbook">Documentation <span aria-hidden="true">☰</span></button>
-<nav class="docs-sidebar" id="docs-nav-playbook" aria-label="Documentation"><a class="docs-portal" href="https://gamenight.ontola.io/developers"><strong>Developer portal</strong><span>Add your game</span></a><h2>Start here</h2><ul><li><a href="/docs">Get started</a></li><li><a href="/docs/playbook" aria-current="page">Game playbook</a></li><li><a href="/docs/engines">Engine support</a></li><li><a href="/docs/lifecycle">Game lifecycle</a></li></ul><h2>Your engine</h2><ul><li><a href="/docs/love">LÖVE / Lua</a></li><li><a href="/docs/bevy">Bevy</a></li><li><a href="/docs/rust">Rust</a></li><li><a href="/docs/godot">Godot 4</a></li><li><a href="/docs/unity">Unity</a></li><li><a href="/docs/unreal">Unreal Engine</a></li><li><a href="/docs/lobbies">Build a lobby</a></li><li><a href="/docs/c">C / C++</a></li><li><a href="/docs/other-engines">Other engines</a></li></ul><h2>Integration</h2><ul><li><a href="/docs/controllers">Controllers &amp; players</a></li><li><a href="/docs/faces">Faces &amp; colours</a></li><li><a href="/docs/phone-screens">Phone screens</a></li></ul><h2>Ship your game</h2><ul><li><a href="/docs/performance">Performance</a></li><li><a href="/docs/testing">Test your integration</a></li><li><a href="/docs/publishing">Publish a game</a></li><li><a href="/docs/store-clip">Store clip</a></li></ul><h2>Reference</h2><ul><li><a href="/docs/settings">Game settings</a></li><li><a href="/docs/protocol">Protocol reference</a></li></ul></nav>
+<nav class="docs-sidebar" id="docs-nav-playbook" aria-label="Documentation"><a class="docs-portal" href="https://splitscreen.club/developers"><strong>Developer portal</strong><span>Add your game</span></a><h2>Start here</h2><ul><li><a href="/docs">Get started</a></li><li><a href="/docs/share">Share your game</a></li><li><a href="/docs/playbook" aria-current="page">Game playbook</a></li><li><a href="/docs/engines">Engine support</a></li><li><a href="/docs/lifecycle">Game lifecycle</a></li></ul><h2>Your engine</h2><ul><li><a href="/docs/love">LÖVE / Lua</a></li><li><a href="/docs/bevy">Bevy</a></li><li><a href="/docs/rust">Rust</a></li><li><a href="/docs/godot">Godot 4</a></li><li><a href="/docs/unity">Unity</a></li><li><a href="/docs/unreal">Unreal Engine</a></li><li><a href="/docs/lobbies">Build a lobby</a></li><li><a href="/docs/c">C / C++</a></li><li><a href="/docs/other-engines">Other engines</a></li></ul><h2>Integration</h2><ul><li><a href="/docs/controllers">Controllers &amp; players</a></li><li><a href="/docs/faces">Faces &amp; colours</a></li><li><a href="/docs/phone-screens">Phone screens</a></li></ul><h2>Ship your game</h2><ul><li><a href="/docs/performance">Performance</a></li><li><a href="/docs/testing">Test your integration</a></li><li><a href="/docs/publishing">Publish a game</a></li><li><a href="/docs/store-clip">Store clip</a></li></ul><h2>Reference</h2><ul><li><a href="/docs/settings">Game settings</a></li><li><a href="/docs/protocol">Protocol reference</a></li></ul></nav>
 <article class="docs-article" id="docs-article"><p class="docs-eyebrow">SPLITSCREEN CLUB / DOCUMENTATION</p><h1 id="game-playbook">Game playbook</h1>
 <p>How to go from an idea to a game in the Splitscreen Club store quickly. It is written
 for AI coding agents as much as for people: every step can run headless, from
 the command line, without someone watching the screen.</p>
 <h2 id="start-from-the-template">Start from the template</h2>
 <div class="docs-code"><button type="button" class="docs-copy" aria-label="Copy code example">Copy</button><pre><code class="language-sh">git clone https://github.com/ontola/gamepad-party
-python3 gamenight/scripts/new-godot-game.py my-game my-game &quot;My Game&quot;
+python3 gamepad-party/scripts/new-godot-game.py my-game my-game &quot;My Game&quot;
 cd my-game &amp;&amp; git init &amp;&amp; git add -A &amp;&amp; git commit -m &quot;Start My Game&quot;
 </code></pre></div>
 <p>You get a small, working Godot 4 couch game with:</p>
@@ -54,7 +54,7 @@ cd my-game &amp;&amp; git init &amp;&amp; git add -A &amp;&amp; git commit -m &q
 </tbody>
 </table>
 <p>The Splitscreen Club addon is installed from the SDK. CI fails when your copy falls
-behind; run <code>python3 gamenight/sdk/godot/sync.py my-game</code> to update it.
+behind; run <code>python3 gamepad-party/sdk/godot/sync.py my-game</code> to update it.
 Keep one repository per game.</p>
 <p>Replace the orb game with yours one step at a time, and keep the tests green
 after every step. Other engines work too (see <a href="/docs/engines">Engine support</a>).
@@ -64,7 +64,7 @@ For Unity, copy the Orb Rush project in <code>examples/unity-demo</code> instead
 <p>Run all three after every change:</p>
 <div class="docs-code"><button type="button" class="docs-copy" aria-label="Copy code example">Copy</button><pre><code class="language-sh">godot --headless --import                                         # parse errors
 godot --headless --fixed-fps 60 --path . -- --sim 4000 --seed 1   # bots play a round
-python3 tests/lifecycle.py --godot godot                          # GameNight host
+python3 tests/lifecycle.py --godot godot                          # fake Splitscreen Club host
 </code></pre></div>
 <ul>
 <li><strong>Import first.</strong> A GDScript parse error makes later headless runs hang
@@ -226,7 +226,7 @@ such as one with the CI run id.</li>
 first seconds of play don't stutter.</li>
 </ul>
 
-<footer class="docs-source"><a href="https://github.com/ontola/gamepad-party/blob/main/docs/site/playbook.md">Edit this page</a><span data-source-fingerprint="01849e2d6c07b1d2bf6cb9354489b7b7fda8b7ee768f1f6a2f17383febe5d909">Built from repository sources</span></footer>
-<nav class="docs-pager" aria-label="Adjacent documentation pages"><a href="/docs"><small>Previous</small>Get started</a><a href="/docs/engines"><small>Next</small>Engine support</a></nav></article>
+<footer class="docs-source"><a href="https://github.com/ontola/gamepad-party/blob/main/docs/site/playbook.md">Edit this page</a><span data-source-fingerprint="dc90414d929c84ac9daae9998273252a9dfad65d66a0518fbfce04c699290dab">Built from repository sources</span></footer>
+<nav class="docs-pager" aria-label="Adjacent documentation pages"><a href="/docs/share"><small>Previous</small>Share your game</a><a href="/docs/engines"><small>Next</small>Engine support</a></nav></article>
 <aside class="docs-toc" aria-label="On this page"><strong>On this page</strong><a href="#start-from-the-template">Start from the template</a><a href="#the-loop">The loop</a><a href="#make-it-deterministic-from-day-one">Make it deterministic from day one</a><a href="#see-the-game-without-a-person">See the game without a person</a><a href="#make-3d-models">Make 3D models</a><a href="#design-for-the-couch">Design for the couch</a><a href="#the-store-clip">The store clip</a><a href="#release-and-store-page">Release and store page</a><a href="#pitfalls-we-hit">Pitfalls we hit</a></aside>
 <p class="docs-copy-status" role="status" aria-live="polite"></p></main></body></html>

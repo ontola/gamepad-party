@@ -8,7 +8,7 @@ the command line, without someone watching the screen.
 
 ```sh
 git clone https://github.com/ontola/gamepad-party
-python3 gamenight/scripts/new-godot-game.py my-game my-game "My Game"
+python3 gamepad-party/scripts/new-godot-game.py my-game my-game "My Game"
 cd my-game && git init && git add -A && git commit -m "Start My Game"
 ```
 
@@ -24,7 +24,7 @@ You get a small, working Godot 4 couch game with:
 | `AGENTS.md` | the commands and rules for whoever works on it next |
 
 The Splitscreen Club addon is installed from the SDK. CI fails when your copy falls
-behind; run `python3 gamenight/sdk/godot/sync.py my-game` to update it.
+behind; run `python3 gamepad-party/sdk/godot/sync.py my-game` to update it.
 Keep one repository per game.
 
 Replace the orb game with yours one step at a time, and keep the tests green
@@ -39,7 +39,7 @@ Run all three after every change:
 ```sh
 godot --headless --import                                         # parse errors
 godot --headless --fixed-fps 60 --path . -- --sim 4000 --seed 1   # bots play a round
-python3 tests/lifecycle.py --godot godot                          # GameNight host
+python3 tests/lifecycle.py --godot godot                          # fake Splitscreen Club host
 ```
 
 - **Import first.** A GDScript parse error makes later headless runs hang

@@ -10,7 +10,7 @@ A successful handshake alone is not a complete integration.
 
 ## Submit a game
 
-Start in the [developer portal](https://gamenight.ontola.io/developers). Sign in
+Start in the [developer portal](https://splitscreen.club/developers). Sign in
 with your email and announce your game: a title, a short pitch and a player count
 are enough. No protocol integration is required to start. Questions go to the
 portal's **Help** tab; replies appear there and in your inbox.

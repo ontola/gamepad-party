@@ -1,6 +1,8 @@
 # Bring your game to the couch
 
-Splitscreen Club puts local multiplayer games in one lobby. Players pick a game, keep their controller and profile, and return to the lobby with Back. Your game keeps its engine and runs in its own process.
+Splitscreen Club puts local multiplayer games in one room. Players pick a game, keep their controller and profile, and return to the room with Back. Your game keeps its engine and runs in its own process.
+
+**To share a game, follow [Share your game](/docs/share).** It is the whole path in six steps, from connecting your engine to the store, with a command and a "done when" for each step. The rest of these docs is reference for one of those steps.
 
 ## Pick your engine
 
@@ -29,7 +31,11 @@ Read [Game lifecycle](/docs/lifecycle), then [Controllers & players](/docs/contr
 
 ## Have a game already?
 
-[Add your game in the developer portal](/developers). Sign in with your email; a title, a short pitch and a player count are enough to start. We can help with integration, or you can work through these guides yourself.
+[Add your game in the developer portal](/developers). Sign in with your email; a title, a short pitch and a player count are enough to start. We can help with integration, or you can follow [Share your game](/docs/share) yourself.
+
+## For AI agents
+
+Read [Share your game](/docs/share) first. [llms.txt](/docs/llms.txt) lists every page and [llms-full.txt](/docs/llms-full.txt) has all of them as Markdown in one file.
 
 ## How these docs stay current
 

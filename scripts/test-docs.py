@@ -11,7 +11,13 @@ spec.loader.exec_module(docs)
 class DocumentationTests(unittest.TestCase):
     def test_pages_links_and_generated_routes(self):
         output = docs.outputs()
-        self.assertEqual(len(output), len(docs.PAGES) + 1)
+        self.assertEqual(len(output), len(docs.PAGES) + 3)
+        index = output[docs.ROOT / "web/docs-llms.txt"]
+        full = output[docs.ROOT / "web/docs-llms-full.txt"]
+        for page in docs.PAGES:
+            self.assertIn(f"]({docs.SITE}{docs.route(page['slug'])})", index)
+            self.assertIn(f"<!-- {docs.SITE}{docs.route(page['slug'])} -->", full)
+        self.assertNotIn("::: source", full)
         for page in docs.PAGES:
             html = output[docs.ROOT / "web" / docs.filename(page["slug"])]
             self.assertIn('aria-label="Documentation"', html)

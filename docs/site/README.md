@@ -13,7 +13,7 @@ python scripts/test-docs.py
 
 Generated HTML and `web/docs-routes.rs` are committed for the public local server
 and the cloud's pinned web import. Both servers use the same generated route map.
-No Markdown parser runs in production. The docs use the shared Svelte navigation,
+No Markdown parser runs in production. The build also writes `web/docs-llms.txt` and `web/docs-llms-full.txt` (served as `/docs/llms.txt` and `/docs/llms-full.txt`): an index and every page as Markdown for language models. The docs use the shared Svelte navigation,
 with persistent page views and page-scoped CSS. `/docs` is the entry point.
 
 Use `::: source LANGUAGE PATH` to include an entire source file, or append two

@@ -2,6 +2,7 @@
 pub fn page(slug: &str) -> Option<&'static str> {
     match slug {
         "" => Some(include_str!("docs.html")),
+        "share" => Some(include_str!("docs-share.html")),
         "playbook" => Some(include_str!("docs-playbook.html")),
         "engines" => Some(include_str!("docs-engines.html")),
         "lifecycle" => Some(include_str!("docs-lifecycle.html")),
@@ -23,6 +24,15 @@ pub fn page(slug: &str) -> Option<&'static str> {
         "store-clip" => Some(include_str!("docs-store-clip.html")),
         "settings" => Some(include_str!("docs-settings.html")),
         "protocol" => Some(include_str!("docs-protocol.html")),
+        _ => None,
+    }
+}
+
+/// The docs as plain Markdown for language models (llmstxt.org).
+pub fn text(name: &str) -> Option<&'static str> {
+    match name {
+        "llms.txt" => Some(include_str!("docs-llms.txt")),
+        "llms-full.txt" => Some(include_str!("docs-llms-full.txt")),
         _ => None,
     }
 }

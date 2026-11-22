@@ -1,5 +1,7 @@
 # Publish a game
 
+Reference for steps 4 to 6 of [Share your game](/docs/share): builds, CI, the API, the store page, pricing and review.
+
 Use the [developer portal](/developers) to add your game, upload builds, manage versions, edit your listing and create API keys. Splitscreen Club hosts accepted packages. You keep your own build tools, CI and source repository.
 
 ## Where your game's data lives
@@ -41,7 +43,7 @@ In **API keys**, create a named key for your game. Every key can upload builds a
 Add this step after packaging and testing:
 
 ```yaml
-- name: Upload GameNight preview
+- name: Upload Splitscreen Club preview
   id: gamenight
   uses: ontola/gamepad-party@main
   with:
