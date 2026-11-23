@@ -10,7 +10,10 @@ import android.graphics.Color
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
+import android.view.RoundedCorner
 import android.view.View
+import android.view.ViewGroup
 import android.view.WindowInsets
 import android.view.WindowInsetsController
 import android.view.WindowManager
@@ -20,6 +23,8 @@ import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.widget.FrameLayout
+import android.widget.Toast
 import android.window.OnBackInvokedDispatcher
 
 /// Host mode: the phone runs the Splitscreen Club browser host (the Warp
@@ -78,7 +83,19 @@ class HostActivity : Activity() {
                 }
             }
         }
-        setContentView(web)
+        // Android 15+ draws apps edge to edge, under the camera cutout and
+        // into the rounded corners, which cut off the room's logo and QR.
+        // Keep the room inside the safe area, centred, on black.
+        val frame = FrameLayout(this).apply {
+            setBackgroundColor(Color.BLACK)
+            addView(web, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+            setOnApplyWindowInsetsListener { view, insets ->
+                val safe = safeArea(insets)
+                view.setPadding(safe[0], safe[1], safe[0], safe[1])
+                insets
+            }
+        }
+        setContentView(frame)
         immersive()
         web.loadUrl(url)
         web.requestFocus()
@@ -122,7 +139,46 @@ class HostActivity : Activity() {
             .setMessage("The room closes for everyone.")
             .setPositiveButton("Stop") { _, _ -> finish() }
             .setNegativeButton("Keep hosting", null)
+            .setNeutralButton("Cast to TV") { _, _ -> cast() }
             .show()
+    }
+
+    /// Android's own screen cast picker. Phones that hide it (Samsung has
+    /// Smart View in Quick Settings instead) get a pointer there.
+    private fun cast() {
+        try {
+            startActivity(Intent(Settings.ACTION_CAST_SETTINGS))
+        } catch (e: ActivityNotFoundException) {
+            Toast.makeText(this, "Swipe down twice and tap Screen cast or Smart View.", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    /// Horizontal and vertical padding that keeps the page clear of the
+    /// camera cutout and the rounded screen corners, the same on both sides.
+    private fun safeArea(insets: WindowInsets): IntArray {
+        var side = 0
+        var edge = 0
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            val cut = insets.getInsets(WindowInsets.Type.displayCutout())
+            side = maxOf(cut.left, cut.right)
+            edge = maxOf(cut.top, cut.bottom)
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            insets.displayCutout?.let {
+                side = maxOf(it.safeInsetLeft, it.safeInsetRight)
+                edge = maxOf(it.safeInsetTop, it.safeInsetBottom)
+            }
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            // A rounded corner of radius r eats about 0.3 r along both edges.
+            val radius = listOf(
+                RoundedCorner.POSITION_TOP_LEFT, RoundedCorner.POSITION_TOP_RIGHT,
+                RoundedCorner.POSITION_BOTTOM_LEFT, RoundedCorner.POSITION_BOTTOM_RIGHT
+            ).maxOf { insets.getRoundedCorner(it)?.radius ?: 0 }
+            val corner = (radius * 0.3f).toInt()
+            side = maxOf(side, corner)
+            edge = maxOf(edge, corner)
+        }
+        return intArrayOf(side, edge)
     }
 
     private fun immersive() {
