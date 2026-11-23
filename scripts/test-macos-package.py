@@ -14,6 +14,7 @@ def verify(app):
     links = contents / "Helpers/GameNight Link.app/Contents"
     link_info = plistlib.loads((links / "Info.plist").read_bytes())
     assert link_info["CFBundleURLTypes"][0]["CFBundleURLSchemes"] == ["gamenight"]
+    assert (links / "MacOS" / link_info["CFBundleExecutable"]).is_file(), "Link app executable name mismatch"
     subprocess.run(["lipo", str(links / "MacOS/GameNight Link"), "-verify_arch", "arm64", "x86_64"], check=True)
     for bundle in [contents, helper]:
         data = plistlib.loads((bundle / "Info.plist").read_bytes())

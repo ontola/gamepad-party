@@ -83,6 +83,9 @@ def main():
     (links / "MacOS").mkdir(parents=True)
     (links / "Resources").mkdir()
     link_plist = plist("Splitscreen Club Link", "io.ontola.gamenight.link", args.version, True)
+    # The executable is "GameNight Link"; a CFBundleExecutable that names
+    # another file leaves it unsigned and Developer ID signing fails.
+    link_plist["CFBundleExecutable"] = "GameNight Link"
     link_plist["CFBundleURLTypes"] = [{"CFBundleURLName": "Splitscreen Club games", "CFBundleURLSchemes": ["gamenight"]}]
     (links / "Info.plist").write_bytes(plistlib.dumps(link_plist))
     shutil.copy2(icon, links / "Resources/GameNight.icns")
