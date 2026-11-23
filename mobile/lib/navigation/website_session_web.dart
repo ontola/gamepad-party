@@ -23,7 +23,7 @@ void clearLegacyRoom() {
       'gamenight_saved_room',
       'gamenight_guest_save',
       'gamenight_room_code',
-      'gamenight_pair'
+      'gamenight_pair',
     ]) {
       web.window.sessionStorage.removeItem(key);
     }

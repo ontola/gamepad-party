@@ -114,9 +114,8 @@ class RoomScreenState extends State<RoomScreen> {
   Future<void> _joinAction(Future<String> Function() action) => _run(action);
 
   Future<void> scan() async {
-    final text = await Navigator.of(context).push<String>(
-      MaterialPageRoute(builder: (_) => const ScannerScreen()),
-    );
+    final text = await Navigator.of(context)
+        .push<String>(MaterialPageRoute(builder: (_) => const ScannerScreen()));
     if (text != null) await openLink(text);
   }
 
@@ -125,7 +124,8 @@ class RoomScreenState extends State<RoomScreen> {
     if (!isRoomCode(code)) {
       // Codes never use I, L, O, 0 or 1, so this cannot be a room.
       setState(
-          () => _error = 'No room with that code. Check the code on the TV.');
+        () => _error = 'No room with that code. Check the code on the TV.',
+      );
       _code.clear();
       return;
     }
@@ -136,8 +136,9 @@ class RoomScreenState extends State<RoomScreen> {
       await _run(() => state.joinRoom(code, remember: _rememberJoin));
     } else {
       await state.rememberRoomInvitation(
-          HostLink(Uri.parse(hostedOrigin), roomCode: code),
-          remember: _rememberJoin);
+        HostLink(Uri.parse(hostedOrigin), roomCode: code),
+        remember: _rememberJoin,
+      );
       await _joinAction(state.resumeRoomInvitation);
     }
     _code.clear();
@@ -147,60 +148,70 @@ class RoomScreenState extends State<RoomScreen> {
   Widget build(BuildContext context) {
     final connected = state.host != null;
     return ListenableBuilder(
-        listenable: state,
-        builder: (context, _) {
-          final cards = [
-            if (_error != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child:
-                    Text(_error!, style: const TextStyle(color: GnColors.warn)),
+      listenable: state,
+      builder: (context, _) {
+        final cards = [
+          if (_error != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(
+                _error!,
+                style: const TextStyle(color: GnColors.warn),
               ),
-            if (state.inHostedRoom)
-              ..._hostedCards()
-            // A Splitscreen Club PC this phone knew, but no character there
-            // yet: the same clean join page, with that PC as a footnote.
-            else if (!connected ||
-                !((state.session?.linked ?? false) ||
-                    (state.session?.waiting ?? false)))
-              ..._connectCards()
-            else
-              ..._roomCards(),
-          ];
-          final linked = state.inHostedRoom
-              ? state.hostedRoom?.connected ?? false
-              : state.session?.linked ?? false;
-          if (!linked) {
-            return ContentWidth(
-                child: ListView(
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-                    children: cards));
-          }
-          // One screen: the game, then the playlist cut short, then the room.
-          final leave = Padding(
-            padding: const EdgeInsets.only(top: 16),
-            child: OutlinedButton.icon(
-              onPressed: _busy ? null : _leave,
-              icon: const Icon(Icons.logout, size: 18),
-              label: const Text('Leave room'),
+            ),
+          if (state.inHostedRoom)
+            ..._hostedCards()
+          // A Splitscreen Club PC this phone knew, but no character there
+          // yet: the same clean join page, with that PC as a footnote.
+          else if (!connected ||
+              !((state.session?.linked ?? false) ||
+                  (state.session?.waiting ?? false)))
+            ..._connectCards()
+          else
+            ..._roomCards(),
+        ];
+        final linked = state.inHostedRoom
+            ? state.hostedRoom?.connected ?? false
+            : state.session?.linked ?? false;
+        if (!linked) {
+          return ContentWidth(
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+              children: cards,
             ),
           );
-          final game = GameScreen(
-              state: state,
-              onJoin: () {},
-              above: state.metPlayer
-                  ? null
-                  : MeetYourPlayer(
-                      key: const ValueKey('meet-player-banner'), state: state),
-              below: [...cards, if (!state.inHostedRoom) leave]);
-          // A game's phone screen fills the page, so the way out stays on top.
-          if (state.companion?.url == null) return game;
-          return Column(children: [
+        }
+        // One screen: the game, then the playlist cut short, then the room.
+        final leave = Padding(
+          padding: const EdgeInsets.only(top: 16),
+          child: OutlinedButton.icon(
+            onPressed: _busy ? null : _leave,
+            icon: const Icon(Icons.logout, size: 18),
+            label: const Text('Leave room'),
+          ),
+        );
+        final game = GameScreen(
+          state: state,
+          onJoin: () {},
+          above: state.metPlayer
+              ? null
+              : MeetYourPlayer(
+                  key: const ValueKey('meet-player-banner'),
+                  state: state,
+                ),
+          below: [...cards, if (!state.inHostedRoom) leave],
+        );
+        // A game's phone screen fills the page, so the way out stays on top.
+        if (state.companion?.url == null) return game;
+        return Column(
+          children: [
             // Hidden, never removed: the game page below must keep its state.
             Visibility(visible: !state.companionFullscreen, child: _roomBar()),
             Expanded(child: game),
-          ]);
-        });
+          ],
+        );
+      },
+    );
   }
 
   /// Always on top while in a room, whichever section shows: where you are
@@ -212,8 +223,8 @@ class RoomScreenState extends State<RoomScreen> {
     final title = code != null
         ? 'Room $code'
         : hosted
-            ? 'Your room'
-            : 'Splitscreen Club at ${state.host?.authority ?? ''}';
+        ? 'Your room'
+        : 'Splitscreen Club at ${state.host?.authority ?? ''}';
     final name = hosted ? state.name : state.session?.playerName ?? state.name;
     return ContentWidth(
       child: Container(
@@ -225,53 +236,68 @@ class RoomScreenState extends State<RoomScreen> {
           borderRadius: BorderRadius.circular(14),
           border: Border.all(color: GnColors.border),
         ),
-        child: Row(children: [
-          Icon(error != null ? Icons.wifi_off : Icons.circle,
+        child: Row(
+          children: [
+            Icon(
+              error != null ? Icons.wifi_off : Icons.circle,
               size: error != null ? 20 : 10,
-              color: error != null ? GnColors.warn : GnColors.ok),
-          const SizedBox(width: 12),
-          Expanded(
-            child:
-                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontWeight: FontWeight.w700)),
-              Text(error ?? 'Playing as $name',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
+              color: error != null ? GnColors.warn : GnColors.ok,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  Text(
+                    error ?? 'Playing as $name',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
                       fontSize: 13,
-                      color: error != null ? GnColors.warn : GnColors.muted)),
-            ]),
-          ),
-          const SizedBox(width: 8),
-          OutlinedButton.icon(
-            onPressed: _busy ? null : _leave,
-            icon: const Icon(Icons.logout, size: 18),
-            label: const Text('Leave room'),
-          ),
-        ]),
+                      color: error != null ? GnColors.warn : GnColors.muted,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            OutlinedButton.icon(
+              onPressed: _busy ? null : _leave,
+              icon: const Icon(Icons.logout, size: 18),
+              label: const Text('Leave room'),
+            ),
+          ],
+        ),
       ),
     );
   }
 
   Future<void> _leave() async {
     final sure = await showDialog<bool>(
-        context: context,
-        builder: (context) => AlertDialog(
-              title: const Text('Leave this room?'),
-              content: const Text(
-                  'Your player and faces stay on this phone. Scan the QR or enter the room code to come back.'),
-              actions: [
-                TextButton(
-                    onPressed: () => Navigator.pop(context, false),
-                    child: const Text('Stay')),
-                FilledButton(
-                    onPressed: () => Navigator.pop(context, true),
-                    child: const Text('Leave room')),
-              ],
-            ));
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Leave this room?'),
+        content: const Text(
+          'Your player and faces stay on this phone. Scan the QR or enter the room code to come back.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Stay'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Leave room'),
+          ),
+        ],
+      ),
+    );
     if (sure != true) return;
     await _run(() async {
       if (state.inHostedRoom) {
@@ -284,22 +310,23 @@ class RoomScreenState extends State<RoomScreen> {
   }
 
   Widget _codeField() => Semantics(
-      label: 'Room code, six characters',
-      child: RoomCodeField(
-        controller: _code,
-        enabled: !_busy,
-        onChanged: (value) {
-          if (value.length == 6) _joinCode();
-        },
-      ));
+    label: 'Room code, six characters',
+    child: RoomCodeField(
+      controller: _code,
+      enabled: !_busy,
+      onChanged: (value) {
+        if (value.length == 6) _joinCode();
+      },
+    ),
+  );
 
   Widget _rememberBox() => CheckboxListTile(
-        contentPadding: EdgeInsets.zero,
-        value: _rememberJoin,
-        onChanged: (v) => setState(() => _rememberJoin = v ?? false),
-        title: const Text('Remember me on this Splitscreen Club'),
-        controlAffinity: ListTileControlAffinity.leading,
-      );
+    contentPadding: EdgeInsets.zero,
+    value: _rememberJoin,
+    onChanged: (v) => setState(() => _rememberJoin = v ?? false),
+    title: const Text('Remember me on this Splitscreen Club'),
+    controlAffinity: ListTileControlAffinity.leading,
+  );
 
   List<Widget> _hostedCards() {
     final room = state.hostedRoom;
@@ -310,42 +337,52 @@ class RoomScreenState extends State<RoomScreen> {
       if (!connected && !choosing && (waiting || room?.choosingPlayer == true))
         ...joinSteps(state),
       if (choosing)
-        Section(title: 'Choose your player', children: [
-          Hint(waiting
-              ? 'Pick the player you are holding the controller for, or walk it to your door on the TV.'
-              : 'Pick the player you are using on the TV.'),
-          const SizedBox(height: 12),
-          for (final seat in room!.seats)
-            Padding(
+        Section(
+          title: 'Choose your player',
+          children: [
+            Hint(
+              waiting
+                  ? 'Pick the player you are holding the controller for, or walk it to your door on the TV.'
+                  : 'Pick the player you are using on the TV.',
+            ),
+            const SizedBox(height: 12),
+            for (final seat in room!.seats)
+              Padding(
                 padding: const EdgeInsets.only(bottom: 8),
                 child: FilledButton.tonal(
                   onPressed: _busy || seat['available'] != true
                       ? null
                       : () => _run(() async {
-                            await state.chooseGuestSeat(seat);
-                            return 'Connected to the room.';
-                          }),
-                  child: Text(seat['name'] as String? ??
-                      'Player ${(seat['index'] as num? ?? 0).toInt() + 1}'),
-                )),
-        ]),
+                          await state.chooseGuestSeat(seat);
+                          return 'Connected to the room.';
+                        }),
+                  child: Text(
+                    seat['name'] as String? ??
+                        'Player ${(seat['index'] as num? ?? 0).toInt() + 1}',
+                  ),
+                ),
+              ),
+          ],
+        ),
       if (room != null && (waiting || room.choosingPlayer))
         _phoneSeatCard(asked: room.phoneSeat),
       Section(
-          title: room?.code == null ? 'Your room' : 'Room ${room!.code}',
-          children: [
-            Row(children: [
+        title: room?.code == null ? 'Your room' : 'Room ${room!.code}',
+        children: [
+          Row(
+            children: [
               Icon(
-                  state.sessionError != null
-                      ? Icons.wifi_off
-                      : connected
-                          ? Icons.check_circle
-                          : Icons.hourglass_top,
-                  color: state.sessionError != null
-                      ? GnColors.warn
-                      : connected
-                          ? GnColors.ok
-                          : GnColors.muted),
+                state.sessionError != null
+                    ? Icons.wifi_off
+                    : connected
+                    ? Icons.check_circle
+                    : Icons.hourglass_top,
+                color: state.sessionError != null
+                    ? GnColors.warn
+                    : connected
+                    ? GnColors.ok
+                    : GnColors.muted,
+              ),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
@@ -353,89 +390,97 @@ class RoomScreenState extends State<RoomScreen> {
                       (room == null
                           ? 'Checking your room…'
                           : connected
-                              ? 'Connected as ${state.name} · '
-                                  '${room.players} ${room.players == 1 ? 'player' : 'players'}'
-                              : choosing
-                                  ? 'Choose your player above'
-                                  : waiting
-                                      ? 'Waiting for a controller'
-                                      : 'Not in a room any more'),
+                          ? 'Connected as ${state.name} · '
+                                '${room.players} ${room.players == 1 ? 'player' : 'players'}'
+                          : choosing
+                          ? 'Choose your player above'
+                          : waiting
+                          ? 'Waiting for a controller'
+                          : 'Not in a room any more'),
                   style: const TextStyle(
-                      fontSize: 16, fontWeight: FontWeight.w600),
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
-            ]),
-            // The big press A step above says the rest while nobody is up.
-            if (!connected &&
-                (choosing || !(waiting || room?.choosingPlayer == true))) ...[
-              const SizedBox(height: 8),
-              Hint(room?.choosingPlayer == true
+            ],
+          ),
+          // The big press A step above says the rest while nobody is up.
+          if (!connected &&
+              (choosing || !(waiting || room?.choosingPlayer == true))) ...[
+            const SizedBox(height: 8),
+            Hint(
+              room?.choosingPlayer == true
                   ? 'No account needed.'
                   : choosing
-                      ? 'Not listed? Press A on your controller first.'
-                      : waiting
-                          ? 'Press A on a controller. Your player shows up here to choose.'
-                          : 'The pickup expired or you left. Enter the room code again.'),
-            ],
-            if (connected && !room!.fresh)
-              const Padding(
-                padding: EdgeInsets.only(top: 8),
-                child: Hint(
-                    'The Splitscreen Club PC has not checked in for a moment.'),
+                  ? 'Not listed? Press A on your controller first.'
+                  : waiting
+                  ? 'Press A on a controller. Your player shows up here to choose.'
+                  : 'The pickup expired or you left. Enter the room code again.',
+            ),
+          ],
+          if (connected && !room!.fresh)
+            const Padding(
+              padding: EdgeInsets.only(top: 8),
+              child: Hint(
+                'The Splitscreen Club PC has not checked in for a moment.',
               ),
-            if (!state.isGuest && room != null && (connected || waiting)) ...[
-              const SizedBox(height: 4),
+            ),
+          if (!state.isGuest && room != null && (connected || waiting)) ...[
+            const SizedBox(height: 4),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              value: room.mainPlayer,
+              onChanged: _busy
+                  ? null
+                  : (v) => _run(() async {
+                      await state.setHostedMainPlayer(v);
+                      return v
+                          ? 'You are the main player on this Splitscreen Club.'
+                          : 'Your player will no longer appear automatically.';
+                    }),
+              title: const Text('Main player on this Splitscreen Club'),
+              subtitle: const Text(
+                'Wait at the door when Splitscreen Club starts.',
+              ),
+            ),
+            if (!room.mainPlayer)
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
-                value: room.mainPlayer,
+                value: room.remembered,
                 onChanged: _busy
                     ? null
                     : (v) => _run(() async {
-                          await state.setHostedMainPlayer(v);
-                          return v
-                              ? 'You are the main player on this Splitscreen Club.'
-                              : 'Your player will no longer appear automatically.';
-                        }),
-                title: const Text('Main player on this Splitscreen Club'),
-                subtitle: const Text(
-                    'Wait at the door when Splitscreen Club starts.'),
+                        await state.setHostedRemember(v);
+                        return v
+                            ? 'Your player will be waiting here next time.'
+                            : 'Your player will no longer be remembered here.';
+                      }),
+                title: const Text('Remember me on this Splitscreen Club'),
               ),
-              if (!room.mainPlayer)
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  value: room.remembered,
-                  onChanged: _busy
-                      ? null
-                      : (v) => _run(() async {
-                            await state.setHostedRemember(v);
-                            return v
-                                ? 'Your player will be waiting here next time.'
-                                : 'Your player will no longer be remembered here.';
-                          }),
-                  title: const Text('Remember me on this Splitscreen Club'),
-                ),
-            ],
-            // The way out sits with the room it leaves.
-            const SizedBox(height: 12),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: OutlinedButton.icon(
-                key: const ValueKey('room-leave'),
-                onPressed: _busy
-                    ? null
-                    : connected
-                        ? _leave
-                        : () => _run(() async {
-                              await state.leaveHostedRoom();
-                              return waiting
-                                  ? 'Pickup cancelled.'
-                                  : 'You left the room. Your player is kept.';
-                            }),
-                icon: const Icon(Icons.logout, size: 18),
-                label: Text(waiting ? 'Cancel pickup' : 'Leave room'),
-              ),
+          ],
+          // The way out sits with the room it leaves.
+          const SizedBox(height: 12),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: OutlinedButton.icon(
+              key: const ValueKey('room-leave'),
+              onPressed: _busy
+                  ? null
+                  : connected
+                  ? _leave
+                  : () => _run(() async {
+                      await state.leaveHostedRoom();
+                      return waiting
+                          ? 'Pickup cancelled.'
+                          : 'You left the room. Your player is kept.';
+                    }),
+              icon: const Icon(Icons.logout, size: 18),
+              label: Text(waiting ? 'Cancel pickup' : 'Leave room'),
             ),
-          ]),
+          ),
+        ],
+      ),
       if (connected) RoomLogPeek(state: state),
       if (room != null && room.none)
         Section(title: 'Room code', children: [_codeField(), _rememberBox()]),
@@ -444,119 +489,133 @@ class RoomScreenState extends State<RoomScreen> {
 
   /// More phones than controllers: a phone can play as a player of its own,
   /// in games played on phones. Late is fine, also while a game runs.
-  Widget _phoneSeatCard({required bool asked}) =>
-      Section(title: 'No controller?', children: [
-        Hint(asked
+  Widget _phoneSeatCard({required bool asked}) => Section(
+    title: 'No controller?',
+    children: [
+      Hint(
+        asked
             ? 'Adding your player to the party…'
             : 'Play on this phone instead. You join games that are played on '
-                'phones, also when one has already started.'),
-        const SizedBox(height: 12),
-        OutlinedButton.icon(
-          style: OutlinedButton.styleFrom(foregroundColor: GnColors.muted),
-          onPressed: _busy || asked
-              ? null
-              : () => _run(() async {
-                    await state.playOnPhone();
-                    return 'Taking a seat on this phone.';
-                  }),
-          icon: const Icon(Icons.smartphone, size: 18),
-          label: const Text('Play on this phone'),
-        ),
-      ]);
+                  'phones, also when one has already started.',
+      ),
+      const SizedBox(height: 12),
+      OutlinedButton.icon(
+        style: OutlinedButton.styleFrom(foregroundColor: GnColors.muted),
+        onPressed: _busy || asked
+            ? null
+            : () => _run(() async {
+                await state.playOnPhone();
+                return 'Taking a seat on this phone.';
+              }),
+        icon: const Icon(Icons.smartphone, size: 18),
+        label: const Text('Play on this phone'),
+      ),
+    ],
+  );
 
   List<Widget> _connectCards() => [
-        if (state.sessionError != null &&
-            (state.host == null || state.pendingRoomDestination != null))
-          Section(
-              title: state.pendingRoomDestination != null
-                  ? 'Could not join this room'
-                  : 'Could not reach Splitscreen Club',
-              children: [
-                Text(state.sessionError!,
-                    style: const TextStyle(color: GnColors.warn)),
-                if (state.pendingRoomDestination != null) ...[
-                  const SizedBox(height: 12),
-                  FilledButton(
-                      onPressed: _busy
-                          ? null
-                          : () => _joinAction(state.resumeRoomInvitation),
-                      child: const Text('Try again')),
-                ],
-              ]),
-        // Bare, narrow block: the code field is 360 wide, so the rest is too.
-        Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 360),
-            child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const SizedBox(height: 24),
-                  const Text('Join a room',
-                      style:
-                          TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
-                  const SizedBox(height: 4),
-                  const Hint('The QR and the room code are on the TV.'),
-                  const SizedBox(height: 16),
-                  FilledButton.icon(
-                    style: FilledButton.styleFrom(
-                        minimumSize: const Size.fromHeight(56)),
-                    onPressed: _busy ? null : scan,
-                    icon: const Icon(Icons.qr_code_scanner),
-                    label: const Text('Scan the QR on the TV'),
-                  ),
-                  const SizedBox(height: 20),
-                  const Center(child: Hint('or enter the room code')),
-                  const SizedBox(height: 8),
-                  _codeField(),
-                  const SizedBox(height: 12),
-                  Theme(
-                    data: Theme.of(context)
-                        .copyWith(dividerColor: Colors.transparent),
-                    child: ExpansionTile(
-                      tilePadding: const EdgeInsets.symmetric(horizontal: 4),
-                      childrenPadding: const EdgeInsets.fromLTRB(4, 0, 4, 12),
-                      title: const Text('Advanced',
-                          style:
-                              TextStyle(color: GnColors.muted, fontSize: 14)),
-                      children: [
-                        TextField(
-                          controller: _address,
-                          keyboardType: TextInputType.url,
-                          autocorrect: false,
-                          decoration: const InputDecoration(
-                              labelText: 'Splitscreen Club address',
-                              hintText: '192.168.1.20:7913'),
-                          onSubmitted: _busy ? null : openLink,
-                        ),
-                        const SizedBox(height: 12),
-                        OutlinedButton(
-                          onPressed:
-                              _busy ? null : () => openLink(_address.text),
-                          child: Text(_busy ? 'Connecting…' : 'Connect'),
-                        ),
-                        const SizedBox(height: 8),
-                        const Hint(
-                            'The address is printed under the QR in the lobby.'),
-                      ],
-                    ),
-                  ),
-                  if (state.host != null) _knownHost(),
-                  const SizedBox(height: 24),
-                  PlayerSetup(state: state),
-                  const SizedBox(height: 24),
-                  const Center(child: Hint('No room yet?')),
-                  const SizedBox(height: 8),
-                  OutlinedButton.icon(
-                    style: OutlinedButton.styleFrom(
-                        minimumSize: const Size.fromHeight(48)),
-                    onPressed: () => hostRoom(context, state.cloud),
-                    icon: const Icon(Icons.tv),
-                    label: const Text('Host a room'),
-                  ),
-                ]),
+    if (state.sessionError != null &&
+        (state.host == null || state.pendingRoomDestination != null))
+      Section(
+        title: state.pendingRoomDestination != null
+            ? 'Could not join this room'
+            : 'Could not reach Splitscreen Club',
+        children: [
+          Text(
+            state.sessionError!,
+            style: const TextStyle(color: GnColors.warn),
           ),
+          if (state.pendingRoomDestination != null) ...[
+            const SizedBox(height: 12),
+            FilledButton(
+              onPressed: _busy
+                  ? null
+                  : () => _joinAction(state.resumeRoomInvitation),
+              child: const Text('Try again'),
+            ),
+          ],
+        ],
+      ),
+    // Bare, narrow block: the code field is 360 wide, so the rest is too.
+    Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 360),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const SizedBox(height: 24),
+            const Text(
+              'Join a room',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 4),
+            const Hint('The QR and the room code are on the TV.'),
+            const SizedBox(height: 16),
+            FilledButton.icon(
+              style: FilledButton.styleFrom(
+                minimumSize: const Size.fromHeight(56),
+              ),
+              onPressed: _busy ? null : scan,
+              icon: const Icon(Icons.qr_code_scanner),
+              label: const Text('Scan the QR on the TV'),
+            ),
+            const SizedBox(height: 20),
+            const Center(child: Hint('or enter the room code')),
+            const SizedBox(height: 8),
+            _codeField(),
+            const SizedBox(height: 12),
+            Theme(
+              data: Theme.of(context)
+                  .copyWith(dividerColor: Colors.transparent),
+              child: ExpansionTile(
+                tilePadding: const EdgeInsets.symmetric(horizontal: 4),
+                childrenPadding: const EdgeInsets.fromLTRB(4, 0, 4, 12),
+                title: const Text(
+                  'Advanced',
+                  style: TextStyle(color: GnColors.muted, fontSize: 14),
+                ),
+                children: [
+                  TextField(
+                    controller: _address,
+                    keyboardType: TextInputType.url,
+                    autocorrect: false,
+                    decoration: const InputDecoration(
+                      labelText: 'Splitscreen Club address',
+                      hintText: '192.168.1.20:7913',
+                    ),
+                    onSubmitted: _busy ? null : openLink,
+                  ),
+                  const SizedBox(height: 12),
+                  OutlinedButton(
+                    onPressed: _busy ? null : () => openLink(_address.text),
+                    child: Text(_busy ? 'Connecting…' : 'Connect'),
+                  ),
+                  const SizedBox(height: 8),
+                  const Hint(
+                    'The address is printed under the QR in the lobby.',
+                  ),
+                ],
+              ),
+            ),
+            if (state.host != null) _knownHost(),
+            const SizedBox(height: 24),
+            PlayerSetup(state: state),
+            const SizedBox(height: 24),
+            const Center(child: Hint('No room yet?')),
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size.fromHeight(48),
+              ),
+              onPressed: () => hostRoom(context, state.cloud),
+              icon: const Icon(Icons.tv),
+              label: Text(hostRoomLabel()),
+            ),
+          ],
         ),
-      ];
+      ),
+    ),
+  ];
 
   /// The Splitscreen Club PC this phone last used on Wi-Fi. Small: it may
   /// be off or in another house; the code and QR above work either way.
@@ -565,25 +624,32 @@ class RoomScreenState extends State<RoomScreen> {
     return Padding(
       key: const ValueKey('known-host'),
       padding: const EdgeInsets.only(top: 12),
-      child: Row(children: [
-        Icon(down ? Icons.wifi_off : Icons.wifi,
-            size: 18, color: down ? GnColors.warn : GnColors.muted),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Hint(down
-              ? 'Last Splitscreen Club PC (${state.host!.authority}) is not reachable.'
-              : 'On Wi-Fi with Splitscreen Club at ${state.host!.authority}.'),
-        ),
-        TextButton(
-          onPressed: _busy
-              ? null
-              : () => _run(() async {
+      child: Row(
+        children: [
+          Icon(
+            down ? Icons.wifi_off : Icons.wifi,
+            size: 18,
+            color: down ? GnColors.warn : GnColors.muted,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Hint(
+              down
+                  ? 'Last Splitscreen Club PC (${state.host!.authority}) is not reachable.'
+                  : 'On Wi-Fi with Splitscreen Club at ${state.host!.authority}.',
+            ),
+          ),
+          TextButton(
+            onPressed: _busy
+                ? null
+                : () => _run(() async {
                     await state.disconnect();
                     return 'Forgot that Splitscreen Club PC.';
                   }),
-          child: const Text('Forget'),
-        ),
-      ]),
+            child: const Text('Forget'),
+          ),
+        ],
+      ),
     );
   }
 
@@ -593,146 +659,173 @@ class RoomScreenState extends State<RoomScreen> {
     final waiting = s?.waiting ?? false;
     return [
       if (waiting) ...joinSteps(state),
-      Section(title: 'Your session', children: [
-        Row(children: [
-          Icon(
-              state.sessionError != null
-                  ? Icons.wifi_off
-                  : linked
-                      ? Icons.check_circle
-                      : Icons.link_off,
-              color: state.sessionError != null
-                  ? GnColors.warn
-                  : linked
-                      ? GnColors.ok
-                      : GnColors.muted),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              state.sessionError ??
-                  (linked
-                      ? 'Connected as ${s!.playerName ?? state.name}'
-                      : waiting
+      Section(
+        title: 'Your session',
+        children: [
+          Row(
+            children: [
+              Icon(
+                state.sessionError != null
+                    ? Icons.wifi_off
+                    : linked
+                    ? Icons.check_circle
+                    : Icons.link_off,
+                color: state.sessionError != null
+                    ? GnColors.warn
+                    : linked
+                    ? GnColors.ok
+                    : GnColors.muted,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  state.sessionError ??
+                      (linked
+                          ? 'Connected as ${s!.playerName ?? state.name}'
+                          : waiting
                           ? 'Waiting for pickup in the lobby'
                           : 'Not linked to a character yet'),
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-            ),
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
           ),
-        ]),
-        const SizedBox(height: 8),
-        Hint(state.sessionError != null
-            ? 'Showing what this phone last knew. It updates when Splitscreen Club is reachable again.'
-            : linked
+          const SizedBox(height: 8),
+          Hint(
+            state.sessionError != null
+                ? 'Showing what this phone last knew. It updates when Splitscreen Club is reachable again.'
+                : linked
                 ? '${s!.seat == null ? 'Your profile is linked to this party.' : 'Player ${s.seat! + 1}.'} '
-                    'Your name and face follow you into every game.'
+                      'Your name and face follow you into every game.'
                 : waiting
-                    ? 'Walk your character to your profile door in the lobby and stand there to connect.'
-                    : 'Enter the room code from the lobby, or scan the QR above your character.'),
-        const SizedBox(height: 12),
-        _Facts(rows: [
-          ('Players in the party', s == null ? '—' : '${s.players}'),
-          if (!linked)
-            (
-              'Current game',
-              s == null
-                  ? '—'
-                  : s.currentTitle == null
-                      ? 'In the lobby'
-                      : '${s.currentTitle} · ${s.currentPhase}'
-            ),
-        ]),
-        if (waiting) ...[
+                ? 'Walk your character to your profile door in the lobby and stand there to connect.'
+                : 'Enter the room code from the lobby, or scan the QR above your character.',
+          ),
           const SizedBox(height: 12),
-          OutlinedButton(
-            onPressed: _busy
-                ? null
-                : () => _run(() async {
+          _Facts(
+            rows: [
+              ('Players in the party', s == null ? '—' : '${s.players}'),
+              if (!linked)
+                (
+                  'Current game',
+                  s == null
+                      ? '—'
+                      : s.currentTitle == null
+                      ? 'In the lobby'
+                      : '${s.currentTitle} · ${s.currentPhase}',
+                ),
+            ],
+          ),
+          if (waiting) ...[
+            const SizedBox(height: 12),
+            OutlinedButton(
+              onPressed: _busy
+                  ? null
+                  : () => _run(() async {
                       await state.cancelPickup();
                       return 'Pickup cancelled.';
                     }),
-            child: const Text('Cancel pickup'),
-          ),
+              child: const Text('Cancel pickup'),
+            ),
+          ],
         ],
-      ]),
+      ),
       if (linked) RoomLogPeek(state: state),
       if (waiting) _phoneSeatCard(asked: false),
       if (!linked && !waiting)
-        Section(title: 'Room code', children: [
-          _codeField(),
-          _rememberBox(),
-          const Hint(
+        Section(
+          title: 'Room code',
+          children: [
+            _codeField(),
+            _rememberBox(),
+            const Hint(
               'The first player to join becomes this Splitscreen Club’s main player '
-              'and returns next time.'),
-        ]),
+              'and returns next time.',
+            ),
+          ],
+        ),
       if (linked || waiting)
-        Section(children: [
-          SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            value: s!.mainPlayer,
-            onChanged: _busy
-                ? null
-                : (v) => _run(() async {
+        Section(
+          children: [
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              value: s!.mainPlayer,
+              onChanged: _busy
+                  ? null
+                  : (v) => _run(() async {
                       await state.setMainPlayer(v);
                       return v
                           ? 'You are the main player on this Splitscreen Club.'
                           : 'Your player will no longer appear automatically.';
                     }),
-            title: const Text('Main player on this Splitscreen Club'),
-            subtitle:
-                const Text('Wait at the door when Splitscreen Club starts.'),
-          ),
-          if (!s.mainPlayer)
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              value: s.remembered,
-              onChanged: _busy
-                  ? null
-                  : (v) => _run(() async {
+              title: const Text('Main player on this Splitscreen Club'),
+              subtitle: const Text(
+                'Wait at the door when Splitscreen Club starts.',
+              ),
+            ),
+            if (!s.mainPlayer)
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                value: s.remembered,
+                onChanged: _busy
+                    ? null
+                    : (v) => _run(() async {
                         await state.setRemember(v);
                         return v
                             ? 'Your player will be waiting here next time.'
                             : 'Your player will no longer be remembered here.';
                       }),
-              title: const Text('Remember me on this Splitscreen Club'),
-              subtitle: const Text(
-                  'Return as a guest without becoming the main player.'),
-            ),
-          if (linked) ...[
-            const SizedBox(height: 4),
-            OutlinedButton.icon(
-              onPressed: _busy
-                  ? null
-                  : () => _run(() async {
+                title: const Text('Remember me on this Splitscreen Club'),
+                subtitle: const Text(
+                  'Return as a guest without becoming the main player.',
+                ),
+              ),
+            if (linked) ...[
+              const SizedBox(height: 4),
+              OutlinedButton.icon(
+                onPressed: _busy
+                    ? null
+                    : () => _run(() async {
                         await state.leaveCharacter();
                         return 'You left your character. Your faces stay on this phone.';
                       }),
-              icon: const Icon(Icons.logout, size: 18),
-              label: const Text('Leave this character'),
-            ),
+                icon: const Icon(Icons.logout, size: 18),
+                label: const Text('Leave this character'),
+              ),
+            ],
           ],
-        ]),
-      Section(children: [
-        Row(children: [
-          const Icon(Icons.wifi, color: GnColors.muted, size: 20),
-          const SizedBox(width: 8),
-          Expanded(child: Hint('Splitscreen Club at ${state.host!.authority}')),
-          TextButton(
-            onPressed: _busy ? null : scan,
-            child: const Text('Scan again'),
+        ),
+      Section(
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.wifi, color: GnColors.muted, size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Hint('Splitscreen Club at ${state.host!.authority}'),
+              ),
+              TextButton(
+                onPressed: _busy ? null : scan,
+                child: const Text('Scan again'),
+              ),
+              // Linked, Leave room at the bottom does this.
+              if (!linked)
+                TextButton(
+                  onPressed: _busy
+                      ? null
+                      : () => _run(() async {
+                          await state.disconnect();
+                          return 'Disconnected. Your player is kept on this phone.';
+                        }),
+                  child: const Text('Leave'),
+                ),
+            ],
           ),
-          // Linked, Leave room at the bottom does this.
-          if (!linked)
-            TextButton(
-              onPressed: _busy
-                  ? null
-                  : () => _run(() async {
-                        await state.disconnect();
-                        return 'Disconnected. Your player is kept on this phone.';
-                      }),
-              child: const Text('Leave'),
-            ),
-        ]),
-      ]),
+        ],
+      ),
     ];
   }
 }
@@ -742,21 +835,25 @@ class _Facts extends StatelessWidget {
   const _Facts({required this.rows});
   @override
   Widget build(BuildContext context) => Column(
-        children: [
-          for (final (label, value) in rows)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4),
-              child: Row(children: [
-                Expanded(child: Hint(label)),
-                const SizedBox(width: 12),
-                ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 180),
-                  child: Text(value,
-                      textAlign: TextAlign.end,
-                      style: const TextStyle(fontWeight: FontWeight.w600)),
+    children: [
+      for (final (label, value) in rows)
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Row(
+            children: [
+              Expanded(child: Hint(label)),
+              const SizedBox(width: 12),
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 180),
+                child: Text(
+                  value,
+                  textAlign: TextAlign.end,
+                  style: const TextStyle(fontWeight: FontWeight.w600),
                 ),
-              ]),
-            ),
-        ],
-      );
+              ),
+            ],
+          ),
+        ),
+    ],
+  );
 }

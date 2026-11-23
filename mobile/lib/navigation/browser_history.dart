@@ -6,7 +6,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'browser_location_stub.dart'
-    if (dart.library.js_interop) 'browser_location_web.dart' as location;
+    if (dart.library.js_interop) 'browser_location_web.dart'
+    as location;
 
 /// Browser history owns only UI destinations. Room/account capabilities and
 /// invitation links never enter route information or the browser's history state.
@@ -22,9 +23,10 @@ class BrowserNavigation extends ChangeNotifier with WidgetsBindingObserver {
   final Map<int, Route<dynamic> Function()> _builders = {};
   final Map<int, _Destination> _entries = {};
   // Route builders belong to this page load, not earlier browser entries.
-  final String _instance = List.generate(16,
-          (_) => Random.secure().nextInt(256).toRadixString(16).padLeft(2, '0'))
-      .join();
+  final String _instance = List.generate(
+    16,
+    (_) => Random.secure().nextInt(256).toRadixString(16).padLeft(2, '0'),
+  ).join();
   int _nextRoute = 1, _entry = 0;
   int tab;
   bool _restoring = false, _scheduled = false, _preferBack = false;
@@ -39,9 +41,9 @@ class BrowserNavigation extends ChangeNotifier with WidgetsBindingObserver {
     void Function()? back,
     Uri? initialUri,
     bool attach = true,
-  })  : report = report ?? _report,
-        back = back ?? location.back,
-        tab = _initialTab(initialUri ?? Uri.base) {
+  }) : report = report ?? _report,
+       back = back ?? location.back,
+       tab = _initialTab(initialUri ?? Uri.base) {
     if (attach) {
       location.cleanLaunchUrl();
       WidgetsBinding.instance.addObserver(this);
@@ -55,15 +57,20 @@ class BrowserNavigation extends ChangeNotifier with WidgetsBindingObserver {
     return path == '/games'
         ? 1
         : path == '/you'
-            ? 2
-            : 0;
+        ? 2
+        : 0;
   }
 
   static Future<void> _report(
-      RouteInformation information, bool replace) async {
+    RouteInformation information,
+    bool replace,
+  ) async {
     await SystemNavigator.selectMultiEntryHistory();
     await SystemNavigator.routeInformationUpdated(
-        uri: information.uri, state: information.state, replace: replace);
+      uri: information.uri,
+      state: information.state,
+      replace: replace,
+    );
   }
 
   void selectTab(int value) {
@@ -79,7 +86,10 @@ class BrowserNavigation extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   _Destination get _current => _Destination(
-      tab, fullscreen(), _routes.skip(1).map((r) => _routeIds[r]!).toList());
+    tab,
+    fullscreen(),
+    _routes.skip(1).map((r) => _routeIds[r]!).toList(),
+  );
 
   void _pushed(Route<dynamic> route) {
     _routes.add(route);
@@ -94,10 +104,11 @@ class BrowserNavigation extends ChangeNotifier with WidgetsBindingObserver {
         final dialog = route.fullscreenDialog;
         final maintainState = route.maintainState;
         _builders[id] = () => MaterialPageRoute<dynamic>(
-            builder: builder,
-            settings: settings,
-            fullscreenDialog: dialog,
-            maintainState: maintainState);
+          builder: builder,
+          settings: settings,
+          fullscreenDialog: dialog,
+          maintainState: maintainState,
+        );
       }
     }
     _schedule();
@@ -137,35 +148,40 @@ class BrowserNavigation extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   RouteInformation _information(_Destination target) => RouteInformation(
-          uri: Uri(
-              path: _routes.lastOrNull?.settings.name == 'assistant'
-                  ? '/assistant'
-                  : const ['/room', '/games', '/you'][target.tab],
-              queryParameters: {
-                if (target.routes.isNotEmpty)
-                  'screen': target.routes.last.toString(),
-                if (target.fullscreen) 'fullscreen': '1',
-              }.isEmpty
-                  ? null
-                  : {
-                      if (target.routes.isNotEmpty)
-                        'screen': target.routes.last.toString(),
-                      if (target.fullscreen) 'fullscreen': '1',
-                    }),
-          state: {
-            'gamenight_navigation': 1,
-            'instance': _instance,
-            'entry': _entry,
-            'tab': target.tab,
-            'fullscreen': target.fullscreen,
-            'routes': target.routes
-          });
+    uri: Uri(
+      path: _routes.lastOrNull?.settings.name == 'assistant'
+          ? '/assistant'
+          : const ['/room', '/games', '/you'][target.tab],
+      queryParameters:
+          {
+            if (target.routes.isNotEmpty)
+              'screen': target.routes.last.toString(),
+            if (target.fullscreen) 'fullscreen': '1',
+          }.isEmpty
+          ? null
+          : {
+              if (target.routes.isNotEmpty)
+                'screen': target.routes.last.toString(),
+              if (target.fullscreen) 'fullscreen': '1',
+            },
+    ),
+    state: {
+      'gamenight_navigation': 1,
+      'instance': _instance,
+      'entry': _entry,
+      'tab': target.tab,
+      'fullscreen': target.fullscreen,
+      'routes': target.routes,
+    },
+  );
 
   @override
   Future<bool> didPushRouteInformation(
-      RouteInformation routeInformation) async {
+    RouteInformation routeInformation,
+  ) async {
     final data = routeInformation.state;
-    final valid = data is Map &&
+    final valid =
+        data is Map &&
         data['gamenight_navigation'] == 1 &&
         data['entry'] is int &&
         data['tab'] is int &&
@@ -174,11 +190,16 @@ class BrowserNavigation extends ChangeNotifier with WidgetsBindingObserver {
         data['routes'] is List;
     final sameInstance = valid && data['instance'] == _instance;
     final wanted = sameInstance
-        ? _Destination(data['tab'] as int, data['fullscreen'] == true,
-            (data['routes'] as List).whereType<int>().take(32).toList())
+        ? _Destination(
+            data['tab'] as int,
+            data['fullscreen'] == true,
+            (data['routes'] as List).whereType<int>().take(32).toList(),
+          )
         : _Destination(
             valid ? data['tab'] as int : _initialTab(routeInformation.uri),
-            false, []);
+            false,
+            [],
+          );
     _restoring = true;
     try {
       if (sameInstance) _entry = data['entry'] as int;
