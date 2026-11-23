@@ -117,7 +117,7 @@ body { font-family: Outfit, sans-serif; color: var(--text); font-weight: 600; }
   <div class="abs" style="inset:0;background:linear-gradient(0deg, rgba(8,8,14,.92) 0%, rgba(8,8,14,.55) 30%, transparent 55%)"></div>
   <div class="abs kicker" id="k2" style="left:110px;top:770px">No waiting</div>
   <div class="abs h" id="h2" style="left:110px;top:820px;font-size:84px">Keep playing. The next game<br><span class="g">loads in the background.</span></div>
-  <div class="upnext" id="up2" style="right:90px;bottom:120px"><img src="f/spellstorm/075.jpg"><div class="ut"><small>Up next</small><b>Spellstorm</b><div class="ub"><i></i></div><span class="us"></span></div></div>
+  <div class="upnext" id="up2" style="right:90px;bottom:120px"><img src="f/spaceracer/075.jpg"><div class="ut"><small>Up next</small><b>Space Racer</b><div class="ub"><i></i></div><span class="us"></span></div></div>
 </div>
 
 <!-- 3 switching -->
@@ -239,7 +239,7 @@ const faceSvgOld = (p, i) => `<svg viewBox="0 0 40 40" width="100%" height="100%
    `<path d="M9 17 L15 14 M25 14 L31 17" stroke="#222" stroke-width="3"/><circle cx="13" cy="19" r="2.5" fill="#222"/><circle cx="27" cy="19" r="2.5" fill="#222"/><circle cx="20" cy="28" r="4" fill="#222"/>`][i] + `</svg>`;
 
 /* ---------- build ---------- */
-const POSTERS = ['growing-guns', 'spellstorm', 'spaceracer', 'ballkickers', 'dead-miles', 'neon-siege', 'sideways'].filter(g => COUNT[g]);
+const POSTERS = ['growing-guns', 'spellstorm', 'spaceracer', 'ballkickers', 'dead-miles', 'neon-siege', 'sideways', 'sideways4'].filter(g => COUNT[g]);
 for (let i = 0; i < 20; i++) { const im = el('img'); const g = POSTERS[(i * 3) % POSTERS.length]; im.src = `f/${g}/${String(Math.min(COUNT[g], 20 + (i * 47) % 130)).padStart(3, '0')}.jpg`; $('bgwall').appendChild(im); }
 const LOGO = 'C';
 const letters = w => [...w].map(c => `<span>${c}</span>`).join('');
@@ -272,7 +272,7 @@ PLAYERS.forEach((p, i) => {
   const ch = el('div', { class: 'chip', id: 'chip' + i }, `<div class="face">${faceSvg(p, i)}</div>${p.name}`); ch.style.left = '480px'; ch.style.top = (y + 12) + 'px'; ch.style.borderColor = p.color; $('pads4').appendChild(ch);
   const ln = document.createElementNS('http://www.w3.org/2000/svg', 'path'); ln.setAttribute('d', `M265 ${y + 50} C 360 ${y + 50}, 380 ${y + 50}, 470 ${y + 50}`); ln.setAttribute('stroke', p.color); ln.setAttribute('stroke-width', '5'); ln.setAttribute('fill', 'none'); ln.setAttribute('stroke-dasharray', '10 12'); ln.id = 'ln' + i; $('links4').appendChild(ln);
 });
-const MON = ['spaceracer', 'ballkickers', 'spellstorm', 'neon-siege'];
+const MON = ['sideways4', 'ballkickers', 'spellstorm', 'growing-guns'];
 MON.forEach(() => { const a = el('img'); $('mon4').appendChild(a); });
 const corners = [[20, 20], [null, 20], [20, null], [null, null]];
 PLAYERS.forEach((p, i) => { const m = el('div', { class: 'mini', id: 'mini' + i }, `<div class="face">${faceSvg(p, i)}</div>${p.name}`); m.style.borderColor = p.color; const c = corners[i]; if (c[0] !== null) m.style.left = c[0] + 'px'; else m.style.right = '20px'; if (c[1] !== null) m.style.top = c[1] + 'px'; else m.style.bottom = '20px'; $('mon4').appendChild(m); });

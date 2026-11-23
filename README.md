@@ -2,6 +2,8 @@
 <a href="https://splitscreen.club"><h1 align="center">Splitscreen.club</h1></a>
 <p align="center">Frictionless couch multiplayer.</p>
 
+<p align="center"><a href="https://splitscreen.club/web/intro.mp4"><img src="web/intro.jpg" width="720" alt="Watch the Splitscreen Club intro video (55 s)"></a><br><sub>▶ Watch the intro video</sub></p>
+
 The next game loads in the background while you play. Back/Select returns to
 the lobby; press it again to resume. Your controllers stay assigned to the same
 players across integrated games.
