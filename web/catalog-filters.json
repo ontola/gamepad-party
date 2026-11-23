@@ -1,0 +1,74 @@
+{
+  "about": "One definition of the store's filters and sort orders (Featured = featured listings first, then catalog order; other sorts break ties in Featured order), used by the website (/catalog) and the Flutter app (mobile/lib/catalog_filter_spec.dart). Change it here; both test suites run the cases below, so the two stores cannot drift.",
+  "version": 1,
+  "players": [1, 2, 3, 4, 5, 6, 8],
+  "price": [
+    {"id": "free", "label": "Free"},
+    {"id": "pay_what_you_want", "label": "Pay what you want"},
+    {"id": "paid", "label": "Paid"}
+  ],
+  "platforms": [
+    {"id": "windows", "label": "Windows"},
+    {"id": "mac", "label": "macOS"},
+    {"id": "linux", "label": "Linux"}
+  ],
+  "personal": [
+    {"id": "liked", "label": "Liked"},
+    {"id": "wanted", "label": "Want to play"},
+    {"id": "played", "label": "Played"},
+    {"id": "unplayed", "label": "Not played"}
+  ],
+  "room": {"id": "room", "label": "Available in this room"},
+  "tag_match": "all",
+  "tag_aliases": {
+    "coop": "co-op",
+    "cooperative": "co-op",
+    "co-operative": "co-op",
+    "split-screen": "splitscreen",
+    "local-coop": "co-op",
+    "pvp": "versus"
+  },
+  "sorts": [
+    {"id": "featured", "label": "Featured", "short": "Featured"},
+    {"id": "newest", "label": "Newest", "short": "Newest"},
+    {"id": "updated", "label": "Recently updated", "short": "Updated"},
+    {"id": "last_played", "label": "Last played by you", "short": "Last played", "personal": true},
+    {"id": "title", "label": "A to Z", "short": "A–Z"},
+    {"id": "players", "label": "Most players", "short": "Players"},
+    {"id": "short", "label": "Shortest rounds", "short": "Shortest"},
+    {"id": "free", "label": "Free first", "short": "Free"},
+    {"id": "liked", "label": "Most liked", "short": "Liked"}
+  ],
+  "cases": {
+    "games": [
+      {"id": "a", "title": "Älpine Rush", "tagline": "Ski race", "developer": "Ontola", "tags": ["Racing", "coop"], "players": {"min": 1, "max": 4}, "price": "free", "platforms": ["windows", "mac"], "match_minutes": 5, "added": 300, "updated": 300},
+      {"id": "b", "listing": "featured", "title": "Bomb Party", "tagline": "Boom", "developer": "Joep", "tags": ["party", "co-op"], "players": {"min": 2, "max": 8}, "price": "paid", "platforms": ["windows"], "match_minutes": 3, "added": 100, "updated": 400},
+      {"id": "c", "title": "Castle Siege", "tagline": "Hold the wall", "developer": "Ontola", "tags": ["Split Screen", "versus"], "players": {"min": 2, "max": 2}, "price": "pay_what_you_want", "platforms": ["linux"], "added": 200, "updated": 200}
+    ],
+    "filters": [
+      {"filter": {}, "expect": ["a", "b", "c"]},
+      {"filter": {"tags": ["co-op"]}, "expect": ["a", "b"]},
+      {"filter": {"tags": ["co-op", "party"]}, "expect": ["b"]},
+      {"filter": {"tags": ["splitscreen"]}, "expect": ["c"]},
+      {"filter": {"players": 1}, "expect": ["a"]},
+      {"filter": {"players": 6}, "expect": ["b"]},
+      {"filter": {"price": "pay_what_you_want"}, "expect": ["c"]},
+      {"filter": {"platform": "windows"}, "expect": ["a", "b"]},
+      {"filter": {"q": "alpine"}, "expect": ["a"]},
+      {"filter": {"q": "ontola wall"}, "expect": ["c"]},
+      {"filter": {"q": "racing"}, "expect": ["a"]}
+    ],
+    "sorts": [
+      {"sort": "featured", "expect": ["b", "a", "c"]},
+      {"sort": "newest", "expect": ["a", "c", "b"]},
+      {"sort": "updated", "expect": ["b", "a", "c"]},
+      {"sort": "title", "expect": ["a", "b", "c"]},
+      {"sort": "players", "expect": ["b", "a", "c"]},
+      {"sort": "short", "expect": ["b", "a", "c"]},
+      {"sort": "free", "expect": ["a", "c", "b"]}
+    ],
+    "tags": [
+      {"tags": ["Racing", "coop", " Co-Op ", "Split Screen", "local_multiplayer"], "expect": ["racing", "co-op", "splitscreen", "local-multiplayer"]}
+    ]
+  }
+}

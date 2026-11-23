@@ -27,8 +27,23 @@ final games = [
   },
 ];
 
+/// Taps a chip in the filter sheet, scrolling to it first.
+Future<void> tapChip(WidgetTester tester, String label) async {
+  final chip = find.widgetWithText(FilterChip, label);
+  await tester.scrollUntilVisible(chip, 200,
+      scrollable: find
+          .descendant(
+              of: find.byType(CatalogFilters),
+              matching: find.byType(Scrollable))
+          .first);
+  await tester.ensureVisible(chip);
+  await tester.pumpAndSettle();
+  await tester.tap(chip);
+}
+
 void main() {
-  testWidgets('liked and unplayed intersect; tags use OR; clear restores all',
+  testWidgets(
+      'liked and unplayed intersect; tags must all match; clear restores all',
       (tester) async {
     Catalog.instance = Catalog(
         client: MockClient((_) async => http.Response(jsonEncode(games), 200)));
@@ -60,9 +75,9 @@ void main() {
     expect(find.text('Games'), findsNothing);
     await tester.tap(find.text('Filter'));
     await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(FilterChip, 'Liked'));
+    await tapChip(tester, 'Liked');
     await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(FilterChip, 'Not played'));
+    await tapChip(tester, 'Not played');
     await tester.pumpAndSettle();
     expect(find.text('Show 1 game'), findsOneWidget);
     await tester.tap(find.text('Show 1 game'));
@@ -76,16 +91,16 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Clear'));
     await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(FilterChip, 'cards'));
-    await tester.tap(find.widgetWithText(FilterChip, 'racing'));
+    await tapChip(tester, 'party');
+    await tapChip(tester, 'racing');
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Show 2 games'));
+    await tester.tap(find.text('Show 1 game'));
     await tester.pumpAndSettle();
     expect(
         tester
             .widgetList<GameCard>(find.byType(GameCard))
             .map((c) => c.game.id),
-        ['a', 'b']);
+        ['b']);
     await tester.tap(find.byType(GameCard).first);
     await tester.pumpAndSettle();
     expect(find.text('Give feedback'), findsNothing);
@@ -205,7 +220,7 @@ void main() {
                 matching: find.byType(Scrollable))
             .first);
     await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(FilterChip, 'cards'));
+    await tapChip(tester, 'cards');
     await tester.tap(find.text('Show 2 games'));
     await tester.pumpAndSettle();
     expect(searchFocused(), isFalse);
@@ -231,7 +246,7 @@ void main() {
         isNull);
     await tester.tap(find.text('Clear'));
     await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(FilterChip, 'cards'));
+    await tapChip(tester, 'cards');
     await tester.pumpAndSettle();
     expect(tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
         isNotNull);
@@ -251,7 +266,7 @@ void main() {
         isNull);
     expect(find.text('Sign in to filter by your likes and play history.'),
         findsOneWidget);
-    await tester.tap(find.widgetWithText(FilterChip, 'co-op'));
+    await tapChip(tester, 'co-op');
     await tester.pumpAndSettle();
     expect(find.text('Show 1 game'), findsOneWidget);
   });

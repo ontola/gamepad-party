@@ -8,6 +8,7 @@ import '../app_state.dart';
 import 'catalog_filters.dart';
 import 'mods_screen.dart';
 import '../catalog.dart';
+import '../catalog_filter_spec.dart';
 import '../room_controls.dart';
 import '../theme.dart';
 import 'game_detail_screen.dart';
@@ -395,6 +396,9 @@ class _CatalogSectionState extends State<CatalogSection> {
         }
         final hidden = _filter.tags.length +
             (_filter.played ? 1 : 0) +
+            (_filter.room && _inRoom ? 1 : 0) +
+            (_filter.price != null ? 1 : 0) +
+            (_filter.platform != null ? 1 : 0) +
             (_filter.developer != null ? 1 : 0) +
             quick.where((q) => q.active && !shown.contains(q)).length;
         return SizedBox(
@@ -435,7 +439,7 @@ class _CatalogSectionState extends State<CatalogSection> {
       onSelected: (sort) => setState(() => _sort = sort),
       itemBuilder: (_) => [
         for (final sort in CatalogSort.values)
-          if (sort != CatalogSort.lastPlayed || signedIn)
+          if (!sort.personal || signedIn)
             PopupMenuItem(value: sort, child: Text(sort.label)),
       ],
       child: IgnorePointer(
@@ -542,7 +546,11 @@ class _CatalogSectionState extends State<CatalogSection> {
           game,
       for (final game in _mine)
         if (!listed.contains(game.id)) game,
-    ].where(_filter.matches).toList());
+    ]
+        .where(_filter
+            .copyWith(room: _filter.room && _inRoom, playableGames: _playable)
+            .matches)
+        .toList());
   }
 
   Future<void> _showFilters() async {
@@ -557,7 +565,8 @@ class _CatalogSectionState extends State<CatalogSection> {
             games: _games!,
             cloud: widget.cloud,
             onSignIn: widget.onSignIn,
-            wantedGames: _wanted));
+            wantedGames: _wanted,
+            playableGames: _inRoom && _host.isNotEmpty ? _playable : null));
     if (mounted && filter != null) {
       setState(() {
         _filter = filter;
@@ -566,50 +575,19 @@ class _CatalogSectionState extends State<CatalogSection> {
     }
   }
 
-  /// The chosen order; in store order, games the room's host can play
-  /// come first.
-  List<CatalogGame> _sorted(List<CatalogGame> games) {
-    final played = widget.state?.lastPlayed ?? const <String, int>{};
-    double ratio(CatalogGame g) {
-      final r = _ratings[g.id];
-      final votes = (r?.up ?? 0) + (r?.down ?? 0);
-      return votes == 0 ? -1 : r!.up / votes;
-    }
+  /// Games the room's host can start now.
+  Set<String> get _playable => {
+        for (final g in _host.values)
+          if (g.playable) g.id
+      };
 
-    int votes(CatalogGame g) =>
-        (_ratings[g.id]?.up ?? 0) + (_ratings[g.id]?.down ?? 0);
-    int by<T extends Comparable<Object>>(
-            T? Function(CatalogGame) key, CatalogGame a, CatalogGame b) =>
-        switch ((key(a), key(b))) {
-          (null, null) => 0,
-          (null, _) => 1,
-          (_, null) => -1,
-          (final x?, final y?) => y.compareTo(x),
-        };
-    final order = switch (_sort) {
-      CatalogSort.store => null,
-      CatalogSort.newest => (CatalogGame a, CatalogGame b) =>
-          by((g) => g.added, a, b),
-      CatalogSort.updated => (CatalogGame a, CatalogGame b) =>
-          by((g) => g.updated, a, b),
-      CatalogSort.lastPlayed => (CatalogGame a, CatalogGame b) =>
-          by((g) => played[g.id], a, b),
-      CatalogSort.title => (CatalogGame a, CatalogGame b) =>
-          a.title.toLowerCase().compareTo(b.title.toLowerCase()),
-      CatalogSort.liked => (CatalogGame a, CatalogGame b) {
-          final r = ratio(b).compareTo(ratio(a));
-          return r != 0 ? r : votes(b).compareTo(votes(a));
-        },
-    };
-    if (order != null) {
-      // A stable sort keeps store order between equals.
-      final indexed = [for (var i = 0; i < games.length; i++) (i, games[i])];
-      indexed.sort((a, b) {
-        final c = order(a.$2, b.$2);
-        return c != 0 ? c : a.$1.compareTo(b.$1);
-      });
-      return [for (final e in indexed) e.$2];
-    }
+  /// The chosen order; in the Featured order, games the room's host can
+  /// play come first.
+  List<CatalogGame> _sorted(List<CatalogGame> list) {
+    final games = sortCatalog(list, _sort,
+        played: widget.state?.lastPlayed ?? const <String, int>{},
+        ratings: _ratings);
+    if (_sort != CatalogSort.store) return games;
     if (!_inRoom || _host.isEmpty) return games;
     final playable = [
       for (final g in games)

@@ -7,6 +7,7 @@ import 'dart:ui' show Color;
 import 'package:http/http.dart' as http;
 
 import 'link.dart';
+import 'catalog_filter_spec.dart';
 
 /// Where the store and its game pages live.
 final storeBase = Uri.parse(apiOrigin);
@@ -137,6 +138,9 @@ class CatalogGame {
   /// page) but stays off the store, like on the website.
   final bool listed;
 
+  /// The store features it: first in the Featured order.
+  final bool featured;
+
   /// When the game joined the store and last changed, in epoch seconds.
   final int? added, updated;
 
@@ -161,6 +165,7 @@ class CatalogGame {
     this.matchMinutes,
     this.unreviewed = false,
     this.listed = true,
+    this.featured = false,
     this.added,
     this.updated,
   });
@@ -286,7 +291,7 @@ class CatalogGame {
       bestPlayers: count(players['best']),
       price: j['price']?.toString(),
       tags: j['tags'] is List
-          ? [for (final t in j['tags'] as List) t.toString()]
+          ? normalizeTags([for (final t in j['tags'] as List) t.toString()])
           : const [],
       color: _color(j['color']),
       coverUrl: coverUrl,
@@ -303,6 +308,7 @@ class CatalogGame {
       listed: j['listing'] == null ||
           j['listing'] == 'featured' ||
           j['listing'] == 'listed',
+      featured: j['listing'] == 'featured',
       added: count(j['added']),
       updated: count(j['updated']),
     );
