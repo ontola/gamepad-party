@@ -109,7 +109,6 @@
       ]
     },
     "tags": {
-      "description": "Lower case and hyphenated, one spelling per tag (co-op, not coop). Stores normalize tags with tag_aliases in web/catalog-filters.json.",
       "type": "array",
       "items": {
         "type": "string"
