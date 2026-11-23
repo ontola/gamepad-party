@@ -1,13 +1,15 @@
 <p align="center"><img src="site/icon.png" width="96" alt="Splitscreen Club"></p>
-<h1 align="center">Get to the next game.</h1>
-<p align="center">Open-source couch multiplayer. Less setup between games.</p>
-
-Splitscreen Club lets you play a whole evening of couch games from your controller.
-Pick a game. Play a round. Try something else.
+<a href="https://splitscreen.club"><h1 align="center">Splitscreen.club</h1></a>
+<p align="center">Frictionless couch multiplayer.</p>
 
 The next game loads in the background while you play. Back/Select returns to
 the lobby; press it again to resume. Your controllers stay assigned to the same
 players across integrated games.
+
+- No more loading screens & controller setup
+- Free, open source
+- Companion app & website to keep your profile, edit game settings, choose the next game
+- Powerful AI integration: mod games while you play, or create your own game
 
 [Download for Windows](https://gamenight.ontola.io/download/GameNight-Setup.exe) ·
 [Download for Mac](https://gamenight.ontola.io/download/GameNight.dmg) ·
