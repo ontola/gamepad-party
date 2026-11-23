@@ -129,6 +129,7 @@ extern "C" {
 #define GN_MSG_PLAYERS_UPDATED "players_updated"
 #define GN_MSG_PLAYTESTS "playtests"
 #define GN_MSG_PREPARE "prepare"
+#define GN_MSG_PREVIOUS "previous"
 #define GN_MSG_PROGRESS "progress"
 #define GN_MSG_QUEUE_GAME "queue_game"
 #define GN_MSG_QUEUE_NEXT "queue_next"

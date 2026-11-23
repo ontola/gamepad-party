@@ -1067,6 +1067,45 @@ async fn opted_in_game_receives_a_new_controller_without_a_new_session() {
             .await
             .unwrap();
         overlay.wait_for(|p| p.active_session.is_some()).await;
+        // A touched pad no longer joins by itself (only A does, through the
+        // host's input router): someone joins from the overlay mid-game.
+        overlay
+            .ws
+            .send(Message::Text(
+                ClientMessage::JoinParty {
+                    name: "Nora".into(),
+                    seat: None,
+                    color: None,
+                    avatar: None,
+                    library: Vec::new(),
+                }
+                .to_json(),
+            ))
+            .await
+            .unwrap();
+        let party = overlay.wait_for(|p| p.players.len() == 1).await;
+        let player = party.players[0].id;
+        overlay
+            .ws
+            .send(Message::Text(
+                ClientMessage::BindController {
+                    player_id: player,
+                    controller: "ordinal:2".into(),
+                }
+                .to_json(),
+            ))
+            .await
+            .unwrap();
+        let party = overlay
+            .wait_for(|p| {
+                p.seats
+                    .iter()
+                    .any(|s| s.controller.as_deref() == Some("ordinal:2"))
+            })
+            .await;
+        assert_eq!(party.active_session.unwrap().id, session);
+        assert_eq!(party.seats[0].controller.as_deref(), Some("ordinal:2"));
+        // Their pad moves: presence follows the seated player.
         game.send(Message::Text(
             ClientMessage::ControllerInput {
                 session: Some(session),
@@ -1076,10 +1115,6 @@ async fn opted_in_game_receives_a_new_controller_without_a_new_session() {
         ))
         .await
         .unwrap();
-        let party = overlay.wait_for(|p| p.players.len() == 1).await;
-        let player = party.players[0].id;
-        assert_eq!(party.active_session.unwrap().id, session);
-        assert_eq!(party.seats[0].controller.as_deref(), Some("ordinal:2"));
         loop {
             if let Message::Text(text) = game.next().await.unwrap().unwrap() {
                 if let ServerMessage::PartyUpdated {
@@ -1089,7 +1124,7 @@ async fn opted_in_game_receives_a_new_controller_without_a_new_session() {
                     ..
                 } = serde_json::from_str(&text).unwrap()
                 {
-                    if players.len() == 1 {
+                    if players.len() == 1 && !presence.is_empty() {
                         assert_eq!(update, session);
                         assert_eq!(players[0].id, player);
                         assert_eq!(presence[0].player_id, player);

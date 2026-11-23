@@ -71,6 +71,7 @@ inline constexpr const char* MSG_PLAYER_STORE_DRIVES = "player_store_drives";
 inline constexpr const char* MSG_PLAYERS_UPDATED = "players_updated";
 inline constexpr const char* MSG_PLAYTESTS = "playtests";
 inline constexpr const char* MSG_PREPARE = "prepare";
+inline constexpr const char* MSG_PREVIOUS = "previous";
 inline constexpr const char* MSG_PROGRESS = "progress";
 inline constexpr const char* MSG_QUEUE_GAME = "queue_game";
 inline constexpr const char* MSG_QUEUE_NEXT = "queue_next";

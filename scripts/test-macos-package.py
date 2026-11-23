@@ -1,4 +1,4 @@
-"""Check Mac bundle identity, the Game Room pack hash and universal executables."""
+"""Check Mac bundle identity, the Warp Game Room hash and universal executables."""
 import hashlib
 import json
 import plistlib
@@ -14,6 +14,7 @@ def verify(app):
     links = contents / "Helpers/GameNight Link.app/Contents"
     link_info = plistlib.loads((links / "Info.plist").read_bytes())
     assert link_info["CFBundleURLTypes"][0]["CFBundleURLSchemes"] == ["gamenight"]
+    assert (links / "MacOS" / link_info["CFBundleExecutable"]).is_file(), "Link app executable name mismatch"
     subprocess.run(["lipo", str(links / "MacOS/GameNight Link"), "-verify_arch", "arm64", "x86_64"], check=True)
     for bundle in [contents, helper]:
         data = plistlib.loads((bundle / "Info.plist").read_bytes())
@@ -32,7 +33,7 @@ def verify(app):
         if download["url"].endswith(".love"):
             assert download["entrypoint"] == download["url"].rsplit("/", 1)[-1], file.name
             assert download["runtime"]["argument"] == "entry_point", file.name
-    assert (helper / "Resources/GameNight.pck").stat().st_size > 100_000, "Missing Game Room pack"
+    assert (helper / "MacOS/GameNight").stat().st_size > 1_000_000, "Missing Warp Game Room"
     print(f"Verified the Game Room lobby and both Mac architectures: {manifest['commit']}")
 
 

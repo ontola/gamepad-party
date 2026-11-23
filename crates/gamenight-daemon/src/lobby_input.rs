@@ -238,10 +238,6 @@ impl FrameFilter {
     }
 }
 
-/// How long after a game opened the overlay a runtime Back press still counts
-/// as the same press.
-const BACK_ECHO_WINDOW: Duration = Duration::from_millis(600);
-
 /// Back (Select/View) in the runtime button bits.
 const BACK: u32 = 1 << 6;
 /// Right bumper (RB/R1) in the runtime button bits.
@@ -288,13 +284,14 @@ const CHORD_BUTTONS: u32 = RB | LB | B_BUTTON;
 
 /// Back and its chords.
 ///
-/// In a game, Back opens the room on press, as it always did: games echo
-/// the same press as `request_overlay`, so waiting for the release would
-/// not keep the room shut anyway. In the room, Back acts on release: a tap
-/// closes the room, a hold (BACK_HOLD) shows the chord menu instead. While
-/// Back is held, RB skips to the next game, LB goes back to the previous
-/// one and B (twice) takes the player on that controller out of the party.
-/// RB then Back, in that order, skips without opening the room at all.
+/// Back acts on its release, never its press: in a game the room comes
+/// when Back is let go without a chord, so Back+RB and the other chords go
+/// straight on without showing the room first. In the room a tap closes
+/// it, a hold (BACK_HOLD) shows the chord menu instead. While Back is held,
+/// RB skips to the next game, LB goes back to the previous one and B
+/// (twice) takes the player on that controller out of the party. RB then
+/// Back, in that order, skips too. A game's own echo of the same Back
+/// (`request_overlay`) waits for the runtime (see `pending_game_overlay`).
 fn back_chords(
     s: &mut Shared,
     holds: &mut HashMap<String, BackHold>,
@@ -303,6 +300,19 @@ fn back_chords(
     controllers: &[ControllerState],
 ) {
     holds.retain(|id, _| controllers.iter().any(|c| &c.controller == id));
+    s.router_frame = Some(Instant::now());
+    // A game's own Back handler asked for the room. When a controller's
+    // Back is behind it, that Back is ours (the room comes on release);
+    // otherwise (Escape, a menu's Back to lobby) the room comes now.
+    if let Some(at) = s.pending_game_overlay {
+        if controllers.iter().any(|c| c.buttons & BACK != 0) || !holds.is_empty() {
+            s.pending_game_overlay = None;
+        } else if at.elapsed() >= GAME_OVERLAY_WAIT {
+            s.pending_game_overlay = None;
+            info!("a game asked for the lobby; opening it");
+            s.dispatch(Command::OverlayOpened, None);
+        }
+    }
     // Several people may press Back together. It is one party action.
     let mut toggled = false;
     for c in controllers {
@@ -323,20 +333,12 @@ fn back_chords(
                 skip_to_next(s, skips);
             } else if !toggled {
                 toggled = true;
-                let open = s.night.snapshot().overlay_open;
-                // Games may echo Back as `request_overlay`, and their event
-                // often beats our poll. That press already opened the room.
-                let echoed = open
-                    && s.overlay_opened_by_request
-                        .is_some_and(|at| at.elapsed() < BACK_ECHO_WINDOW);
-                if !open {
-                    info!("Back pressed on a controller; opening the lobby");
-                    s.dispatch(Command::OverlayOpened, None);
-                }
-                hold.room_was_open = open && !echoed;
-                s.overlay_opened_by_request = None;
+                // Nothing happens yet: the release decides (a tap toggles
+                // the room, a chord does its thing instead).
+                hold.room_was_open = s.night.snapshot().overlay_open;
             } else {
-                hold.room_was_open = false;
+                // Someone else's Back went down first: theirs toggles.
+                hold.chorded = true;
             }
             holds.insert(c.controller.clone(), hold);
             continue;
@@ -353,13 +355,9 @@ fn back_chords(
                 hold.leave_armed = false;
                 skip_to_next(s, skips);
             } else if pressed & LB != 0 {
-                if let Some(game) = previous_game(&s.night.snapshot()) {
+                if s.play_previous() {
                     hold.acted = true;
                     hold.leave_armed = false;
-                    info!(%game, "Back+LB pressed on a controller; back to the previous game");
-                    s.skipped_by_combo = Some(Instant::now());
-                    s.dispatch(Command::QueueNext { game }, None);
-                    s.dispatch(Command::Next, None);
                 }
             } else if pressed & B_BUTTON != 0 {
                 if let Some(player) = seated_player(&s.night.snapshot(), &c.controller) {
@@ -375,13 +373,23 @@ fn back_chords(
             }
         } else if released & BACK != 0 {
             let hold = holds.remove(&c.controller).expect("checked");
-            if hold.room_was_open && !hold.chorded && hold.since.elapsed() < BACK_HOLD {
+            if hold.chorded {
+                // A chord was the point of this Back.
+            } else if !hold.room_was_open {
+                // In a game the room comes on Back's release, so Back+RB
+                // and the other chords never show it first.
+                info!("Back released on a controller; opening the lobby");
+                s.dispatch(Command::OverlayOpened, None);
+            } else if hold.since.elapsed() < BACK_HOLD {
                 info!("Back tapped on a controller; closing the lobby");
                 s.dispatch(Command::OverlayClosed, None);
             }
         }
     }
-    let menu = controllers.iter().find_map(|c| {
+    s.back_holding = !holds.is_empty();
+    // The menu shows where it can be seen: in the room.
+    let visible = lobby_on_screen(&s.night.snapshot());
+    let menu = controllers.iter().filter(|_| visible).find_map(|c| {
         let hold = holds.get(&c.controller)?;
         let shown = hold.leave_armed || (!hold.acted && hold.since.elapsed() >= BACK_HOLD);
         shown.then(|| back_menu(&s.night.snapshot(), &c.controller, hold.leave_armed))
@@ -389,6 +397,30 @@ fn back_chords(
     if menu != s.back_menu {
         s.back_menu = menu;
         s.apply_effects(vec![Effect::StateChanged], None);
+    }
+}
+
+/// The room has the screen: the overlay is up, or nothing is playing.
+fn lobby_on_screen(party: &PartySnapshot) -> bool {
+    party.overlay_open || party.active_session.is_none()
+}
+
+/// How long a game's `request_overlay` waits for the runtime to see the
+/// Back press behind it (a poll is 16 ms; games often report first).
+const GAME_OVERLAY_WAIT: Duration = Duration::from_millis(120);
+
+impl Shared {
+    /// Start the game played before the current one (Back+LB, the Game
+    /// Room TV's `previous`). False when there is none.
+    pub(crate) fn play_previous(&mut self) -> bool {
+        let Some(game) = previous_game(&self.night.snapshot()) else {
+            return false;
+        };
+        info!(%game, "back to the previous game");
+        self.skipped_by_combo = Some(Instant::now());
+        self.dispatch(Command::QueueNext { game }, None);
+        self.dispatch(Command::Next, None);
+        true
     }
 }
 
@@ -772,13 +804,14 @@ mod tests {
         let mut router = InputRouter::default();
         for _ in 0..3 {
             router.route(&mut s, frame(1 << 6));
-            assert!(s.night.snapshot().overlay_open);
+            assert!(!s.night.snapshot().overlay_open, "nothing on the press");
             let message: ServerMessage = serde_json::from_str(&rx.recv().await.unwrap()).unwrap();
             assert!(
                 matches!(message, ServerMessage::ControllerFrame { controllers } if controllers[0].buttons == 0)
             );
         }
         router.route(&mut s, frame(0));
+        assert!(s.night.snapshot().overlay_open, "the room comes on release");
         router.route(&mut s, frame(1 << 6));
         assert!(
             s.night.snapshot().overlay_open,
@@ -789,20 +822,27 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn back_echoed_by_the_game_does_not_close_the_overlay_it_opened() {
+    async fn a_games_own_back_echo_waits_for_the_release() {
         let mut s = Shared::new(Vec::new(), "127.0.0.1:0".into(), None);
         let (game, _rx) = mpsc::unbounded_channel();
         let mut router = InputRouter::default();
         router.route(&mut s, frame(0));
         // The game's own Back handler reports first, then our poll sees it.
         s.dispatch(Command::OverlayOpened, Some(&game));
-        router.route(&mut s, frame(1 << 6));
-        assert!(s.night.snapshot().overlay_open, "one press, one action");
+        router.route(&mut s, frame(BACK));
+        assert!(!s.night.snapshot().overlay_open, "not on the press");
+        s.dispatch(Command::OverlayOpened, Some(&game));
+        router.route(&mut s, frame(BACK | RB));
         router.route(&mut s, frame(0));
-        assert!(s.night.snapshot().overlay_open, "nor does its release");
-        router.route(&mut s, frame(1 << 6));
+        assert!(!s.night.snapshot().overlay_open, "a chord: no room at all");
+        assert_eq!(router.skips, 1);
+        // Escape (no controller Back behind it) opens after a moment.
+        s.dispatch(Command::OverlayOpened, Some(&game));
         router.route(&mut s, frame(0));
-        assert!(!s.night.snapshot().overlay_open, "the next tap closes");
+        assert!(!s.night.snapshot().overlay_open);
+        std::thread::sleep(GAME_OVERLAY_WAIT + Duration::from_millis(10));
+        router.route(&mut s, frame(0));
+        assert!(s.night.snapshot().overlay_open);
     }
 
     #[tokio::test]
@@ -816,7 +856,17 @@ mod tests {
             buttons: 1 << 6,
         });
         router.route(&mut s, controllers);
-        assert!(s.night.snapshot().overlay_open);
+        let mut released = frame(0);
+        released.push(ControllerState {
+            controller: "ordinal:3".into(),
+            axes: [0; 6],
+            buttons: 0,
+        });
+        router.route(&mut s, released);
+        assert!(
+            s.night.snapshot().overlay_open,
+            "opened once, not toggled twice"
+        );
     }
 
     #[tokio::test]
@@ -830,8 +880,8 @@ mod tests {
         router.route(&mut s, frame(BACK));
         rx.recv().await.unwrap();
         assert!(
-            s.night.snapshot().overlay_open,
-            "Back alone opens the lobby"
+            !s.night.snapshot().overlay_open,
+            "Back waits for its release"
         );
         assert_eq!(router.skips, 0);
         for _ in 0..3 {
@@ -845,6 +895,7 @@ mod tests {
         assert_eq!(router.skips, 1, "a held combo skips once");
         router.route(&mut s, frame(0));
         rx.recv().await.unwrap();
+        assert!(!s.night.snapshot().overlay_open, "after a chord no room");
         router.route(&mut s, frame(RB));
         let message: ServerMessage = serde_json::from_str(&rx.recv().await.unwrap()).unwrap();
         assert!(
@@ -863,7 +914,9 @@ mod tests {
         assert_eq!(router.skips, 1);
         assert!(!s.night.snapshot().overlay_open);
         router.route(&mut s, frame(0));
+        assert!(!s.night.snapshot().overlay_open);
         router.route(&mut s, frame(BACK));
+        router.route(&mut s, frame(0));
         assert!(
             s.night.snapshot().overlay_open,
             "Back alone still opens the lobby"
@@ -927,6 +980,7 @@ mod tests {
         let mut s = Shared::new(Vec::new(), "127.0.0.1:0".into(), None);
         let mut router = InputRouter::default();
         join(&mut s, &mut router);
+        s.dispatch(Command::OverlayOpened, None);
         // Once, then let go of Back: disarmed, nobody leaves.
         router.route(&mut s, frame(BACK));
         router.route(&mut s, frame(BACK | B_BUTTON));

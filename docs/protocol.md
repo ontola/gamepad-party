@@ -292,11 +292,13 @@ seconds)` with 0 to 1 strengths.
 `finished` is an optional round notification. It never advances the playlist,
 opens the lobby, pauses the game or hides its window. The game owns its score
 screen and starts the next round itself. Players can keep playing indefinitely.
-Back/Select pauses and opens the lobby; Resume continues. The host owns Back
-chords, games need no code: while Back is held, RB skips straight to the next
-game in the queue (RB then Back works too, without opening the lobby), LB goes
-back to the previous game, and B twice takes that controller's player out of
-the party. In the lobby a Back tap closes it; holding Back for 300 ms shows
+Back/Select pauses and opens the lobby when it is let go; Resume continues.
+The host owns Back chords, games need no code: while Back is held, RB skips
+straight to the next game in the queue (RB then Back works too), LB goes back
+to the previous game, and B twice takes that controller's player out of the
+party. After a chord, letting go of Back does nothing, so the lobby never shows
+in between. A game's own `request_overlay` for that same Back press is folded
+into it. In the lobby a Back tap closes it; holding Back for 300 ms shows
 `back_menu` in the party state (the controller, its player and the chords that
 work right now) for lobbies to draw. RB, LB and B under a held Back never reach
 games or lobbies. Play next explicitly
@@ -326,6 +328,7 @@ role; the runtime supplies its controller stream.
 | `queue_game {game, first}` | append a new occurrence, or insert first among upcoming games when `first` is true; preserves the current game and never starts playback |
 | `queue_next {game}` | select an existing or new upcoming game without starting playback |
 | `next` | skip to the warm session immediately, no vote |
+| `previous` | start the game played before the current one (Back+LB does the same) |
 | `pause` / `resume` | pause/resume the active session |
 | `open_overlay` / `close_overlay` | the party overlay came up / went away (see below) |
 | `vote {player_id, option}` | stand on `replay` \| `skip` \| `next_game` \| `quit` |

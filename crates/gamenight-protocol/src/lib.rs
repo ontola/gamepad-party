@@ -1426,6 +1426,9 @@ pub enum ClientMessage {
     },
     /// Skip to the warm session right now, no vote.
     Next,
+    /// Start the game played before the current one (the Game Room TV's
+    /// LB, or Back+LB on a controller).
+    Previous,
     /// Make this game the next one up: it starts warming immediately
     /// (inserted into the playlist after the current entry if needed).
     PlayNext {
