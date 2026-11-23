@@ -705,6 +705,82 @@ mod handle_tests {
             let _ = std::fs::remove_dir_all(dir);
         }
     }
+    /// "Make a game": the phone makes a game from a Warp template; the host
+    /// that has the template (what `warp new` wrote) fills it with every
+    /// file, the kit guide and nested ones too, under the game's own id and
+    /// name, and an edit made while it runs reaches the phone.
+    #[tokio::test]
+    async fn a_new_game_from_a_template_is_filled_and_edited_at_the_host() {
+        let hub = Db::init_temp("hub-new-game").await.unwrap();
+        hub.setup("Hub").await.unwrap();
+        let (phone_dir, host_dir, template, data, back) = (temp(), temp(), temp(), temp(), temp());
+        let mut phone = Store::open(&phone_dir).await.unwrap();
+        let host = Store::open(&host_dir).await.unwrap();
+        let drive = account_drive(&hub, &[&phone.agent().unwrap(), &host.agent().unwrap()]).await;
+        let url = serve_ws(hub.clone()).await;
+        let owner = "account:joep";
+        phone.sync_hub(&url, &drive).await.unwrap();
+        phone.link(owner, &drive).await.unwrap();
+        let made = phone
+            .new_mod(owner, "warp-template-platformer", "Penguin Push")
+            .await
+            .unwrap();
+        assert!(made.id.starts_with("warp-template-platformer-mod-"));
+        phone.sync_hub(&url, &drive).await.unwrap();
+
+        std::fs::create_dir_all(template.join("scripts")).unwrap();
+        std::fs::write(
+            template.join("game.toml"),
+            "title = \"My Game\"\ntick_rate = 60\nmin_players = 2\n",
+        )
+        .unwrap();
+        std::fs::write(template.join("main.luau"), "local WIN = 12\n").unwrap();
+        std::fs::write(template.join("KIT.md"), "# The game kit\n").unwrap();
+        std::fs::write(template.join("scripts/smoke.json"), "{}\n").unwrap();
+        std::fs::create_dir_all(&data).unwrap();
+        let host = StoreHandle::spawn(host);
+        host.sync_with(&url, [(owner.to_string(), drive.clone())].into());
+        let mut shelf = host.follow_projects(data.join("none.json"), data.join("cache"));
+        host.project_bases([("warp-template-platformer".to_string(), template.clone())].into());
+        let listed = tokio::time::timeout(Duration::from_secs(60), async {
+            loop {
+                let list = shelf.recv().await.unwrap();
+                if !list.is_empty() {
+                    break list;
+                }
+            }
+        })
+        .await
+        .unwrap();
+        let dir = listed[0].dir.clone();
+        assert_eq!(listed[0].title, "Penguin Push");
+        let toml = std::fs::read_to_string(dir.join("game.toml")).unwrap();
+        assert!(
+            toml.contains(&format!("id = \"{}\"", made.id))
+                && toml.contains("title = \"Penguin Push\"")
+                && toml.contains("min_players = 2"),
+            "{toml}"
+        );
+        assert!(dir.join("KIT.md").is_file() && dir.join("scripts/smoke.json").is_file());
+
+        std::fs::write(dir.join("main.luau"), "local WIN = 5\n").unwrap();
+        let edited = tokio::time::timeout(Duration::from_secs(60), async {
+            loop {
+                tokio::time::sleep(Duration::from_millis(500)).await;
+                phone.sync_hub(&url, &drive).await.unwrap();
+                phone.write_project(owner, &made.id, &back).await.unwrap();
+                if std::fs::read_to_string(back.join("main.luau")).is_ok_and(|t| t.contains("5")) {
+                    break;
+                }
+            }
+        })
+        .await;
+        assert!(edited.is_ok(), "the edit never reached the phone");
+        for dir in [phone_dir, host_dir, template, data, back] {
+            let _ = std::fs::remove_dir_all(dir);
+        }
+    }
+
     /// Joep makes a mod on his phone; the host he sits at has the game,
     /// fills the mod with a copy of it and puts it on the shelf; what Claude
     /// changes in it while it runs goes back to his drive, and a new name

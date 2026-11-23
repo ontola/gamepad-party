@@ -404,6 +404,124 @@ pub(crate) mod tests {
         assert!(tool_(&json!({"name":"run_luau","inputSchema":schema(json!({}))})).is_some());
     }
 
+    /// The whole Assistant step for a new game, against Warp itself: a game
+    /// made with `warp new --template platformer` runs under `warp serve
+    /// --live 0`, and a scripted model finds a value, edits main.luau (the
+    /// game reloads it), looks at a frame and reads the state. Needs a warp
+    /// with the game kit: `WARP_BIN=/path/to/warp`; without it the test says
+    /// so and passes.
+    #[tokio::test]
+    async fn the_assistant_changes_a_new_game_in_a_running_warp() {
+        let Ok(warp) = std::env::var("WARP_BIN") else {
+            eprintln!("skipped: set WARP_BIN to a warp with templates");
+            return;
+        };
+        let root = std::env::temp_dir().join(format!("gn-live-warp-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(&root).unwrap();
+        let game = root.join("penguin-push");
+        let made = std::process::Command::new(&warp)
+            .arg("new")
+            .arg(&game)
+            .args(["--title", "Penguin Push", "--template", "platformer"])
+            .output()
+            .unwrap();
+        assert!(made.status.success(), "{made:?}");
+        let token_file = root.join("token.json");
+        struct Killed(std::process::Child);
+        impl Drop for Killed {
+            fn drop(&mut self) {
+                let _ = self.0.kill();
+            }
+        }
+        let _serve = Killed(
+            std::process::Command::new(&warp)
+                .arg("serve")
+                .arg(&game)
+                .args(["--live", "0", "--seconds", "300", "--live-token-file"])
+                .arg(&token_file)
+                .env("KERN_ADAPTER", "software")
+                .stdout(std::process::Stdio::null())
+                .stderr(std::process::Stdio::null())
+                .spawn()
+                .unwrap(),
+        );
+        for _ in 0..600 {
+            if std::fs::read(&token_file).is_ok_and(|b| !b.is_empty()) {
+                break;
+            }
+            tokio::time::sleep(Duration::from_millis(100)).await;
+        }
+
+        // The cloud's side: the model's next step, scripted.
+        type Seen = Arc<Mutex<Vec<Value>>>;
+        let seen: Seen = Arc::default();
+        async fn step(State(seen): State<Seen>, Json(body): Json<Value>) -> Json<Value> {
+            let names: Vec<&str> = body["tools"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .filter_map(|t| t["name"].as_str())
+                .collect();
+            assert!(names.contains(&"edit_file") && names.contains(&"write_file"));
+            let messages = body["messages"].as_array().unwrap();
+            if let Some(last) = messages.last() {
+                seen.lock().unwrap().push(last["content"].clone());
+            }
+            let call = |id: &str, name: &str, input: Value| json!({"content":[{"type":"tool_use","id":id,"name":name,"input":input}]});
+            Json(match messages.len() {
+                0 => call("t1", "find_text", json!({"text":"local WIN"})),
+                2 => call(
+                    "t2",
+                    "edit_file",
+                    json!({"folder":"game","path":"main.luau",
+                        "old":"local WIN = 12","new":"local WIN = 5"}),
+                ),
+                4 => call("t3", "screenshot", json!({"max_width":320})),
+                6 => call("t4", "state", json!({})),
+                _ => json!({"content":[{"type":"text","text":"Je wint nu met 5 munten."}]}),
+            })
+        }
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        let app = Router::new()
+            .route("/v1/lobbies/assistant", post(step))
+            .with_state(seen.clone());
+        tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
+        let bridge = Bridge {
+            origin: format!("http://{addr}"),
+            http: reqwest::Client::builder().no_proxy().build().unwrap(),
+            session: Arc::new(Mutex::new(Some("host".into()))),
+            seats: Arc::default(),
+            waiting: Arc::default(),
+            pairing: Arc::default(),
+            pairing_request: Arc::default(),
+            refresh: Arc::default(),
+        };
+
+        let said = run(&bridge, "make-1", token_file.to_str().unwrap(), true)
+            .await
+            .unwrap();
+        assert_eq!(said, "Je wint nu met 5 munten.");
+        let main = std::fs::read_to_string(game.join("main.luau")).unwrap();
+        assert!(
+            main.contains("local WIN = 5"),
+            "the edit is in the game's files"
+        );
+        let seen = seen.lock().unwrap();
+        let text = |i: usize| seen[i].to_string();
+        assert!(text(0).contains("main.luau:16"), "find_text: {}", text(0));
+        assert!(text(1).contains("reloaded"), "edit_file: {}", text(1));
+        assert!(text(2).contains("\"image\""), "screenshot: {}", text(2));
+        assert!(
+            text(3).contains(r#"\"errors\":[]"#),
+            "the game runs without errors after the edit: {}",
+            text(3)
+        );
+        drop(seen);
+        let _ = std::fs::remove_dir_all(root);
+    }
+
     #[test]
     fn token_files_may_only_point_at_this_computer() {
         let dir = std::env::temp_dir().join(format!("gn-live-{}", std::process::id()));
