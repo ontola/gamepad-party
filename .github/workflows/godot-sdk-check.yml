@@ -3,7 +3,7 @@
 #
 #   jobs:
 #     gamenight-sdk:
-#       uses: ontola/gamepad-party/.github/workflows/godot-sdk-check.yml@main
+#       uses: ontola/splitscreen-club/.github/workflows/godot-sdk-check.yml@main
 #       with:
 #         path: .   # the folder holding project.godot
 name: GameNight Godot SDK check
@@ -25,7 +25,7 @@ jobs:
           path: game
       - uses: actions/checkout@v4
         with:
-          repository: ontola/gamepad-party
+          repository: ontola/splitscreen-club
           ref: main
           path: gamenight
           sparse-checkout: sdk/godot

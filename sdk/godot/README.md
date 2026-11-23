@@ -21,7 +21,7 @@ and let the game's CI fail when it falls behind:
 ```yaml
 jobs:
   gamenight-sdk:
-    uses: ontola/gamepad-party/.github/workflows/godot-sdk-check.yml@main
+    uses: ontola/splitscreen-club/.github/workflows/godot-sdk-check.yml@main
 ```
 
 Games that publish to the catalog can call
