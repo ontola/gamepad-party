@@ -26,6 +26,12 @@ def verify(app):
     manifest = json.loads((resources / "build.json").read_text())
     assert manifest["assets"], "Empty asset manifest"
     for name, digest in manifest["assets"].items():
+        if "/MacOS/" in name:
+            # Signing embeds the signature in the executable after its hash
+            # was recorded: check it is there and its signature is intact.
+            assert (resources / name).stat().st_size > 1_000_000, name
+            subprocess.run(["codesign", "--verify", "--strict", str(resources / name)], check=True)
+            continue
         assert hashlib.sha256((resources / name).read_bytes()).hexdigest() == digest, name
     assert (resources / "catalog/games/blast-party.json").is_file()
     for file in (resources / "catalog/games").glob("*.json"):

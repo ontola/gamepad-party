@@ -46,8 +46,8 @@ def package(repo, binaries, game_room, output, version, binary_revision=None):
         if "mac" in json.loads(file.read_text(encoding="utf-8")).get("downloads", {}):
             shutil.copy2(file, catalog / file.name)
     shutil.copy2(repo / "catalog/schema.json", catalog.parent / "schema.json")
-    # Record the lobby executable, relative to Resources, so the bundle check
-    # can tell a stale or truncated copy from the one built here.
+    # Record the lobby executable as built (before signing changes it),
+    # relative to Resources; the bundle check verifies its signature.
     digest = hashlib.sha256(game_room.read_bytes()).hexdigest()
     hashes = {"../Helpers/GameNight.app/Contents/MacOS/GameNight": digest}
     revision = subprocess.check_output(["git", "-C", str(repo), "rev-parse", "HEAD"], text=True).strip()
