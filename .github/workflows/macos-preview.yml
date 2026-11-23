@@ -39,68 +39,64 @@ concurrency:
   group: macos-installer-${{ github.ref }}
   cancel-in-progress: false
 jobs:
-  build:
-    if: inputs.binaries_run == ''
-    strategy:
-      fail-fast: false
-      matrix:
-        target: [aarch64-apple-darwin, x86_64-apple-darwin]
+  # One job on one macOS runner: builds both architectures, then packages.
+  # Separate build and package jobs each had to wait for a macOS runner, and
+  # a package job that got none within 15 min was cancelled (0.2.563).
+  package:
     runs-on: macos-latest
-    timeout-minutes: 90
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref || github.sha }}
       - uses: dtolnay/rust-toolchain@stable
+        if: inputs.binaries_run == ''
         with:
-          targets: ${{ matrix.target }}
-      - uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: . -> target
-          key: macos-installer-${{ matrix.target }}
-      - name: Build current host
-        env:
-          CARGO_TARGET_DIR: ${{ github.workspace }}/target
-          MACOSX_DEPLOYMENT_TARGET: '12.0'
-        run: cargo build --locked --release --target ${{ matrix.target }} -p gamenight-daemon
+          targets: aarch64-apple-darwin, x86_64-apple-darwin
       # The lobby is the Warp Game Room, built from the Warp repository;
       # ontola/warp-game-engine is public: no token needed.
       - name: Check out the Warp engine for the Game Room lobby
+        if: inputs.binaries_run == ''
         uses: actions/checkout@v4
         with:
           repository: ontola/warp-game-engine
           path: warp
       - uses: Swatinem/rust-cache@v2
+        if: inputs.binaries_run == ''
         with:
-          workspaces: warp -> target
-          key: warp-game-room-${{ matrix.target }}
-      - name: Build the Warp Game Room lobby
+          workspaces: |
+            . -> target
+            warp -> target
+          key: macos-installer
+      - name: Build the host and the Warp Game Room for both architectures
+        if: inputs.binaries_run == ''
         env:
           MACOSX_DEPLOYMENT_TARGET: '12.0'
         run: |
-          cargo build --locked --release --manifest-path warp/Cargo.toml --target ${{ matrix.target }} -p game-room
-          cp warp/target/${{ matrix.target }}/release/game-room target/${{ matrix.target }}/release/game-room
+          for target in aarch64-apple-darwin x86_64-apple-darwin; do
+            CARGO_TARGET_DIR="$PWD/target" cargo build --locked --release --target $target -p gamenight-daemon
+            cargo build --locked --release --manifest-path warp/Cargo.toml --target $target -p game-room
+            mkdir -p binaries/binaries-$target
+            cp target/$target/release/gamenight-launcher target/$target/release/gamenight-daemon \
+               warp/target/$target/release/game-room binaries/binaries-$target/
+          done
       - uses: actions/upload-artifact@v4
+        if: inputs.binaries_run == ''
         with:
-          name: binaries-${{ matrix.target }}
-          path: |
-            target/${{ matrix.target }}/release/gamenight-launcher
-            target/${{ matrix.target }}/release/gamenight-daemon
-            target/${{ matrix.target }}/release/game-room
+          name: binaries-aarch64-apple-darwin
+          path: binaries/binaries-aarch64-apple-darwin/*
           if-no-files-found: error
-  package:
-    needs: build
-    if: always() && (needs.build.result == 'success' || needs.build.result == 'skipped')
-    runs-on: macos-latest
-    timeout-minutes: 45
-    steps:
-      - uses: actions/checkout@v4
+      - uses: actions/upload-artifact@v4
+        if: inputs.binaries_run == ''
         with:
-          ref: ${{ inputs.ref || github.sha }}
+          name: binaries-x86_64-apple-darwin
+          path: binaries/binaries-x86_64-apple-darwin/*
+          if-no-files-found: error
       - uses: actions/download-artifact@v4
+        if: inputs.binaries_run != ''
         with:
           github-token: ${{ github.token }}
-          run-id: ${{ inputs.binaries_run || github.run_id }}
+          run-id: ${{ inputs.binaries_run }}
           pattern: binaries-*
           path: binaries
       - uses: actions/download-artifact@v4

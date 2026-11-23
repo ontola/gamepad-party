@@ -107,13 +107,14 @@ jobs:
         run: |
           newest=$(gh release list --limit 100 --json tagName,isDraft \
             --jq '[.[] | select(.isDraft | not) | .tagName | select(test("^v0[.]2[.][0-9]+$")) | ltrimstr("v0.2.") | tonumber] | max // 0')
-          if [ "${VERSION#0.2.}" -le "$newest" ]; then
+          if [ "${VERSION#0.2.}" -lt "$newest" ]; then
             echo "Preview 0.2.$newest is already out; keeping it." >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
-          if gh release view "v$VERSION" --json isDraft --jq .isDraft > /tmp/draft; then
-            if [ "$(cat /tmp/draft)" = false ]; then exit 0; fi
-          else
+          # Re-running a run whose macOS job failed adds the Mac installer to
+          # its own published release (same commit and run); release.json is
+          # replaced so the website promotes the Mac download too.
+          if ! gh release view "v$VERSION" --json isDraft > /dev/null 2>&1; then
             gh release create "v$VERSION" --draft --prerelease --target "$REVISION" --title "Splitscreen Club $VERSION preview" --generate-notes
           fi
           gh release upload "v$VERSION" release/* --clobber
