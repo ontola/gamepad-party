@@ -68,6 +68,7 @@ MSG_PLAYER_STORE_DRIVES = "player_store_drives"
 MSG_PLAYERS_UPDATED = "players_updated"
 MSG_PLAYTESTS = "playtests"
 MSG_PREPARE = "prepare"
+MSG_PREVIOUS = "previous"
 MSG_PROGRESS = "progress"
 MSG_QUEUE_GAME = "queue_game"
 MSG_QUEUE_NEXT = "queue_next"
@@ -436,6 +437,10 @@ CLIENT_MESSAGES = {
         ]
     },
     "next": {
+        "fields": [],
+        "required": []
+    },
+    "previous": {
         "fields": [],
         "required": []
     },

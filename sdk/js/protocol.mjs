@@ -68,6 +68,7 @@ export const MSG = Object.freeze({
   "PLAYERS_UPDATED": "players_updated",
   "PLAYTESTS": "playtests",
   "PREPARE": "prepare",
+  "PREVIOUS": "previous",
   "PROGRESS": "progress",
   "QUEUE_GAME": "queue_game",
   "QUEUE_NEXT": "queue_next",
@@ -338,6 +339,10 @@ export const CLIENT_MESSAGES = {
     ]
   },
   "next": {
+    "fields": [],
+    "required": []
+  },
+  "previous": {
     "fields": [],
     "required": []
   },

@@ -72,6 +72,7 @@ namespace GameNightSdk
             public const string PlayersUpdated = "players_updated";
             public const string Playtests = "playtests";
             public const string Prepare = "prepare";
+            public const string Previous = "previous";
             public const string Progress = "progress";
             public const string QueueGame = "queue_game";
             public const string QueueNext = "queue_next";

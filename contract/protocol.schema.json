@@ -777,6 +777,19 @@
           "type": "object"
         },
         {
+          "description": "Start the game played before the current one (the Game Room TV's\nLB, or Back+LB on a controller).",
+          "properties": {
+            "type": {
+              "const": "previous",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        },
+        {
           "description": "Make this game the next one up: it starts warming immediately\n(inserted into the playlist after the current entry if needed).",
           "properties": {
             "game": {

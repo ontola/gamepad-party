@@ -30,7 +30,8 @@ moves between controls. On a game card, A queues the game after earlier picks;
 X plays it now (it goes on top of the queue and starts once it has loaded). The
 merged queue panel shows its first entry as Up next, with the remaining games
 alongside it. Select Start game to launch the head of the queue. Back returns to
-the lobby or resumes an overlay-paused game. Hold Back to see the chords:
+the lobby (when it is let go) or resumes an overlay-paused game. Hold Back to
+see the chords:
 Back+RB skips straight to the next game, Back+LB goes back to the previous
 game and Back+B (press B twice) leaves the party. Lobbies draw the host's
 `back_menu` while someone holds Back. Y leaves that controller's seat.

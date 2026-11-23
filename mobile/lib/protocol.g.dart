@@ -66,6 +66,7 @@ const String msgPlayerStoreDrives = 'player_store_drives';
 const String msgPlayersUpdated = 'players_updated';
 const String msgPlaytests = 'playtests';
 const String msgPrepare = 'prepare';
+const String msgPrevious = 'previous';
 const String msgProgress = 'progress';
 const String msgQueueGame = 'queue_game';
 const String msgQueueNext = 'queue_next';

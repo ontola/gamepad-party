@@ -141,6 +141,13 @@ struct Shared {
     skipped_by_combo: Option<std::time::Instant>,
     /// The Back chord menu while a controller holds Back (lobby_input.rs).
     back_menu: Option<gamenight_protocol::BackMenu>,
+    /// A controller holds Back right now (lobby_input.rs): the runtime opens
+    /// the room on its release, so games' own Back echoes are not needed.
+    back_holding: bool,
+    /// A game asked for the room (`request_overlay`) while runtime input is
+    /// on. It waits a moment: when it was a Back press the runtime sees it
+    /// too and takes over (the room then comes on Back's release).
+    pending_game_overlay: Option<std::time::Instant>,
     shutdown_requested: bool,
     lobby_restarts: u8,
     lobby_recovery_opened: bool,
@@ -409,6 +416,8 @@ impl Shared {
             overlay_opened_by_request: None,
             skipped_by_combo: None,
             back_menu: None,
+            back_holding: false,
+            pending_game_overlay: None,
             shutdown_requested: false,
             lobby_restarts: 0,
             lobby_recovery_opened: false,
@@ -810,6 +819,15 @@ impl Shared {
     /// `origin` receives any `Reject` effects.
     fn dispatch(&mut self, command: Command, origin: Option<&Tx>) {
         debug!(?command, "dispatch");
+        if matches!(command, Command::OverlayOpened) && origin.is_some() && self.runtime_input {
+            if self.back_holding {
+                info!("ignoring a game's request_overlay: Back is held, the room comes on its release");
+                return;
+            }
+            self.pending_game_overlay
+                .get_or_insert_with(std::time::Instant::now);
+            return;
+        }
         if matches!(command, Command::OverlayOpened)
             && origin.is_some()
             && self
@@ -3480,6 +3498,20 @@ async fn serve(
                 shared.lock().await.game_command(parsed, &registration, &tx);
                 continue;
             }
+            if matches!(parsed, ClientMessage::Previous)
+                && !matches!(registration, Registration::Game(_))
+            {
+                let mut s = shared.lock().await;
+                if !s.play_previous() {
+                    send(
+                        &tx,
+                        &ServerMessage::Error {
+                            message: "no game was played before this one".into(),
+                        },
+                    );
+                }
+                continue;
+            }
             let command = match message_to_command(parsed, &registration) {
                 Ok(Some(c)) => c,
                 Ok(None) => continue,
@@ -3843,6 +3875,8 @@ fn message_to_command(
             Command::RemovePlaylistEntry { expected, index }
         }
         ClientMessage::Next => Command::Next,
+        // Handled before this mapping (two commands); games may not send it.
+        ClientMessage::Previous => return Err("games cannot send party commands".into()),
         ClientMessage::PlayNext { game } => Command::PlayNext { game },
         ClientMessage::QueueNext { game } => Command::QueueNext { game },
         ClientMessage::QueueGame { game, first } => Command::QueueGame { game, first },
