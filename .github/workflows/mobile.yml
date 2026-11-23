@@ -58,7 +58,7 @@ jobs:
           fi
       # The run number is both the versionCode and the build the app compares
       # with version.json to offer updates.
-      - run: flutter build apk --release --dart-define=GAMENIGHT_PUSH=${GAMENIGHT_PUSH:-false} --build-number=${{ github.run_number }} --dart-define=GAMENIGHT_BUILD=${{ github.run_number }}
+      - run: flutter build apk --release --dart-define=GAMENIGHT_PUSH=${GAMENIGHT_PUSH:-false} --build-name=0.1.${{ github.run_number }} --build-number=${{ github.run_number }} --dart-define=GAMENIGHT_BUILD=${{ github.run_number }}
         env:
           GAMENIGHT_KEYSTORE_PASSWORD: ${{ secrets.GAMENIGHT_KEYSTORE_PASSWORD }}
       - name: Show the APK's signing fingerprint
@@ -167,7 +167,7 @@ jobs:
       - name: Build signed Play App Bundle
         env:
           GAMENIGHT_KEYSTORE_PASSWORD: ${{ secrets.GAMENIGHT_KEYSTORE_PASSWORD }}
-        run: flutter build appbundle --release --dart-define=GAMENIGHT_PUSH=${GAMENIGHT_PUSH:-false} --build-number=${{ github.run_number }} --dart-define=GAMENIGHT_BUILD=${{ github.run_number }} --dart-define=GAMENIGHT_PLAY_STORE=true
+        run: flutter build appbundle --release --dart-define=GAMENIGHT_PUSH=${GAMENIGHT_PUSH:-false} --build-name=0.1.${{ github.run_number }} --build-number=${{ github.run_number }} --dart-define=GAMENIGHT_BUILD=${{ github.run_number }} --dart-define=GAMENIGHT_PLAY_STORE=true
       - name: Verify Play manifest has no APK installer permission
         run: |
           python3 - <<'PYTHON'
@@ -234,7 +234,7 @@ jobs:
       - run: flutter pub get
       - name: Build unsigned
         if: env.APP_STORE_CONNECT_PRIVATE_KEY == '' || github.ref != 'refs/heads/main'
-        run: flutter build ios --release --dart-define=GAMENIGHT_PUSH=${GAMENIGHT_PUSH:-false} --no-codesign --build-number=${{ github.run_number }} --dart-define=GAMENIGHT_BUILD=${{ github.run_number }}
+        run: flutter build ios --release --dart-define=GAMENIGHT_PUSH=${GAMENIGHT_PUSH:-false} --no-codesign --build-name=0.1.${{ github.run_number }} --build-number=${{ github.run_number }} --dart-define=GAMENIGHT_BUILD=${{ github.run_number }}
       - name: Create a certificate and profile for this run
         id: signing
         if: env.APP_STORE_CONNECT_PRIVATE_KEY != '' && github.ref == 'refs/heads/main'
@@ -254,7 +254,7 @@ jobs:
           cp "$RUNNER_TEMP/ios-signing"/*.mobileprovision ~/Library/MobileDevice/Provisioning\ Profiles/
       - name: Build the signed IPA
         if: steps.signing.outcome == 'success'
-        run: flutter build ipa --release --dart-define=GAMENIGHT_PUSH=${GAMENIGHT_PUSH:-false} --export-options-plist="$RUNNER_TEMP/ios-signing/ExportOptions.plist" --build-number=${{ github.run_number }} --dart-define=GAMENIGHT_BUILD=${{ github.run_number }}
+        run: flutter build ipa --release --dart-define=GAMENIGHT_PUSH=${GAMENIGHT_PUSH:-false} --export-options-plist="$RUNNER_TEMP/ios-signing/ExportOptions.plist" --build-name=0.1.${{ github.run_number }} --build-number=${{ github.run_number }} --dart-define=GAMENIGHT_BUILD=${{ github.run_number }}
       - name: Upload to TestFlight
         if: steps.signing.outcome == 'success'
         run: |

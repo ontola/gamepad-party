@@ -73,7 +73,7 @@ class ReportService {
   Map<String, String> _context() {
     final extra = context?.call() ?? const <String, String>{};
     return {
-      'app_version': '0.1.0+$appBuild',
+      'app_version': '0.1.$appBuild+$appBuild',
       'platform': kIsWeb ? 'web' : defaultTargetPlatform.name,
       'screen': _limit(screen, 80),
       if (extra['game'] case final String game)
