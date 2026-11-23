@@ -300,6 +300,7 @@ fn back_chords(
     controllers: &[ControllerState],
 ) {
     holds.retain(|id, _| controllers.iter().any(|c| &c.controller == id));
+    s.router_frame = Some(Instant::now());
     // A game's own Back handler asked for the room. When a controller's
     // Back is behind it, that Back is ours (the room comes on release);
     // otherwise (Escape, a menu's Back to lobby) the room comes now.
@@ -823,7 +824,6 @@ mod tests {
     #[tokio::test]
     async fn a_games_own_back_echo_waits_for_the_release() {
         let mut s = Shared::new(Vec::new(), "127.0.0.1:0".into(), None);
-        s.runtime_input = true;
         let (game, _rx) = mpsc::unbounded_channel();
         let mut router = InputRouter::default();
         router.route(&mut s, frame(0));

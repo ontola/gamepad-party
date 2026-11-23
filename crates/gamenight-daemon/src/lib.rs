@@ -148,6 +148,9 @@ struct Shared {
     /// on. It waits a moment: when it was a Back press the runtime sees it
     /// too and takes over (the room then comes on Back's release).
     pending_game_overlay: Option<std::time::Instant>,
+    /// When the runtime input router last saw a frame. Only a live router
+    /// can take over a game's Back echo (tests and hosts without pads have none).
+    router_frame: Option<std::time::Instant>,
     shutdown_requested: bool,
     lobby_restarts: u8,
     lobby_recovery_opened: bool,
@@ -418,6 +421,7 @@ impl Shared {
             back_menu: None,
             back_holding: false,
             pending_game_overlay: None,
+            router_frame: None,
             shutdown_requested: false,
             lobby_restarts: 0,
             lobby_recovery_opened: false,
@@ -819,7 +823,12 @@ impl Shared {
     /// `origin` receives any `Reject` effects.
     fn dispatch(&mut self, command: Command, origin: Option<&Tx>) {
         debug!(?command, "dispatch");
-        if matches!(command, Command::OverlayOpened) && origin.is_some() && self.runtime_input {
+        if matches!(command, Command::OverlayOpened)
+            && origin.is_some()
+            && self
+                .router_frame
+                .is_some_and(|at| at.elapsed() < std::time::Duration::from_millis(250))
+        {
             if self.back_holding {
                 info!("ignoring a game's request_overlay: Back is held, the room comes on its release");
                 return;
