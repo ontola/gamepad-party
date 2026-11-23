@@ -1,7 +1,7 @@
 # Godot 4
 
 The Godot addon handles lifecycle messages, runtime controller frames and live
-player profiles over WebSocket. Your game connects these to its simulation and
+player profiles over the native WebSocket connection or a browser host. Your game connects these to its simulation and
 rendering.
 
 ## Install
@@ -13,7 +13,7 @@ Godot has no package manager, so every game keeps its own copy of the addon, and
 ```yaml
 jobs:
   gamenight-sdk:
-    uses: ontola/gamepad-party/.github/workflows/godot-sdk-check.yml@main
+    uses: ontola/splitscreen-club/.github/workflows/godot-sdk-check.yml@main
     with:
       path: .  # the folder that holds project.godot
 ```
@@ -27,6 +27,14 @@ on your machine. To connect it to a development host anyway, set
 Use the `GameNight` autoload and connect to its signals; don't subclass it and
 override its message handling. A subclass that replaces `_handle` silently
 loses performance reports, settings replay and future protocol features.
+
+## Embed a web export in the browser lobby
+
+Use a Godot Web export preset. Set **HTML → Head Include** to `<script src="bridge.js"></script>` and copy `addons/gamenight/browser_transport.js` to `bridge.js` beside the exported HTML. The script must load before the game starts. Opening that HTML as its own page uses the standalone game. When the host embeds it in an iframe on the same origin, the addon connects to the parent and sets `GameNight.launched_by_daemon`.
+
+The child announces its `game_id` in `hello`. Match the catalog ID, including hyphens. The autoload defaults to the lowercased project name. A game can set `GameNight.game_id` in its main scene's `_ready()` before the deferred browser handshake.
+
+A browser host sends and receives the usual protocol objects in a `postMessage` envelope with `channel: "splitscreen-club-webgame-v1"` and `payload`. Address messages to the exact origin and verify both the origin and iframe window on receipt. After `hello`, send `welcome` and `prepare` with the session, seats and player profiles. Wait for `ready` before sending `start`. Route controller frames by their seat's controller token. On return to the lobby, pause and retain the iframe so a later `resume` continues the same match. The host owns iframe visibility and focus. `GameNightScreen` still manages audio and the warm frame budget.
 
 ## Lifecycle signals
 

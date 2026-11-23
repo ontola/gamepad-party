@@ -12,7 +12,8 @@ Run it through `python scripts/run-local.py --lobby godot --godot /path/to/godot
 
 Copy `addons/gamenight` into your project with `sdk/godot/install.sh` and enable
 the plugin. It registers `GameNight` and `GameNightScreen` autoloads. The
-connection reads the host launch environment automatically.
+native connection reads the host launch environment automatically. For an
+embedded web export, follow [Embed a web export](../../docs/site/godot.md#embed-a-web-export-in-the-browser-lobby).
 
 Vendored copies drift. Update one with `python sdk/godot/sync.py path/to/game`
 and let the game's CI fail when it falls behind:
@@ -20,7 +21,7 @@ and let the game's CI fail when it falls behind:
 ```yaml
 jobs:
   gamenight-sdk:
-    uses: ontola/gamepad-party/.github/workflows/godot-sdk-check.yml@main
+    uses: ontola/splitscreen-club/.github/workflows/godot-sdk-check.yml@main
 ```
 
 Games that publish to the catalog can call

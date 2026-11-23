@@ -93,18 +93,19 @@ Compress-Archive -Path build/my-game/* -DestinationPath build/my-game-windows.zi
 </li>
 </ol>
 <h2 id="in-the-browser">In the browser</h2>
-<p>Splitscreen Club also runs in a browser at
-<a href="https://splitscreen.club/play/">splitscreen.club/play</a>, on one download of
-the engine. Only Warp Luau games can run there, because they are scripts on
-the same engine. The browser shelf is curated for now: published games are
-not added to it automatically.</p>
+<p>The <a href="https://splitscreen.club/play/">browser lobby</a> has a curated shelf. It
+loads Warp games, including Luau games and selected built-in Rust games, and
+can embed same-origin HTML games with their own browser runtime. A browser
+release is added to the shelf separately from publishing a desktop build.
+For a Godot game, <a href="/docs/godot#embed-a-web-export-in-the-browser-lobby">embed its Web export</a>
+to use the lobby's players, controllers and pause/resume flow.</p>
 <h2 id="a-game-in-rust-on-warp">A game in Rust on Warp</h2>
 <p>For more than Luau allows, write the game as a Rust crate on the engine and
 use its <code>splitscreen-club</code> crate for the connection, as Growing Guns,
 Spellstorm and Sideways do. Start with
 <a href="https://github.com/ontola/warp-game-engine/blob/main/engine/docs/making-a-game.md">Making a game on Warp</a>.</p>
 
-<footer class="docs-source"><a href="https://github.com/ontola/gamepad-party/blob/main/docs/site/warp.md">Edit this page</a><span data-source-fingerprint="16046b81f3b55a16c63e01d486e7383a3f194916641662b89d526838b08d96d8">Built from repository sources</span></footer>
+<footer class="docs-source"><a href="https://github.com/ontola/gamepad-party/blob/main/docs/site/warp.md">Edit this page</a><span data-source-fingerprint="9412f52ae92b6760bf6194d0348f798f951c8bb24c6c8dd7aee8b29053eef910">Built from repository sources</span></footer>
 <nav class="docs-pager" aria-label="Adjacent documentation pages"><a href="/docs/lifecycle"><small>Previous</small>Game lifecycle</a><a href="/docs/love"><small>Next</small>LÖVE / Lua</a></nav></article>
 <aside class="docs-toc" aria-label="On this page"><strong>On this page</strong><a href="#what-the-runtime-does-for-you">What the runtime does for you</a><a href="#get-the-warp-executable">Get the warp executable</a><a href="#make-a-game">Make a game</a><a href="#work-with-an-ai-agent">Work with an AI agent</a><a href="#test-and-package">Test and package</a><a href="#in-the-browser">In the browser</a><a href="#a-game-in-rust-on-warp">A game in Rust on Warp</a></aside>
 <p class="docs-copy-status" role="status" aria-live="polite"></p></main></body></html>

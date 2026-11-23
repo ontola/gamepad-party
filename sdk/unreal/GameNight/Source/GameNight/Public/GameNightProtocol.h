@@ -25,7 +25,7 @@ inline constexpr const char* ENV_OVERLAY_URL = "GAMENIGHT_OVERLAY_URL";
 inline constexpr const char* ENV_TOKEN = "GAMENIGHT_TOKEN";
 inline constexpr const char* DEFAULT_ADDR = "127.0.0.1:7912";
 inline constexpr int DEFAULT_WEB_PORT = 7913;
-inline constexpr int GODOT_SDK_VERSION = 7;
+inline constexpr int GODOT_SDK_VERSION = 8;
 inline constexpr int PROTOCOL_VERSION = 1;
 
 // Message "type" tags, both directions.

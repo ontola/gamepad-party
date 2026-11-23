@@ -103,11 +103,12 @@ Add `KERN_ADAPTER=software` on a machine without a GPU.
 
 ## In the browser
 
-Splitscreen Club also runs in a browser at
-[splitscreen.club/play](https://splitscreen.club/play/), on one download of
-the engine. Only Warp Luau games can run there, because they are scripts on
-the same engine. The browser shelf is curated for now: published games are
-not added to it automatically.
+The [browser lobby](https://splitscreen.club/play/) has a curated shelf. It
+loads Warp games, including Luau games and selected built-in Rust games, and
+can embed same-origin HTML games with their own browser runtime. A browser
+release is added to the shelf separately from publishing a desktop build.
+For a Godot game, [embed its Web export](/docs/godot#embed-a-web-export-in-the-browser-lobby)
+to use the lobby's players, controllers and pause/resume flow.
 
 ## A game in Rust on Warp
 

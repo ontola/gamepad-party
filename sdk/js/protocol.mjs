@@ -21,7 +21,7 @@ export const ENV_OVERLAY_URL = "GAMENIGHT_OVERLAY_URL";
 export const ENV_TOKEN = "GAMENIGHT_TOKEN";
 export const DEFAULT_ADDR = "127.0.0.1:7912";
 export const DEFAULT_WEB_PORT = 7913;
-export const GODOT_SDK_VERSION = 7;
+export const GODOT_SDK_VERSION = 8;
 export const PROTOCOL_VERSION = 1;
 
 /** Message "type" tags, both directions. */

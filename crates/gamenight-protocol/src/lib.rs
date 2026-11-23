@@ -25,7 +25,7 @@ pub const PROTOCOL_VERSION: u32 = 1;
 /// The current Godot addon (`sdk/godot/addons/gamenight`, `SDK_VERSION` in
 /// gamenight.gd). Bump both together when the addon gains a feature games
 /// rely on, so an older vendored copy warns at runtime.
-pub const GODOT_SDK_VERSION: u32 = 7;
+pub const GODOT_SDK_VERSION: u32 = 8;
 
 /// Largest `save_player_data` payload, as serialized JSON. Progress, not
 /// worlds: worlds are save directories the host manages.
