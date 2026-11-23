@@ -11,9 +11,9 @@ from pathlib import Path
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("app", type=Path)
 parser.add_argument("--output", type=Path, required=True)
-# The CI runner's paravirtual GPU compiles Godot's Forward+ shaders slowly on
-# a first start; a real Mac starts the Game Room in seconds.
-parser.add_argument("--timeout", type=float, default=420)
+# The CI runner's paravirtual GPU is slow on a first start; a real Mac starts
+# the Game Room in seconds.
+parser.add_argument("--timeout", type=float, default=300)
 args = parser.parse_args()
 app = args.app.resolve()
 output = args.output.resolve()
@@ -29,22 +29,22 @@ ansi = re.compile(r"\x1b\[[0-9;]*m")
 
 
 def lobby_connected():
-    # The Godot lobby proves it started from the bundle (binary, PCK, launch
+    # The Warp Game Room proves it started from the bundle (binary, launch
     # spec) by saying hello to the packaged host with its launch token.
     if not daemon_log.is_file():
         return False
     text = ansi.sub("", daemon_log.read_text(errors="replace"))
-    return any("game connected" in line and "game=game-room" in line for line in text.splitlines())
+    return any("game connected" in line and "game=warp-game-room" in line for line in text.splitlines())
 
 
 def diagnose():
     # Run the helper on its own, verbosely and with a window as the launcher
-    # starts it, so a failed run shows how far Godot got with the Game Room.
+    # starts it, so a failed run shows how far the Game Room got.
     helper = app / "Contents/Helpers/GameNight.app/Contents"
-    command = [str(helper / "MacOS/GameNight"), "--verbose", "--main-pack", str(helper / "Resources/GameNight.pck")]
+    command = [str(helper / "MacOS/GameNight")]
     try:
-        result = subprocess.run(command, env=dict(os.environ, GAMENIGHT_ADDR="127.0.0.1:9"),
-                                capture_output=True, text=True, timeout=120)
+        result = subprocess.run(command, env=dict(os.environ, GAMENIGHT_ADDR="127.0.0.1:9", RUST_BACKTRACE="1"),
+                                capture_output=True, text=True, timeout=60)
         text = result.stdout + result.stderr
     except subprocess.TimeoutExpired as stopped:
         text = "".join(part.decode(errors="replace") if isinstance(part, bytes) else (part or "")

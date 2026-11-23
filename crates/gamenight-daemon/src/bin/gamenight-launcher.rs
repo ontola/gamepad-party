@@ -59,43 +59,24 @@ fn run(restart: bool) -> Result<Next, Box<dyn std::error::Error>> {
     if port == 0 {
         return Err("Port must not be zero".into());
     }
-    // The Game Room lobby: Godot running the exported Game Room pack. On
-    // macOS it is a helper app, so it gets its own Dock entry and name.
+    // The lobby is the Warp Game Room, one self-contained executable, on
+    // every platform. It is the only lobby: there is no other one to fall
+    // back to. On macOS it is a helper app, so it gets its own Dock entry.
     #[cfg(target_os = "macos")]
     let daemon = root.join("bin/gamenight-daemon");
     #[cfg(target_os = "macos")]
     let game_room = root
-        .join("../Helpers/GameNight.app/Contents/Resources")
+        .join("../Helpers/GameNight.app/Contents/MacOS")
         .canonicalize()?;
     #[cfg(target_os = "macos")]
-    let game_room_command = game_room.join("../MacOS/GameNight").canonicalize()?;
-    // Name the pack: Godot's own lookup in the helper bundle's Resources
-    // did not find it on CI, while an explicit pack always runs the game.
-    #[cfg(target_os = "macos")]
-    let game_room_pack = game_room.join("GameNight.pck");
-    #[cfg(target_os = "macos")]
-    let game_room_args = vec![
-        "--main-pack".to_string(),
-        game_room_pack.display().to_string(),
-    ];
+    let game_room_command = game_room.join("GameNight");
     #[cfg(not(target_os = "macos"))]
     let daemon = root.join("bin/gamenight-daemon.exe");
-    // Windows: the Warp Game Room, one self-contained executable. It is the
-    // only lobby: there is no other one to fall back to.
     #[cfg(not(target_os = "macos"))]
     let game_room = root.join("lobbies/warp-game-room");
     #[cfg(not(target_os = "macos"))]
     let game_room_command = game_room.join("game-room.exe");
-    #[cfg(not(target_os = "macos"))]
     let game_room_args: Vec<String> = Vec::new();
-    #[cfg(target_os = "macos")]
-    let required = [
-        &daemon,
-        &game_room_command,
-        &game_room_pack,
-        &root.join("catalog/games/blast-party.json"),
-    ];
-    #[cfg(not(target_os = "macos"))]
     let required = [
         &daemon,
         &game_room_command,
@@ -150,9 +131,6 @@ fn run(restart: bool) -> Result<Next, Box<dyn std::error::Error>> {
     let updates = windows::Updates::start(&local);
     // Lobbies shipped in the package. The first one is the default lobby.
     let bundled_lobbies = local.join("bundled-lobbies.json");
-    #[cfg(target_os = "macos")]
-    let lobby = "game-room";
-    #[cfg(not(target_os = "macos"))]
     let lobby = "warp-game-room";
     let mut shelf = serde_json::json!([
         {"id":lobby, "title":"Game Room", "players":"1-8",

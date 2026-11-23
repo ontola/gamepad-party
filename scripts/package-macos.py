@@ -24,14 +24,13 @@ def package(repo, binaries, game_room, output, version, binary_revision=None):
     helper = contents / "Helpers/GameNight.app/Contents"
     for folder in [contents / "MacOS", resources / "bin", helper / "MacOS", helper / "Resources"]:
         folder.mkdir(parents=True, exist_ok=False)
-    # The lobby helper is Godot's universal binary; the launcher runs it with
-    # --main-pack on the Game Room PCK in the helper's Resources.
+    # The lobby helper is the Warp Game Room (universal game-room binary,
+    # assets built in); the launcher runs it as the default lobby.
     for source, target in [(binaries / "gamenight-launcher", contents / "MacOS/GameNight"),
                            (binaries / "gamenight-daemon", resources / "bin/gamenight-daemon"),
-                           (game_room / "GameNight", helper / "MacOS/GameNight")]:
+                           (game_room, helper / "MacOS/GameNight")]:
         shutil.copy2(source, target)
         target.chmod(0o755)
-    shutil.copy2(game_room / "GameNight.pck", helper / "Resources/GameNight.pck")
     for target, ident, background in [(contents, "io.ontola.gamenight", True),
                                        (helper, "io.ontola.gamenight.lobby", False)]:
         (target / "Info.plist").write_bytes(plistlib.dumps(plist("GameNight", ident, version, background)))
@@ -39,7 +38,6 @@ def package(repo, binaries, game_room, output, version, binary_revision=None):
     notices.mkdir(parents=True)
     for notice in (repo / "lobbies/game-room/assets/fonts").glob("*LICENSE*.txt"):
         shutil.copy2(notice, notices / notice.name)
-    shutil.copy2(repo / "lobbies/game-room/GODOT-LICENSE.txt", notices / "godot.txt")
     for file in ["LICENSE", "THIRD_PARTY.md"]:
         shutil.copy2(repo / file, resources / file)
     catalog = resources / "catalog/games"
@@ -48,10 +46,10 @@ def package(repo, binaries, game_room, output, version, binary_revision=None):
         if "mac" in json.loads(file.read_text(encoding="utf-8")).get("downloads", {}):
             shutil.copy2(file, catalog / file.name)
     shutil.copy2(repo / "catalog/schema.json", catalog.parent / "schema.json")
-    # Record the lobby's exported pack, relative to Resources, so the bundle
-    # check can tell a stale or truncated copy from the one exported here.
-    digest = hashlib.sha256((game_room / "GameNight.pck").read_bytes()).hexdigest()
-    hashes = {"../Helpers/GameNight.app/Contents/Resources/GameNight.pck": digest}
+    # Record the lobby executable, relative to Resources, so the bundle check
+    # can tell a stale or truncated copy from the one built here.
+    digest = hashlib.sha256(game_room.read_bytes()).hexdigest()
+    hashes = {"../Helpers/GameNight.app/Contents/MacOS/GameNight": digest}
     revision = subprocess.check_output(["git", "-C", str(repo), "rev-parse", "HEAD"], text=True).strip()
     (resources / "build.json").write_text(json.dumps({"commit": revision, "version": version,
                                                     "binary_commit": binary_revision or revision, "assets": hashes}, indent=2) + "\n", encoding="utf-8")
@@ -62,7 +60,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--binaries", type=Path, required=True)
     parser.add_argument("--game-room", type=Path, required=True,
-                        help="Exported Game Room lobby: universal Godot binary Splitscreen Club + GameNight.pck")
+                        help="Universal Warp Game Room executable (game-room from ontola/warp-game-engine)")
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--version", required=True)
     parser.add_argument("--binary-revision")

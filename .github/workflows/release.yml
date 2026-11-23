@@ -43,11 +43,11 @@ jobs:
       ref: ${{ needs.select.outputs.revision }}
       version: ${{ needs.select.outputs.version }}
       automatic: true
-  # Off while GitHub's macOS runners do not start (see ci.yml); Joep chose
-  # Windows-only releases until then. Re-enable with `needs: [select,
-  # windows, macos]` on publish and the macOS copy below.
+  # The Mac installer is published with the release when it builds. A failed
+  # or stuck macOS job never holds back Windows: publish still runs, the
+  # release is then Windows-only and the website keeps its last Mac download
+  # (gamenight-internal deploy/cloud/promote-downloads.py promotes per platform).
   macos:
-    if: false
     needs: [select, windows]
     uses: ./.github/workflows/macos-preview.yml
     secrets: inherit
@@ -56,7 +56,8 @@ jobs:
       version: ${{ needs.select.outputs.version }}
       automatic: true
   publish:
-    needs: [select, windows]
+    needs: [select, windows, macos]
+    if: always() && needs.windows.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: write

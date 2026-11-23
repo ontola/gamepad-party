@@ -63,12 +63,30 @@ jobs:
           CARGO_TARGET_DIR: ${{ github.workspace }}/target
           MACOSX_DEPLOYMENT_TARGET: '12.0'
         run: cargo build --locked --release --target ${{ matrix.target }} -p gamenight-daemon
+      # The lobby is the Warp Game Room, built from the Warp repository;
+      # ontola/warp-game-engine is public: no token needed.
+      - name: Check out the Warp engine for the Game Room lobby
+        uses: actions/checkout@v4
+        with:
+          repository: ontola/warp-game-engine
+          path: warp
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: warp -> target
+          key: warp-game-room-${{ matrix.target }}
+      - name: Build the Warp Game Room lobby
+        env:
+          MACOSX_DEPLOYMENT_TARGET: '12.0'
+        run: |
+          cargo build --locked --release --manifest-path warp/Cargo.toml --target ${{ matrix.target }} -p game-room
+          cp warp/target/${{ matrix.target }}/release/game-room target/${{ matrix.target }}/release/game-room
       - uses: actions/upload-artifact@v4
         with:
           name: binaries-${{ matrix.target }}
           path: |
             target/${{ matrix.target }}/release/gamenight-launcher
             target/${{ matrix.target }}/release/gamenight-daemon
+            target/${{ matrix.target }}/release/game-room
           if-no-files-found: error
   package:
     needs: build
@@ -90,19 +108,6 @@ jobs:
         with:
           name: release-catalog
           path: catalog/games
-      - name: Install pinned Godot 4.5.2 for the Game Room lobby
-        uses: ./.github/actions/setup-godot
-        with:
-          version: 4.5.2
-      - name: Export the Game Room lobby
-        run: |
-          mkdir game-room
-          "$GODOT" --headless --path lobbies/game-room --editor --import --quit
-          "$GODOT" --headless --path lobbies/game-room --export-pack macOS "$PWD/game-room/GameNight.pck"
-          # The universal editor runs the pack (the launcher passes
-          # --main-pack), so no export templates are needed (as on Windows).
-          cp "$GODOT" game-room/GameNight
-          lipo game-room/GameNight -verify_arch arm64 x86_64
       - name: Import Developer ID certificate
         id: signing
         env:
@@ -136,13 +141,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           mkdir -p universal stage release
-          for name in gamenight-launcher gamenight-daemon; do
+          for name in gamenight-launcher gamenight-daemon game-room; do
             lipo -create binaries/binaries-aarch64-apple-darwin/$name binaries/binaries-x86_64-apple-darwin/$name -output universal/$name
             lipo universal/$name -verify_arch arm64 x86_64
           done
           binary_revision=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$BINARY_RUN" --jq .head_sha)
           if [ -n "$SOURCE_REVISION" ]; then binary_revision="$SOURCE_REVISION"; fi
-          python3 scripts/package-macos.py --binaries universal --game-room game-room --output stage --version "$VERSION" --binary-revision "$binary_revision" --sign-identity "$SIGN_IDENTITY"
+          python3 scripts/package-macos.py --binaries universal --game-room universal/game-room --output stage --version "$VERSION" --binary-revision "$binary_revision" --sign-identity "$SIGN_IDENTITY"
           python3 scripts/test-macos-package.py stage/GameNight.app
       - name: Launch packaged host outside source directory
         run: |
