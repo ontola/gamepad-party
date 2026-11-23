@@ -369,6 +369,31 @@ class Catalog {
     }
   }
 
+  Future<Set<String>>? _browser;
+
+  /// Games the browser host (splitscreen.club/play) runs, by catalog id;
+  /// empty when the list can't load (tried again next time).
+  Future<Set<String>> browserGames() async {
+    final pending = _browser ??= () async {
+      final client = _client ?? http.Client();
+      try {
+        final response = await client
+            .get(storeBase.replace(path: browserLibraryPath))
+            .timeout(const Duration(seconds: 20));
+        if (response.statusCode != 200) throw const CatalogError('');
+        return browserGameIds(jsonDecode(utf8.decode(response.bodyBytes)));
+      } finally {
+        if (_client == null) client.close();
+      }
+    }();
+    try {
+      return await pending;
+    } catch (_) {
+      if (identical(_browser, pending)) _browser = null;
+      return const {};
+    }
+  }
+
   Future<List<CatalogGame>> _fetch() async {
     final client = _client ?? http.Client();
     try {

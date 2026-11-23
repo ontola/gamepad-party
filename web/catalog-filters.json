@@ -1,5 +1,5 @@
 {
-  "about": "One definition of the store's filters and sort orders (Featured = featured listings first, then catalog order; other sorts break ties in Featured order), used by the website (/catalog) and the Flutter app (mobile/lib/catalog_filter_spec.dart). Change it here; both test suites run the cases below, so the two stores cannot drift.",
+  "about": "Platform browser = games the browser host lists in browser_library (ids may end in -warp) or games whose platforms include browser. One definition of the store's filters and sort orders (Featured = featured listings first, then catalog order; other sorts break ties in Featured order), used by the website (/catalog) and the Flutter app (mobile/lib/catalog_filter_spec.dart). Change it here; both test suites run the cases below, so the two stores cannot drift.",
   "version": 1,
   "players": [1, 2, 3, 4, 5, 6, 8],
   "price": [
@@ -10,8 +10,10 @@
   "platforms": [
     {"id": "windows", "label": "Windows"},
     {"id": "mac", "label": "macOS"},
-    {"id": "linux", "label": "Linux"}
+    {"id": "linux", "label": "Linux"},
+    {"id": "browser", "label": "Browser"}
   ],
+  "browser_library": "/play/games/library.json",
   "personal": [
     {"id": "liked", "label": "Liked"},
     {"id": "wanted", "label": "Want to play"},
@@ -56,8 +58,10 @@
       {"filter": {"platform": "windows"}, "expect": ["a", "b"]},
       {"filter": {"q": "alpine"}, "expect": ["a"]},
       {"filter": {"q": "ontola wall"}, "expect": ["c"]},
-      {"filter": {"q": "racing"}, "expect": ["a"]}
+      {"filter": {"q": "racing"}, "expect": ["a"]},
+      {"filter": {"platform": "browser"}, "expect": ["a", "c"]}
     ],
+    "browser_library": [{"id": "a-warp"}, {"id": "c"}, {"id": "zz"}],
     "sorts": [
       {"sort": "featured", "expect": ["b", "a", "c"]},
       {"sort": "newest", "expect": ["a", "c", "b"]},

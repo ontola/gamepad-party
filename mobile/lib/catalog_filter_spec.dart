@@ -19,7 +19,22 @@ const platformOptions = {
   'windows': 'Windows',
   'mac': 'macOS',
   'linux': 'Linux',
+  'browser': 'Browser',
 };
+
+/// The browser host's game list; it decides the Browser platform.
+const browserLibraryPath = '/play/games/library.json';
+
+/// Catalog ids in the browser host's library.json. Some browser builds
+/// carry a -warp suffix next to the catalog id (neon-siege-warp).
+Set<String> browserGameIds(Object? library) => {
+      if (library is List)
+        for (final entry in library)
+          if (entry is Map &&
+              entry['id'] is String &&
+              RegExp(r'^[a-z0-9-]+$').hasMatch(entry['id'] as String))
+            (entry['id'] as String).replaceFirst(RegExp(r'-warp$'), ''),
+    };
 
 /// Filters that need the player's account.
 const personalLabels = {

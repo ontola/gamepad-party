@@ -30,6 +30,9 @@ class CatalogFilter {
   /// Only games the room's host can start ([playableGames]).
   final bool room;
   final Set<String> playableGames;
+
+  /// Games the browser host runs, for the Browser platform.
+  final Set<String> browserGames;
   const CatalogFilter(
       {this.liked = false,
       this.unplayed = false,
@@ -47,7 +50,8 @@ class CatalogFilter {
       this.price,
       this.platform,
       this.room = false,
-      this.playableGames = const {}});
+      this.playableGames = const {},
+      this.browserGames = const {}});
 
   /// Filters the filter sheet sets, for the count on the Filter button.
   int get sheetCount =>
@@ -79,7 +83,9 @@ class CatalogFilter {
       (!room || playableGames.contains(game.id)) &&
       tags.every(game.tags.contains) &&
       (price == null || (game.price ?? 'free') == price) &&
-      (platform == null || game.platforms.contains(platform)) &&
+      (platform == null ||
+          game.platforms.contains(platform) ||
+          (platform == 'browser' && browserGames.contains(game.id))) &&
       _fits(game) &&
       searchMatches(query,
           [game.title, game.tagline, game.developer, ...game.tags].join(' '));
@@ -108,7 +114,8 @@ class CatalogFilter {
           String? Function()? price,
           String? Function()? platform,
           bool? room,
-          Set<String>? playableGames}) =>
+          Set<String>? playableGames,
+          Set<String>? browserGames}) =>
       CatalogFilter(
           liked: liked ?? this.liked,
           unplayed: unplayed ?? this.unplayed,
@@ -126,7 +133,8 @@ class CatalogFilter {
           price: price == null ? this.price : price(),
           platform: platform == null ? this.platform : platform(),
           room: room ?? this.room,
-          playableGames: playableGames ?? this.playableGames);
+          playableGames: playableGames ?? this.playableGames,
+          browserGames: browserGames ?? this.browserGames);
 }
 
 /// How the store orders its games, as on the website
@@ -304,7 +312,8 @@ class _CatalogFiltersState extends State<CatalogFilters> {
       price: _price,
       platform: _platform,
       room: _room,
-      playableGames: widget.playableGames ?? const {});
+      playableGames: widget.playableGames ?? const {},
+      browserGames: widget.filter.browserGames);
 
   static const _heading = TextStyle(fontWeight: FontWeight.w700);
 

@@ -25,6 +25,7 @@ void main() {
     expect(roomFilterLabel, spec['room']['label']);
     expect(tagMatch, spec['tag_match']);
     expect(tagAliases, spec['tag_aliases']);
+    expect(browserLibraryPath, spec['browser_library']);
     expect([
       for (final s in CatalogSort.values)
         {
@@ -48,7 +49,8 @@ void main() {
           tags: {...(f['tags'] as List? ?? const []).cast<String>()},
           players: f['players'] as int?,
           price: f['price'] as String?,
-          platform: f['platform'] as String?);
+          platform: f['platform'] as String?,
+          browserGames: browserGameIds(cases['browser_library']));
       expect(ids(games.where(filter.matches)), c['expect'], reason: '$f');
     }
   });
