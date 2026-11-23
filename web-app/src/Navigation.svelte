@@ -3,7 +3,12 @@
   import { navigate } from './router';
   // The website hosts in the browser (WebGPU) at /play/; without WebGPU, or in
   // the local desktop app, Host leads to the download page instead.
-  const hostHref=document.body.dataset.local==='true'?'https://splitscreen.club/host':('gpu' in navigator?'/play/':'/host');
+  // Firefox-based browsers (Firefox, Zen, …) start WebGPU but the host's 3D passes fail there for now.
+  const browserHost='gpu' in navigator&&!/Firefox\//.test(navigator.userAgent);
+  const hostHref=document.body.dataset.local==='true'?'https://splitscreen.club/host':(browserHost?'/play/':'/host');
+  // The homepage hero's "Host in your browser" follows the same rule.
+  const downloadInstead=()=>{if(!browserHost)for(const link of document.querySelectorAll<HTMLAnchorElement>('a.btn-host'))link.href='/host';};
+  downloadInstead();window.addEventListener('gamenight-page-change',downloadInstead);
   const hostTitle=hostHref==='/play/'?'Host a room on this computer, right in your browser':'Host a room';
   let leaveDialog: HTMLDialogElement;
   let menuDialog: HTMLDialogElement;
