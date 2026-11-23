@@ -164,31 +164,13 @@ class _FeedbackScreenState extends State<FeedbackScreen>
                       const SizedBox(height: 8),
                       Wrap(spacing: 8, runSpacing: 8, children: [
                         ChoiceChip(
+                            key: const ValueKey('feedback-target-club'),
                             label: const Text('Splitscreen Club'),
                             selected: _game == null,
                             onSelected: _sending || recording
                                 ? null
-                                : (_) {
-                                    setState(() => _game = null);
-                                    _saveDraft();
-                                  }),
-                        for (final game in {
-                          widget.initialGame,
-                          widget.reports.currentGame,
-                          _game,
-                          ...widget.reports.recentGames,
-                        }.whereType<String>())
-                          ChoiceChip(
-                              label: Text(_gameTitle(game)),
-                              selected: _game == game,
-                              avatar: const Icon(Icons.sports_esports_outlined,
-                                  size: 18),
-                              onSelected: _sending || recording
-                                  ? null
-                                  : (_) {
-                                      setState(() => _game = game);
-                                      _saveDraft();
-                                    }),
+                                : (_) => _pickGame(null)),
+                        _gamePicker(locked: _sending || recording),
                       ]),
                       const SizedBox(height: 5),
                       Text(
@@ -376,6 +358,65 @@ class _FeedbackScreenState extends State<FeedbackScreen>
                   child: const Text('Done'))),
         ]),
       );
+
+  /// Games to offer in the picker: the one this page was opened for, the
+  /// game on the table and recently played games, newest first.
+  List<String> get _gameChoices => {
+        widget.initialGame,
+        widget.reports.currentGame,
+        _game,
+        ...widget.reports.recentGames,
+      }.whereType<String>().toList();
+
+  void _pickGame(String? game) {
+    setState(() => _game = game);
+    _saveDraft();
+  }
+
+  /// One pill that opens a menu of recent games, instead of a pill per game.
+  Widget _gamePicker({required bool locked}) {
+    final games = _gameChoices;
+    final selected = _game != null;
+    return MenuAnchor(
+      style: MenuStyle(
+        backgroundColor: const WidgetStatePropertyAll(GnColors.card),
+        shape: WidgetStatePropertyAll(RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+            side: const BorderSide(color: GnColors.border))),
+      ),
+      menuChildren: [
+        for (final game in games)
+          MenuItemButton(
+            key: ValueKey('feedback-game-$game'),
+            leadingIcon:
+                Icon(game == _game ? Icons.check_rounded : null, size: 18),
+            onPressed: () => _pickGame(game),
+            child: Text(_gameTitle(game)),
+          ),
+      ],
+      builder: (context, menu, _) => ChoiceChip(
+        key: const ValueKey('feedback-target-game'),
+        avatar: const Icon(Icons.sports_esports_outlined, size: 18),
+        selected: selected,
+        showCheckmark: false,
+        label: Row(mainAxisSize: MainAxisSize.min, children: [
+          Flexible(
+              child: Text(
+                  selected
+                      ? _gameTitle(_game!)
+                      : games.isEmpty
+                          ? 'No games played yet'
+                          : 'A game',
+                  overflow: TextOverflow.ellipsis)),
+          const SizedBox(width: 2),
+          const Icon(Icons.arrow_drop_down_rounded, size: 20),
+        ]),
+        onSelected: locked || games.isEmpty
+            ? null
+            : (_) => menu.isOpen ? menu.close() : menu.open(),
+      ),
+    );
+  }
 
   String _gameTitle(String game) => game
       .split('-')

@@ -78,6 +78,13 @@ void main() {
             .then((bytes) => ByteData.sublistView(bytes)));
       }
       await loader.load();
+      final outfit = FontLoader('Outfit');
+      for (final weight in [400, 500, 600, 700]) {
+        outfit.addFont(File('assets/fonts/Outfit-$weight.ttf')
+            .readAsBytes()
+            .then((bytes) => ByteData.sublistView(bytes)));
+      }
+      await outfit.load();
       final defaultFont = FontLoader('Ahem')
         ..addFont(File('$fonts/Roboto-Regular.ttf')
             .readAsBytes()
@@ -155,6 +162,38 @@ void main() {
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull,
         reason: 'narrow phone has no overflow');
+  });
+
+  testWidgets('one Splitscreen Club pill plus a dropdown of recent games',
+      (tester) async {
+    SharedPreferences.setMockInitialValues({
+      'recent_games': ['stack-together', 'dead-miles', 'neon-siege'],
+    });
+    final reports = ReportService(await SharedPreferences.getInstance());
+    final voice = VoiceFeedback(speech: FakeSpeech());
+    addTearDown(() {
+      reports.close();
+      voice.dispose();
+      tester.view.reset();
+    });
+    await _open(tester, reports, voice);
+    expect(find.byType(ChoiceChip), findsNWidgets(2),
+        reason: 'no pill per game');
+    expect(find.text('A game'), findsOneWidget);
+    expect(find.text('Dead Miles'), findsNothing);
+    await _capture(tester, 'target-club');
+    await _tap(tester, find.byKey(const ValueKey('feedback-target-game')));
+    expect(find.text('Stack Together'), findsOneWidget);
+    expect(find.text('Dead Miles'), findsOneWidget);
+    expect(find.text('Neon Siege'), findsOneWidget);
+    await _capture(tester, 'target-menu');
+    await _tap(tester, find.text('Dead Miles'));
+    expect(find.text('Sent to the developer of Dead Miles.'), findsOneWidget);
+    await _capture(tester, 'target-game');
+    await _tap(tester, find.text('Splitscreen Club'));
+    expect(find.text('Sent to the Splitscreen Club team.'), findsOneWidget);
+    expect(find.text('A game'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
   });
 
   testWidgets(
