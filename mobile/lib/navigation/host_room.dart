@@ -5,8 +5,11 @@ import '../apps.dart';
 import '../theme.dart';
 import 'open_website.dart';
 
-/// The browser host: the Warp lobby and Luau games, in WebGPU.
-final Uri browserHost = Uri.parse('https://splitscreen.club/play/');
+/// The browser host: the Warp lobby and Luau games, in WebGPU. A phone GPU
+/// is far slower than a computer's, and the adaptive quality only goes down
+/// to 2/3 of the screen height (720 lines on a 1080p phone), so the phone
+/// renders 3D at 540 lines.
+final Uri browserHost = Uri.parse('https://splitscreen.club/play/?render=540');
 
 /// "Host a room". On Android the phone can be the host itself (mirror or
 /// cast it to the TV); elsewhere this is the website's page on hosting

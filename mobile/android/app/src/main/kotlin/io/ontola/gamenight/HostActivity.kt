@@ -11,6 +11,8 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
+import android.view.InputDevice
+import android.view.KeyEvent
 import android.view.RoundedCorner
 import android.view.View
 import android.view.ViewGroup
@@ -38,6 +40,9 @@ import android.window.OnBackInvokedDispatcher
 class HostActivity : Activity() {
     private lateinit var web: WebView
     private var probed = false
+    /// Controller buttons this screen saw, shown in the Back dialog: tells
+    /// a button the page ignores from one Android never delivered.
+    private val buttons = linkedSetOf<String>()
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -107,6 +112,17 @@ class HostActivity : Activity() {
         }
     }
 
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        if (!event.isFromSource(InputDevice.SOURCE_GAMEPAD)) return super.dispatchKeyEvent(event)
+        if (event.action == KeyEvent.ACTION_DOWN) {
+            buttons.add(KeyEvent.keyCodeToString(event.keyCode).removePrefix("KEYCODE_").removePrefix("BUTTON_"))
+        }
+        // Controller buttons belong to the page (its Gamepad API). Consumed
+        // here, so Android never turns one into Back or Home as a fallback.
+        super.dispatchKeyEvent(event)
+        return true
+    }
+
     @Deprecated("Android 12 and older")
     override fun onBackPressed() = confirmStop()
 
@@ -136,7 +152,8 @@ class HostActivity : Activity() {
     private fun confirmStop() {
         AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
             .setTitle("Stop hosting?")
-            .setMessage("The room closes for everyone.")
+            .setMessage("The room closes for everyone." +
+                (if (buttons.isEmpty()) "" else "\n\nController buttons seen: " + buttons.joinToString(", ")))
             .setPositiveButton("Stop") { _, _ -> finish() }
             .setNegativeButton("Keep hosting", null)
             .setNeutralButton("Cast to TV") { _, _ -> cast() }

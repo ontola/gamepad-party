@@ -26,6 +26,6 @@ void main() {
     await tester.tap(find.text('Host on this phone'));
     await tester.pumpAndSettle();
     expect(calls.single.method, 'host');
-    expect(calls.single.arguments, {'url': 'https://splitscreen.club/play/'});
+    expect(calls.single.arguments, {'url': 'https://splitscreen.club/play/?render=540'});
   });
 }
