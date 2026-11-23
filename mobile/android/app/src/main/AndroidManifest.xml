@@ -86,6 +86,8 @@
         </intent>
         <!-- Host mode offers Chrome when the WebView has no WebGPU. -->
         <package android:name="com.android.chrome"/>
+        <!-- Host mode runs the native host first, when it is installed. -->
+        <package android:name="club.splitscreen.host"/>
         <!-- To open store pages in the browser. -->
         <intent>
             <action android:name="android.intent.action.VIEW"/>

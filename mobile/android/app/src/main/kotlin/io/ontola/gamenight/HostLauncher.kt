@@ -15,10 +15,16 @@ import com.google.androidbrowserhelper.trusted.TwaLauncher
 /// stall Chrome, not this app. The in-app WebView (HostActivity) blocked
 /// this app's input while the page was busy, so Android kept saying
 /// "Splitscreen Club isn't responding". Without Chrome it falls back to it.
+///
+/// First choice, when installed: the native host (package
+/// club.splitscreen.host, the Warp engine itself with Vulkan instead of
+/// the browser; warp-game-engine lobbies/game-room/android). It gets the
+/// browser host's query string as its "query" extra.
 class HostLauncher(private val activity: Activity) {
     private var twa: TwaLauncher? = null
 
     fun launch(url: String) {
+        if (launchNative(url)) return
         if (!chromeInstalled()) {
             activity.startActivity(Intent(activity, HostActivity::class.java).putExtra(HostActivity.EXTRA_URL, url))
             return
@@ -38,6 +44,19 @@ class HostLauncher(private val activity: Activity) {
         twa = null
     }
 
+    private fun launchNative(url: String): Boolean {
+        val intent = Intent(Intent.ACTION_MAIN)
+            .setClassName(NATIVE_HOST, "android.app.NativeActivity")
+            .putExtra("query", Uri.parse(url).encodedQuery ?: "")
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        return try {
+            activity.startActivity(intent)
+            true
+        } catch (e: Exception) {
+            false
+        }
+    }
+
     private fun chromeInstalled(): Boolean = try {
         activity.packageManager.getPackageInfo(CHROME, 0)
         true
@@ -47,5 +66,6 @@ class HostLauncher(private val activity: Activity) {
 
     companion object {
         const val CHROME = "com.android.chrome"
+        const val NATIVE_HOST = "club.splitscreen.host"
     }
 }
