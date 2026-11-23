@@ -3,12 +3,8 @@
   import { navigate } from './router';
   // The website hosts in the browser (WebGPU) at /play/; without WebGPU, or in
   // the local desktop app, Host leads to the download page instead.
-  // Firefox-based browsers (Firefox, Zen, …) start WebGPU but the host's 3D passes fail there for now.
-  const browserHost='gpu' in navigator&&!/Firefox\//.test(navigator.userAgent);
+  const browserHost='gpu' in navigator;
   const hostHref=document.body.dataset.local==='true'?'https://splitscreen.club/host':(browserHost?'/play/':'/host');
-  // The homepage hero's "Host in your browser" follows the same rule.
-  const downloadInstead=()=>{if(!browserHost)for(const link of document.querySelectorAll<HTMLAnchorElement>('a.btn-host'))link.href='/host';};
-  downloadInstead();window.addEventListener('gamenight-page-change',downloadInstead);
   const hostTitle=hostHref==='/play/'?'Host a room on this computer, right in your browser':'Host a room';
   let leaveDialog: HTMLDialogElement;
   let menuDialog: HTMLDialogElement;
@@ -69,7 +65,7 @@
     {/if}
   </div>
   <div class="site-room-actions">
-    <a class="site-host site-desktop-action" href={hostHref} aria-current={$route==='/host'?'page':undefined} title={hostTitle}><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l13-7.5z"/></svg>Host</a>
+    <a class="site-host site-desktop-action" href={hostHref} aria-current={$route==='/host'?'page':undefined} title={hostTitle}>Host</a>
     <button class="btn-primary site-join" data-room-join hidden={$room===true} onclick={join}>Join</button>
     <button class="btn-primary site-desktop-action" data-room-leave hidden={$room!==true} onclick={openLeave}>Leave room</button>
     <button class="site-menu-toggle" aria-label="Open menu" aria-haspopup="dialog" onclick={()=>menuDialog.showModal()}>
