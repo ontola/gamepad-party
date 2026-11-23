@@ -24,7 +24,7 @@ namespace GameNightSdk
         public const string ENV_TOKEN = "GAMENIGHT_TOKEN";
         public const string DEFAULT_ADDR = "127.0.0.1:7912";
         public const int DEFAULT_WEB_PORT = 7913;
-        public const int GODOT_SDK_VERSION = 7;
+        public const int GODOT_SDK_VERSION = 8;
         public const int PROTOCOL_VERSION = 1;
 
         /// <summary>Message "type" tags, both directions.</summary>

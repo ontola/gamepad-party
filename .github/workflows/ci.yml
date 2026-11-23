@@ -96,6 +96,7 @@ jobs:
         with:
           version: 4.5.2
       - run: cargo build --locked -p gamenight-daemon --bin gamenight-daemon
+      - run: node scripts/test-godot-browser-transport.mjs
       - run: python3 scripts/test-godot-sdk.py --godot "$GODOT"
       - run: python3 scripts/test-godot-lobby.py --godot "$GODOT"
       - run: python3 sdk/godot/sync.py --check lobbies/game-room

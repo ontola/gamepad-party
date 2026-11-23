@@ -101,6 +101,8 @@
     "source": "docs/site/godot.md",
     "watch": [
       "sdk/godot/addons/gamenight/gamenight.gd",
+      "sdk/godot/addons/gamenight/browser_transport.gd",
+      "sdk/godot/addons/gamenight/browser_transport.js",
       "sdk/godot/addons/gamenight/screen.gd"
     ]
   },

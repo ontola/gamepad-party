@@ -20,7 +20,7 @@ const String envOverlayUrl = 'GAMENIGHT_OVERLAY_URL';
 const String envToken = 'GAMENIGHT_TOKEN';
 const String defaultAddr = '127.0.0.1:7912';
 const int defaultWebPort = 7913;
-const int godotSdkVersion = 7;
+const int godotSdkVersion = 8;
 const int protocolVersion = 1;
 
 /// Message "type" tags, both directions.
