@@ -22,6 +22,12 @@ import java.net.URL
 /// go through without asking on Android 12 and newer.
 class MainActivity : FlutterActivity() {
     private val main = Handler(Looper.getMainLooper())
+    private val host by lazy { HostLauncher(this) }
+
+    override fun onDestroy() {
+        host.destroy()
+        super.onDestroy()
+    }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -89,10 +95,7 @@ class MainActivity : FlutterActivity() {
                         result.success(null)
                     }
                     "host" -> {
-                        startActivity(
-                            Intent(this, HostActivity::class.java)
-                                .putExtra(HostActivity.EXTRA_URL, call.argument<String>("url")!!)
-                        )
+                        host.launch(call.argument<String>("url")!!)
                         result.success(null)
                     }
                     "status" -> result.success(InstallReceiver.status[call.argument<String>("package")!!])

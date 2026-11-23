@@ -79,3 +79,10 @@ kotlin {
 flutter {
     source = "../.."
 }
+
+dependencies {
+    // Host mode runs the browser host in Chrome as a Trusted Web Activity
+    // (HostLauncher.kt): Chrome's own process, so a long engine frame can't
+    // make Android call the app unresponsive, as the in-app WebView did.
+    implementation("com.google.androidbrowserhelper:androidbrowserhelper:2.5.0")
+}
