@@ -12,7 +12,56 @@ concurrency:
 permissions:
   contents: read
 jobs:
+  # The native host (Host on this phone): Warp's Game Room and games as
+  # libsplitscreen_host.so for arm64, from warp-game-engine's main
+  # (lobbies/game-room/android, engine/docs/android-host.md). Built once
+  # per warp commit; the app packs it into jniLibs and downloads the games
+  # from splitscreen.club/play/ on the phone.
+  native-host:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    outputs:
+      revision: ${{ steps.warp.outputs.revision }}
+    steps:
+      - id: warp
+        run: echo "revision=$(git ls-remote https://github.com/ontola/warp-game-engine refs/heads/main | cut -f1)" >> "$GITHUB_OUTPUT"
+      - id: cache
+        uses: actions/cache@v4
+        with:
+          path: native-host
+          key: native-host-${{ steps.warp.outputs.revision }}
+      - if: steps.cache.outputs.cache-hit != 'true'
+        uses: actions/checkout@v4
+        with:
+          repository: ontola/warp-game-engine
+          ref: ${{ steps.warp.outputs.revision }}
+          path: warp
+      - if: steps.cache.outputs.cache-hit != 'true'
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android
+      - if: steps.cache.outputs.cache-hit != 'true'
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: warp
+          key: android-host
+      - if: steps.cache.outputs.cache-hit != 'true'
+        name: Build libsplitscreen_host.so
+        working-directory: warp
+        run: |
+          cargo install cargo-ndk --locked
+          ANDROID_NDK_HOME="$ANDROID_NDK_LATEST_HOME" python3 engine/tools/build-android-host.py --lib-only --skip-assets
+          mkdir -p ../native-host
+          cp build/android-host/lib/arm64-v8a/*.so ../native-host/
+          ls -la ../native-host
+      - uses: actions/upload-artifact@v4
+        with:
+          name: native-host
+          path: native-host
+          retention-days: 7
+
   flutter:
+    needs: native-host
     # Publishing the release needs write access; pull requests never get it.
     permissions:
       contents: write
@@ -58,6 +107,11 @@ jobs:
           fi
       # The run number is both the versionCode and the build the app compares
       # with version.json to offer updates.
+      - name: Native host library into jniLibs
+        uses: actions/download-artifact@v4
+        with:
+          name: native-host
+          path: mobile/android/app/src/main/jniLibs/arm64-v8a
       - run: flutter build apk --release --dart-define=GAMENIGHT_PUSH=${GAMENIGHT_PUSH:-false} --build-name=0.1.${{ github.run_number }} --build-number=${{ github.run_number }} --dart-define=GAMENIGHT_BUILD=${{ github.run_number }}
         env:
           GAMENIGHT_KEYSTORE_PASSWORD: ${{ secrets.GAMENIGHT_KEYSTORE_PASSWORD }}
@@ -157,6 +211,11 @@ jobs:
         run: python3 tool/configure_push.py android
       - run: flutter pub get
       - run: flutter test --dart-define=GAMENIGHT_PLAY_STORE=true test/play_distribution_test.dart
+      - name: Native host library into jniLibs
+        uses: actions/download-artifact@v4
+        with:
+          name: native-host
+          path: mobile/android/app/src/main/jniLibs/arm64-v8a
       - name: Signing key
         env:
           KEYSTORE: ${{ secrets.GAMENIGHT_KEYSTORE_BASE64 }}

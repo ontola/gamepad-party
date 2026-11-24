@@ -45,7 +45,13 @@ android {
         versionCode = flutter.versionCode
         versionName = flutter.versionName
         buildConfigField("boolean", "PLAY_STORE", playStore.toString())
+        // The native host's library, when CI (or a local build) put it in
+        // jniLibs; without it "Host on this phone" uses the browser host.
+        buildConfigField("boolean", "NATIVE_HOST", file("src/main/jniLibs/arm64-v8a/libsplitscreen_host.so").exists().toString())
     }
+
+    // The native host brings its own libc++_shared.so; another library may too.
+    packaging { jniLibs { pickFirsts += "**/libc++_shared.so" } }
 
     // CI signs with one fixed key (a GitHub secret), so a new APK can update
     // the installed app and Android can verify the app's links on

@@ -1,6 +1,9 @@
 package io.ontola.gamenight
 
 import android.app.Activity
+import android.app.NativeActivity
+import android.content.pm.PackageManager
+import android.os.Build
 import android.content.Intent
 import android.net.Uri
 import androidx.browser.trusted.ScreenOrientation
@@ -16,10 +19,13 @@ import com.google.androidbrowserhelper.trusted.TwaLauncher
 /// this app's input while the page was busy, so Android kept saying
 /// "Splitscreen Club isn't responding". Without Chrome it falls back to it.
 ///
-/// First choice, when installed: the native host (package
-/// club.splitscreen.host, the Warp engine itself with Vulkan instead of
-/// the browser; warp-game-engine lobbies/game-room/android). It gets the
-/// browser host's query string as its "query" extra.
+/// First choice: the native host in this app (android.app.NativeActivity
+/// in the ":host" process running libsplitscreen_host.so, the Warp engine
+/// itself with Vulkan instead of the browser; warp-game-engine
+/// lobbies/game-room/android). It gets the browser host's query string as
+/// its "query" extra and downloads the games from splitscreen.club/play/.
+/// Needs the library in this build (BuildConfig.NATIVE_HOST), an arm64
+/// phone and Vulkan 1.1.
 class HostLauncher(private val activity: Activity) {
     private var twa: TwaLauncher? = null
 
@@ -45,10 +51,9 @@ class HostLauncher(private val activity: Activity) {
     }
 
     private fun launchNative(url: String): Boolean {
-        val intent = Intent(Intent.ACTION_MAIN)
-            .setClassName(NATIVE_HOST, "android.app.NativeActivity")
+        if (!nativeHostRuns()) return false
+        val intent = Intent(activity, NativeActivity::class.java)
             .putExtra("query", Uri.parse(url).encodedQuery ?: "")
-            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         return try {
             activity.startActivity(intent)
             true
@@ -56,6 +61,11 @@ class HostLauncher(private val activity: Activity) {
             false
         }
     }
+
+    private fun nativeHostRuns(): Boolean =
+        BuildConfig.NATIVE_HOST &&
+            Build.SUPPORTED_ABIS.contains("arm64-v8a") &&
+            activity.packageManager.hasSystemFeature(PackageManager.FEATURE_VULKAN_HARDWARE_VERSION, VULKAN_1_1)
 
     private fun chromeInstalled(): Boolean = try {
         activity.packageManager.getPackageInfo(CHROME, 0)
@@ -66,6 +76,6 @@ class HostLauncher(private val activity: Activity) {
 
     companion object {
         const val CHROME = "com.android.chrome"
-        const val NATIVE_HOST = "club.splitscreen.host"
+        const val VULKAN_1_1 = 0x401000
     }
 }
