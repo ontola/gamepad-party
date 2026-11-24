@@ -4,8 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../link.dart';
 import 'website_session_stub.dart'
-    if (dart.library.js_interop) 'website_session_web.dart'
-    as browser;
+    if (dart.library.js_interop) 'website_session_web.dart' as browser;
 
 /// Move an existing same-origin website room into the app without a fresh pickup.
 /// Capabilities stay in browser storage, never in redirects or history.

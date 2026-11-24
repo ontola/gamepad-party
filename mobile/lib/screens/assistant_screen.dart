@@ -169,47 +169,6 @@ class _AssistantScreenState extends State<AssistantScreen>
     super.dispose();
   }
 
-  Future<String?> _ask(String title,
-      {String initial = '', bool number = false}) async {
-    final input = TextEditingController(text: initial);
-    final value = await showDialog<String>(
-        context: context,
-        builder: (context) => AlertDialog(
-                title: Text(title),
-                content: TextField(
-                    controller: input,
-                    autofocus: true,
-                    maxLength: number ? 9 : 60,
-                    keyboardType:
-                        number ? TextInputType.number : TextInputType.text,
-                    onSubmitted: (value) => Navigator.pop(context, value)),
-                actions: [
-                  TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text('Cancel')),
-                  FilledButton(
-                      onPressed: () => Navigator.pop(context, input.text),
-                      child: const Text('Save'))
-                ]));
-    // Dialog's exit animation can still use its text controller.
-    await Future<void>.delayed(const Duration(milliseconds: 300));
-    input.dispose();
-    return value;
-  }
-
-  Future<bool> _confirm(String title) async =>
-      await showDialog<bool>(
-          context: context,
-          builder: (context) => AlertDialog(title: Text(title), actions: [
-                TextButton(
-                    onPressed: () => Navigator.pop(context, false),
-                    child: const Text('Cancel')),
-                FilledButton(
-                    onPressed: () => Navigator.pop(context, true),
-                    child: const Text('Confirm'))
-              ])) ??
-      false;
-
   @override
   Widget build(BuildContext context) {
     final signedIn = widget.state.cloud.signedIn;
@@ -273,15 +232,15 @@ class _AssistantScreenState extends State<AssistantScreen>
                                     gameTitle(controls['game'] as String),
                                     style: const TextStyle(
                                         fontWeight: FontWeight.w600))),
-                            if (widget.state.hostedRoom?.code case final code?)
-                              Text(code,
+                            if (_agent.credits case final credits?)
+                              Text('$credits credits',
+                                  key: const ValueKey('assistant-credits'),
                                   style: const TextStyle(color: GnColors.muted))
                           ]),
                         if (_agent.status != null && !_agent.available)
                           const Padding(
                               padding: EdgeInsets.symmetric(vertical: 16),
-                              child: Text(
-                                  'The AI provider is not configured yet. Game settings and saved configurations are still available.',
+                              child: Text('The Assistant is not available yet.',
                                   style: TextStyle(color: GnColors.warn))),
                         if (_agent.requests.isEmpty && _agent.available) ...[
                           const SizedBox(height: 24),
@@ -307,9 +266,12 @@ class _AssistantScreenState extends State<AssistantScreen>
                                           : () => _agent.setDraft(prompt))
                           ]),
                         ],
-                        if (_agent.status != null) _options(controls),
                         for (final request in _agent.requests.reversed)
                           SelectionArea(child: _message(request)),
+                        if (controls != null &&
+                            _agent.owner &&
+                            controls['can_undo'] == true)
+                          _lastChange(),
                       ],
                       if (signedIn && _agent.status == null && !_agent.loading)
                         TextButton(
@@ -343,13 +305,6 @@ class _AssistantScreenState extends State<AssistantScreen>
                           LinearProgressIndicator(value: _voice.soundLevel),
                           const SizedBox(height: 8),
                         ],
-                        if (_agent.quote case final quote?)
-                          Padding(
-                              padding: const EdgeInsets.only(bottom: 8),
-                              child: Text(
-                                  'Up to $quote credits. Unused credits are returned.',
-                                  style:
-                                      const TextStyle(color: GnColors.warn))),
                         TextField(
                             key: const ValueKey('assistant-draft'),
                             controller: _draft,
@@ -399,11 +354,7 @@ class _AssistantScreenState extends State<AssistantScreen>
                                       ? 'One moment…'
                                       : _agent.waiting
                                           ? 'Working…'
-                                          : _agent.local
-                                              ? 'Send'
-                                              : _agent.quote == null
-                                                  ? 'Review request'
-                                                  : 'Send · up to ${_agent.quote} credits'))),
+                                          : 'Send'))),
                         ]),
                       ])),
               ]))),
@@ -469,136 +420,21 @@ class _AssistantScreenState extends State<AssistantScreen>
             ])));
   }
 
-  Widget _options(Map<String, dynamic>? controls) {
+  /// The last change can be kept or undone; nothing else to manage here.
+  Widget _lastChange() {
     final ready = !_agent.busy && !_agent.waiting;
-    return Column(children: [
-      if (!_agent.local)
-        ExpansionTile(
-            title: const Text('Credits and spending'),
-            subtitle: Text(
-                '${(_agent.status?['credits'] as Map?)?['available'] ?? 0} credits available'),
-            children: [
-              if (_agent.status?['funding'] case final Map funding)
-                Text('${funding['remaining']} credits left in this session')
-              else if (_agent.owner)
-                TextButton(
-                    onPressed: !ready
-                        ? null
-                        : () async {
-                            final input = await _ask(
-                                'Session spending limit (credits)',
-                                number: true);
-                            final cap = int.tryParse(input ?? '');
-                            if (mounted && cap != null && cap > 0) {
-                              await _agent.fund(cap);
-                            }
-                          },
-                    child: const Text('Set spending limit'))
-              else
-                const Text('The main player sets the session spending limit.'),
-            ]),
-      if (controls != null)
-        ExpansionTile(
-            title: const Text('Game settings'),
-            childrenPadding: const EdgeInsets.all(12),
-            children: [
-              for (final entry in (controls['settings'] as Map? ?? {}).entries)
-                ListTile(
-                    dense: true,
-                    title: Text((entry.value as Map)['label'] as String? ??
-                        entry.key.toString()),
-                    trailing: Text('${entry.value['value']}')),
-              if (_agent.owner)
-                Wrap(spacing: 8, children: [
-                  if (controls['can_undo'] == true) ...[
-                    OutlinedButton(
-                        onPressed: ready ? () => _agent.control('undo') : null,
-                        child: const Text('Undo change')),
-                    OutlinedButton(
-                        onPressed: ready ? () => _agent.control('keep') : null,
-                        child: const Text('Keep change'))
-                  ],
-                  if (controls['can_undo_mod'] == true)
-                    OutlinedButton(
-                        onPressed:
-                            ready ? () => _agent.control('undo_mod') : null,
-                        child: const Text('Undo mod')),
-                  if (controls['launch_players'] case final num players)
-                    OutlinedButton(
-                        onPressed:
-                            ready ? () => _agent.control('launch') : null,
-                        child: Text('Play with $players players')),
-                ]),
-            ]),
-      ExpansionTile(
-          title: const Text('Saved configurations'),
-          childrenPadding: const EdgeInsets.all(12),
-          children: [
-            if (controls != null)
-              TextButton.icon(
-                  onPressed: !ready
-                      ? null
-                      : () async {
-                          final name = await _ask('Name this configuration');
-                          if (mounted && name != null) {
-                            await _agent.savePreset(name);
-                          }
-                        },
-                  icon: const Icon(Icons.bookmark_add_outlined),
-                  label: const Text('Save current settings')),
-            if (_agent.presets.isEmpty)
-              const Text('No saved configurations yet.',
-                  style: TextStyle(color: GnColors.muted)),
-            for (final preset in _agent.presets)
-              ExpansionTile(
-                  title: Text(preset['name'] as String),
-                  subtitle: Text(gameTitle(preset['game'] as String)),
-                  children: [
-                    for (final entry
-                        in (preset['values'] as Map? ?? {}).entries)
-                      ListTile(
-                          dense: true,
-                          title: Text(((preset['details'] as Map?)?[entry.key]
-                                  as Map?)?['label'] as String? ??
-                              entry.key.toString()),
-                          trailing: Text('${entry.value}')),
-                    Wrap(spacing: 8, children: [
-                      FilledButton(
-                          onPressed: ready &&
-                                  _agent.owner &&
-                                  preset['game'] == controls?['game']
-                              ? () => _agent.applyPreset(preset)
-                              : null,
-                          child: const Text('Apply')),
-                      TextButton(
-                          onPressed:
-                              !ready || preset['game'] != controls?['game']
-                                  ? null
-                                  : () async {
-                                      if (await _confirm(
-                                              'Replace this saved configuration?') &&
-                                          mounted) {
-                                        await _agent.savePreset(
-                                            preset['name'] as String,
-                                            id: preset['id'] as String);
-                                      }
-                                    },
-                          child: const Text('Update')),
-                      TextButton(
-                          onPressed: !ready
-                              ? null
-                              : () async {
-                                  if (await _confirm(
-                                          'Delete this configuration?') &&
-                                      mounted) {
-                                    await _agent
-                                        .deletePreset(preset['id'] as String);
-                                  }
-                                },
-                          child: const Text('Delete')),
-                    ])
-                  ]),
-          ]),
-    ]);
+    return Padding(
+        padding: const EdgeInsets.only(top: 8),
+        child: Row(children: [
+          const Expanded(
+              child: Text('Like the last change?',
+                  style: TextStyle(color: GnColors.muted))),
+          TextButton(
+              onPressed: ready ? () => _agent.control('undo') : null,
+              child: const Text('Undo')),
+          TextButton(
+              onPressed: ready ? () => _agent.control('keep') : null,
+              child: const Text('Keep')),
+        ]));
   }
 }

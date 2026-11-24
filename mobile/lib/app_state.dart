@@ -583,7 +583,8 @@ class AppState extends ChangeNotifier {
 
   Future<String> joinRoom(String code, {bool remember = false}) async {
     final api = _api;
-    if (api == null) throw const ApiError('Connect to a Splitscreen Club first.');
+    if (api == null)
+      throw const ApiError('Connect to a Splitscreen Club first.');
     await api.saveProfile(profile);
     await api.joinRoom(code.toUpperCase(), profileId, remember: remember);
     await refreshSession();

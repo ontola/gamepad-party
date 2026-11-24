@@ -285,7 +285,8 @@ class CloudApi {
       throw const ApiError(
           'Too many attempts. Wait a minute and try again.', 429);
     }
-    throw ApiError('Splitscreen Club online answered $status. Try again.', status);
+    throw ApiError(
+        'Splitscreen Club online answered $status. Try again.', status);
   }
 
   static String? cookie(http.Response response, String name) {

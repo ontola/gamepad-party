@@ -111,7 +111,8 @@ void main() {
     state.dispose();
   });
 
-  testWidgets('first launch opens on joining a Splitscreen Club', (tester) async {
+  testWidgets('first launch opens on joining a Splitscreen Club',
+      (tester) async {
     SharedPreferences.setMockInitialValues({});
     final state = AppState(await SharedPreferences.getInstance());
     await tester.pumpWidget(GameNightApp(state: state));
@@ -152,7 +153,8 @@ void main() {
     state.dispose();
   });
 
-  testWidgets('an unreachable Splitscreen Club shows a warning, not a green check',
+  testWidgets(
+      'an unreachable Splitscreen Club shows a warning, not a green check',
       (tester) async {
     SharedPreferences.setMockInitialValues(
         {'host': 'http://192.168.1.5:3000', 'met_player': true});

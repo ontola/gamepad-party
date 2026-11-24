@@ -442,7 +442,8 @@ class GameThumbnail extends StatelessWidget {
               HSLColor.fromAHSL(1, (title.hashCode % 360).toDouble(), 0.45, 0.4)
                   .toColor(),
           child: Center(
-            child: Text(title.isEmpty ? '?' : title.characters.first.toUpperCase(),
+            child: Text(
+                title.isEmpty ? '?' : title.characters.first.toUpperCase(),
                 style: TextStyle(
                     fontSize: size * 0.45,
                     fontWeight: FontWeight.w800,
@@ -853,7 +854,8 @@ class _NowAndNextState extends State<NowAndNext> {
       clipBehavior: Clip.antiAlias,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(4, 8, 4, 8),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        child:
+            Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           ListTile(
             key: const ValueKey('now-playing'),
             onTap: playing == null ? null : () => _open(view!, playing),

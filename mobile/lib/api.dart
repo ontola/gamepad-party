@@ -232,8 +232,8 @@ class GameNightApi {
           'Too many attempts. Wait a minute before trying again.', 429);
     }
     if (response.statusCode >= 300) {
-      throw ApiError(
-          failure ?? 'Splitscreen Club refused the request.', response.statusCode);
+      throw ApiError(failure ?? 'Splitscreen Club refused the request.',
+          response.statusCode);
     }
     if (response.statusCode == 204 || response.body.isEmpty) return null;
     return jsonDecode(utf8.decode(response.bodyBytes));

@@ -38,21 +38,19 @@ const output=process.env.GAMENIGHT_TEST_SCREENSHOTS;
   await page.evaluate(()=>document.querySelector('flt-semantics-placeholder')?.click());
   await page.getByText('What shall we change?',{exact:true}).waitFor({timeout:30000});
   // On a slow runner the first fill can land before Flutter's field
-  // listens; type again until Review request enables.
-  const review=page.getByRole('button',{name:'Review request',exact:true});
+  // listens; type again until Send enables.
+  const send=page.getByRole('button',{name:'Send',exact:true});
   for(let attempt=0;attempt<10;attempt++){
    await page.getByRole('textbox').click();
    await page.getByRole('textbox').fill('Make us jump a little higher');
    await page.waitForTimeout(500);
-   if(await review.isEnabled())break;
+   if(await send.isEnabled())break;
   }
-  await review.click();
-  await page.getByText('Up to 3 credits. Unused credits are returned.',{exact:true}).waitFor();
-  assert.equal(posts.length,0,'quote must not send a paid request');assert.equal(quoted,1);
-  if(output){fs.mkdirSync(output,{recursive:true});await page.screenshot({path:path.join(output,'assistant-phone-review.png')});}
-  await page.getByRole('button',{name:'Send · up to 3 credits',exact:true}).click();
+  if(output){fs.mkdirSync(output,{recursive:true});await page.screenshot({path:path.join(output,'assistant-phone-draft.png')});}
+  // One tap: quoted, then sent, because the player has enough credits.
+  await send.click();
   await page.getByText('Gravity is now 80%. You can jump a little higher.').first().waitFor();
-  assert.equal(posts.length,1);assert.equal(posts[0].max_credits,3);
+  assert.equal(quoted,1);assert.equal(posts.length,1);assert.equal(posts[0].max_credits,3);
   if(output)await page.screenshot({path:path.join(output,'assistant-phone.png')});
   await page.setViewportSize({width:1440,height:1000});await page.waitForTimeout(500);
   if(output)await page.screenshot({path:path.join(output,'assistant-desktop.png')});
@@ -60,6 +58,6 @@ const output=process.env.GAMENIGHT_TEST_SCREENSHOTS;
   await page.evaluate(()=>document.querySelector('flt-semantics-placeholder')?.click());
   await page.getByText('Gravity is now 80%. You can jump a little higher.').first().waitFor();
   assert.equal(posts.length,1,'reload must not replay a request');assert.deepEqual(errors,[]);
-  console.log('PASS Assistant deep link, phone/desktop UI, explicit paid review, CSRF, host result and reload without replay.');
+  console.log('PASS Assistant deep link, phone/desktop UI, one-tap paid send, CSRF, host result and reload without replay.');
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

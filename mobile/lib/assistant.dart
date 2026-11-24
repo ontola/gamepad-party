@@ -45,6 +45,14 @@ class Assistant extends ChangeNotifier {
       pending != null ||
       requests.any((r) => r['state'] == 'thinking' || r['state'] == 'queued');
   bool get local => status?['local_model'] == true;
+
+  /// Splitscreen Club pays: no credits are counted.
+  bool get free => local || status?['free'] == true;
+
+  /// Credits the player has, when they count.
+  int? get credits => free
+      ? null
+      : ((status?['credits'] as Map?)?['available'] as num?)?.toInt();
   bool get owner => status?['can_fund'] == true;
   bool get available => status?['provider_configured'] == true;
   bool get canSend => available && !busy && !waiting && draft.trim().isNotEmpty;
@@ -184,15 +192,21 @@ class Assistant extends ChangeNotifier {
         id = _id ??= assistantId(),
         generation = _generation;
     await _run(() async {
-      if (!local && quote == null) {
+      // One tap: what a request may cost is asked first, and only stops it
+      // when the player has too few credits. Unused credits come back.
+      if (!free && quote == null) {
         final result =
             await _request('POST', '/quote', {'request_id': id, 'text': text});
         if (generation != _generation || _disposed) return;
         quote = (result['maximum_credits'] as num).toInt();
+      }
+      final have = credits;
+      if (!free && have != null && (quote ?? 0) > have) {
+        error = 'This needs up to $quote credits and you have $have.';
         return;
       }
       await _request('POST', '',
-          {'request_id': id, 'text': text, 'max_credits': local ? 0 : quote});
+          {'request_id': id, 'text': text, 'max_credits': free ? 0 : quote});
       if (generation != _generation || _disposed) return;
       // A question about the player's own game goes in its chat.
       final game = status?['commands'] is Map

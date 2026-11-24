@@ -50,8 +50,7 @@ class NoSpeech implements SpeechInput {
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
-  test(
-      'paid request requires a quote and second explicit send; same id on retry',
+  test('a paid request is quoted and sent in one tap; same id on retry',
       () async {
     final sent = <Map<String, dynamic>>[];
     final quotes = <String>[];
@@ -75,18 +74,50 @@ void main() {
     await a.refresh();
     a.setDraft('Make jumping higher');
     await a.send();
-    expect(a.quote, 3);
-    expect(sent, isEmpty);
-    await a.send();
+    expect(sent.length, 1);
     expect(a.error, isNotNull);
     expect(a.draft, 'Make jumping higher');
     await a.send();
+    expect(quotes.length, 1, reason: 'a retry keeps its estimate');
     expect(sent.length, 2);
     expect(sent[0]['request_id'], sent[1]['request_id']);
     expect(sent[1]['request_id'], quotes.single);
     expect(sent[1]['max_credits'], 3);
     expect(a.draft, isEmpty);
     expect(a.waiting, isTrue);
+  });
+  test('too few credits stops a paid request before it is sent', () async {
+    var posts = 0;
+    final a = Assistant(api((r) async {
+      if (r.method == 'GET') return json(ready(local: false));
+      if (r.url.path.endsWith('/quote')) {
+        return json({'maximum_credits': 300});
+      }
+      posts++;
+      return json({});
+    }));
+    addTearDown(a.dispose);
+    await a.refresh();
+    a.setDraft('Build a castle');
+    await a.send();
+    expect(posts, 0);
+    expect(a.error, contains('300'));
+  });
+  test('a free Assistant sends without a quote', () async {
+    final paths = <String>[];
+    final a = Assistant(api((r) async {
+      if (r.method == 'GET') {
+        return json({...ready(local: false), 'free': true});
+      }
+      paths.add(r.url.path);
+      expect(jsonDecode(r.body)['max_credits'], 0);
+      return json({});
+    }));
+    addTearDown(a.dispose);
+    await a.refresh();
+    a.setDraft('Make this easier');
+    await a.send();
+    expect(paths, ['/v1/rooms/agent']);
   });
   test('local request waits for its own host receipt and shows failure',
       () async {
@@ -139,15 +170,18 @@ void main() {
               'revision': 1
             }
           })
-        : json({'maximum_credits': 2})));
+        : r.url.path.endsWith('/quote')
+            ? json({'maximum_credits': 2})
+            : http.Response('', 503)));
     addTearDown(a.dispose);
     await a.refresh();
     a.setDraft('Jump higher');
     await a.send();
-    expect(a.quote, 2);
+    expect(a.quote, 2, reason: 'kept for a retry of the same request');
     a.setDraft('Jump lower');
     expect(a.quote, isNull);
     await a.send();
+    expect(a.quote, 2);
     instance = 'two';
     await a.refresh();
     expect(a.quote, isNull);

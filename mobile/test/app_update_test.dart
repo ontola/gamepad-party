@@ -46,8 +46,8 @@ void main() {
     await tester.pumpWidget(
         MaterialApp(home: Scaffold(body: UpdateBanner(check: () async => 12))));
     await tester.pump();
-    expect(
-        find.text('A new version of Splitscreen Club is ready.'), findsOneWidget);
+    expect(find.text('A new version of Splitscreen Club is ready.'),
+        findsOneWidget);
     await tester.tap(find.text('Update'));
     await tester.pump();
     expect(installs, [
@@ -68,7 +68,8 @@ void main() {
     await tester.pump();
     await tester.tap(find.text('Later'));
     await tester.pump();
-    expect(find.text('A new version of Splitscreen Club is ready.'), findsNothing);
+    expect(
+        find.text('A new version of Splitscreen Club is ready.'), findsNothing);
 
     await tester.pumpWidget(MaterialApp(
         home: Scaffold(
