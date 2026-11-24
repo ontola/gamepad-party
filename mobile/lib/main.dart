@@ -16,7 +16,6 @@ import 'link.dart';
 import 'layout.dart';
 import 'player_face.dart';
 import 'navigation/browser_history.dart';
-import 'navigation/host_room.dart';
 import 'navigation/open_website.dart';
 import 'navigation/website_session.dart';
 import 'reports.dart';
@@ -27,6 +26,7 @@ import 'screens/about_screen.dart';
 import 'screens/assistant_screen.dart';
 import 'screens/mods_screen.dart';
 import 'screens/game_screen.dart';
+import 'screens/host_screen.dart';
 import 'screens/player_screen.dart';
 import 'screens/room_screen.dart';
 import 'storage/phone_store.dart';
@@ -115,7 +115,8 @@ class _GameNightAppState extends State<GameNightApp> {
   StreamSubscription<String>? _pushForeground;
 
   /// The About page is open, so no sidebar tab shows as current.
-  bool _aboutOpen = false;
+  /// The sidebar page open on top of the tabs (about, host, get-app).
+  String? _page;
   BrowserNavigation? _history;
 
   @override
@@ -211,7 +212,9 @@ class _GameNightAppState extends State<GameNightApp> {
     ));
   }
 
-  void _about() {
+  /// Opens a page from the logo or the sidebar once; the sidebar marks it
+  /// instead of a tab while it is open.
+  void _openPage(String name, WidgetBuilder builder) {
     final navigator = _navigator.currentState;
     if (navigator == null) return;
     String? top;
@@ -219,24 +222,31 @@ class _GameNightAppState extends State<GameNightApp> {
       top = route.settings.name;
       return true;
     });
-    if (top == 'about') return;
-    setState(() => _aboutOpen = true);
+    if (top == name) return;
+    setState(() => _page = name);
     navigator
         .push(MaterialPageRoute<void>(
-      settings: const RouteSettings(name: 'about'),
-      builder: (_) => AboutScreen(
+            settings: RouteSettings(name: name), builder: builder))
+        .whenComplete(() {
+      if (mounted && _page == name) setState(() => _page = null);
+    });
+  }
+
+  void _about() => _openPage(
+      'about',
+      (_) => AboutScreen(
           state: widget.state,
           onHost: _host,
           onDocs: () => _openWebsite('/docs'),
           onScan: () {
             _selectDestination(0);
             _homeKey.currentState?._roomKey.currentState?.scan();
-          }),
-    ))
-        .whenComplete(() {
-      if (mounted) setState(() => _aboutOpen = false);
-    });
-  }
+          }));
+
+  Future<void> _host() async =>
+      _openPage('host', (_) => HostScreen(cloud: widget.state.cloud));
+
+  void _getApp() => _openPage('get-app', (_) => const GetAppScreen());
 
   void _menu() {
     final context = _navigator.currentState?.overlay?.context;
@@ -268,6 +278,25 @@ class _GameNightAppState extends State<GameNightApp> {
                         Navigator.pop(context);
                         _mods();
                       }),
+                ListTile(
+                    key: const ValueKey('menu-host'),
+                    leading: const Icon(Icons.tv),
+                    title: const Text('Host a room'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () {
+                      Navigator.pop(context);
+                      _host();
+                    }),
+                if (GetAppScreen.offered)
+                  ListTile(
+                      key: const ValueKey('menu-get-app'),
+                      leading: const Icon(Icons.install_mobile),
+                      title: const Text('Get the app'),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () {
+                        Navigator.pop(context);
+                        _getApp();
+                      }),
                 if (widget.reports != null)
                   ListTile(
                       leading: const Icon(Icons.feedback_outlined),
@@ -286,7 +315,6 @@ class _GameNightAppState extends State<GameNightApp> {
                     Icons.privacy_tip_outlined
                   ),
                   ('/docs/terms', 'Terms of service', Icons.gavel_outlined),
-                  ('/host', 'Host a room', Icons.tv),
                 ])
                   ListTile(
                       leading: Icon(entry.$3),
@@ -301,13 +329,7 @@ class _GameNightAppState extends State<GameNightApp> {
   }
 
   Future<void> _openWebsite(String path) =>
-      path == '/host' ? _host() : openWebsite(widget.state.cloud, path);
-
-  Future<void> _host() async {
-    final context = _navigator.currentState?.overlay?.context;
-    if (context == null) return openWebsite(widget.state.cloud, '/host');
-    await hostRoom(context, widget.state.cloud);
-  }
+      openWebsite(widget.state.cloud, path);
 
   void _selectDestination(int tab) {
     _navigator.currentState?.popUntil((route) => route.isFirst);
@@ -345,7 +367,7 @@ class _GameNightAppState extends State<GameNightApp> {
                 key: ValueKey('desktop-tab-${entry.$1}'),
                 label: entry.$2,
                 icon: Icon(_selectedTab == entry.$1 ? entry.$4 : entry.$3),
-                selected: !_aboutOpen && _selectedTab == entry.$1,
+                selected: _page == null && _selectedTab == entry.$1,
                 onTap: () => _selectDestination(entry.$1),
               ),
             _SidebarItem(
@@ -354,9 +376,24 @@ class _GameNightAppState extends State<GameNightApp> {
               icon: FittedBox(
                   child: PlayerFaceIcon(
                       face: widget.state.face, skin: widget.state.skinColor)),
-              selected: !_aboutOpen && _selectedTab == 2,
+              selected: _page == null && _selectedTab == 2,
               onTap: () => _selectDestination(2),
             ),
+            _SidebarItem(
+              key: const ValueKey('desktop-host'),
+              label: 'Host a room',
+              icon: const Icon(Icons.tv),
+              selected: _page == 'host',
+              onTap: _host,
+            ),
+            if (GetAppScreen.offered)
+              _SidebarItem(
+                key: const ValueKey('desktop-get-app'),
+                label: 'Get the app',
+                icon: const Icon(Icons.download_outlined),
+                selected: _page == 'get-app',
+                onTap: _getApp,
+              ),
             const _SidebarHeading('Help'),
             if (widget.state.assistantAvailable)
               _SidebarItem(
@@ -379,7 +416,6 @@ class _GameNightAppState extends State<GameNightApp> {
               ('/docs', 'Documentation', Icons.menu_book_outlined),
               ('/docs/privacy', 'Privacy policy', Icons.privacy_tip_outlined),
               ('/docs/terms', 'Terms of service', Icons.gavel_outlined),
-              ('/host', 'Host a room', Icons.tv),
             ])
               _SidebarItem(
                   label: entry.$2,

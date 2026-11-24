@@ -59,7 +59,7 @@ class _CatalogSectionState extends State<CatalogSection> {
   late CatalogFilter _filter = CatalogFilter(developer: widget.developer);
   CatalogSort _sort = CatalogSort.store;
   Map<String, ({int up, int down})> _ratings = const {};
-  Set<String> _browser = const {};
+  Map<String, String> _browser = const {};
   String? _filterAccount;
   final _search = TextEditingController();
   bool _personalLoading = false;
@@ -70,7 +70,7 @@ class _CatalogSectionState extends State<CatalogSection> {
   void initState() {
     super.initState();
     _loadCatalog();
-    Catalog.instance.browserGames().then((ids) {
+    Catalog.instance.browserLibrary().then((ids) {
       if (mounted && ids.isNotEmpty) setState(() => _browser = ids);
     });
     _loadHost();
@@ -228,6 +228,7 @@ class _CatalogSectionState extends State<CatalogSection> {
               cloud: widget.cloud,
               state: widget.state,
               onDeveloper: widget.developer == null ? _openDeveloper : null,
+              browserGames: _browser.isEmpty ? null : _browser,
               onManage: (game) => openWebsite(widget.cloud!,
                   '/developers#game/${Uri.encodeComponent(game.id)}'),
             )));
@@ -555,7 +556,7 @@ class _CatalogSectionState extends State<CatalogSection> {
             .copyWith(
                 room: _filter.room && _inRoom,
                 playableGames: _playable,
-                browserGames: _browser)
+                browserGames: _browser.keys.toSet())
             .matches)
         .toList());
   }
@@ -568,7 +569,7 @@ class _CatalogSectionState extends State<CatalogSection> {
         showDragHandle: true,
         constraints: const BoxConstraints(maxWidth: 560),
         builder: (_) => CatalogFilters(
-            filter: _filter.copyWith(browserGames: _browser),
+            filter: _filter.copyWith(browserGames: _browser.keys.toSet()),
             games: _games!,
             cloud: widget.cloud,
             onSignIn: widget.onSignIn,

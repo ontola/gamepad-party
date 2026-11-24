@@ -27,13 +27,19 @@ const browserLibraryPath = '/play/games/library.json';
 
 /// Catalog ids in the browser host's library.json. Some browser builds
 /// carry a -warp suffix next to the catalog id (neon-siege-warp).
-Set<String> browserGameIds(Object? library) => {
+Set<String> browserGameIds(Object? library) =>
+    browserLibraryIds(library).keys.toSet();
+
+/// The browser host's own id for each catalog id it runs, for
+/// `/play/?game=ID` (neon-siege becomes neon-siege-warp).
+Map<String, String> browserLibraryIds(Object? library) => {
       if (library is List)
         for (final entry in library)
           if (entry is Map &&
               entry['id'] is String &&
               RegExp(r'^[a-z0-9-]+$').hasMatch(entry['id'] as String))
-            (entry['id'] as String).replaceFirst(RegExp(r'-warp$'), ''),
+            (entry['id'] as String).replaceFirst(RegExp(r'-warp$'), ''):
+                entry['id'] as String,
     };
 
 /// Filters that need the player's account.

@@ -3,16 +3,24 @@ import 'dart:js_interop_unsafe';
 
 import 'package:web/web.dart' as web;
 
-/// Whether this browser can run the browser host (/play/): a computer with
-/// WebGPU. Phones are too slow, and Firefox-based browsers (Firefox, Zen)
-/// start WebGPU but the host's 3D passes fail there for now.
-bool canHostInThisBrowser() {
+import 'browser_host_blocker.dart';
+
+export 'browser_host_blocker.dart';
+
+/// Why this browser can't run the browser host (/play/), or null when it
+/// can: a computer with WebGPU. Phones are too slow, and Firefox-based
+/// browsers (Firefox, Zen) start WebGPU but the host's 3D passes fail there
+/// for now.
+BrowserHostBlocker? browserHostBlocker() {
   final navigator = web.window.navigator;
   final agent = navigator.userAgent;
-  final phone =
-      RegExp('Android|iPhone|iPad').hasMatch(agent) ||
+  final phone = RegExp('Android|iPhone|iPad').hasMatch(agent) ||
       (navigator.platform == 'MacIntel' && navigator.maxTouchPoints > 1);
-  return !phone &&
-      !agent.contains('Firefox/') &&
-      (navigator as JSObject).has('gpu');
+  if (phone) return BrowserHostBlocker.phone;
+  if (agent.contains('Firefox/')) return BrowserHostBlocker.browser;
+  if (!(navigator as JSObject).has('gpu')) return BrowserHostBlocker.browser;
+  return null;
 }
+
+/// Whether this browser can run the browser host (/play/).
+bool canHostInThisBrowser() => browserHostBlocker() == null;

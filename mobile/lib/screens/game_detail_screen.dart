@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/gestures.dart' show PointerDeviceKind;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -13,6 +14,9 @@ import '../report_scope.dart';
 import '../room_controls.dart';
 import '../theme.dart';
 import '../layout.dart';
+import '../link.dart';
+import '../navigation/browser_host_stub.dart'
+    if (dart.library.js_interop) '../navigation/browser_host_web.dart';
 import 'catalog_view.dart' show GameCover;
 
 /// A game's page, with the same videos, screenshots and facts as the website.
@@ -43,6 +47,13 @@ class GameDetailScreen extends StatefulWidget {
   /// Opens a page with every game by this developer.
   final ValueChanged<String>? onDeveloper;
 
+  /// The browser host's id per catalog id; loaded here (web only) when null.
+  final Map<String, String>? browserGames;
+
+  /// Why this browser can't run the browser host; null when it can. Left
+  /// out, this browser is asked.
+  final BrowserHostBlocker? Function() browserBlocker;
+
   const GameDetailScreen(
       {super.key,
       required this.game,
@@ -55,6 +66,8 @@ class GameDetailScreen extends StatefulWidget {
       this.cloud,
       this.state,
       this.onDeveloper,
+      this.browserGames,
+      this.browserBlocker = browserHostBlocker,
       this.share});
 
   @override
@@ -66,10 +79,17 @@ class _GameDetailScreenState extends State<GameDetailScreen> {
   late final PageController _pages;
   late int _index;
   FeedbackGameContext? _feedbackGame;
+  late Map<String, String> _browser = widget.browserGames ?? const {};
+  late final BrowserHostBlocker? _blocker = widget.browserBlocker();
 
   @override
   void initState() {
     super.initState();
+    if (widget.browserGames == null && kIsWeb) {
+      Catalog.instance.browserLibrary().then((ids) {
+        if (mounted && ids.isNotEmpty) setState(() => _browser = ids);
+      });
+    }
     final byId = {for (final game in widget.games) game.id: game};
     if (!byId.containsKey(widget.game.id)) {
       _games = [widget.game, ...byId.values];
@@ -136,6 +156,8 @@ class _GameDetailScreenState extends State<GameDetailScreen> {
                   state: widget.state,
                   onDeveloper: widget.onDeveloper,
                   onTagSelected: widget.onTagSelected,
+                  browserId: _browser[_games[index].id],
+                  browserBlocker: _blocker,
                   onOpen: (game) =>
                       _go(_games.indexWhere((entry) => entry.id == game.id)),
                 ),
@@ -156,6 +178,8 @@ class _GameDetailPage extends StatefulWidget {
       this.state,
       this.onDeveloper,
       this.share,
+      this.browserId,
+      this.browserBlocker,
       this.previous,
       this.onTagSelected,
       this.next});
@@ -172,6 +196,8 @@ class _GameDetailPage extends StatefulWidget {
   final AppState? state;
   final ValueChanged<String>? onDeveloper;
   final Future<ShareResult> Function(ShareParams)? share;
+  final String? browserId;
+  final BrowserHostBlocker? browserBlocker;
   @override
   State<_GameDetailPage> createState() => _GameDetailPageState();
 }
@@ -314,7 +340,7 @@ class _GameDetailPageState extends State<_GameDetailPage> {
                                   cloud: widget.cloud),
                             ],
                             const SizedBox(height: 16),
-                            _action(),
+                            ..._withPlay(_action()),
                             if (_wantButton() case final want?) ...[
                               const SizedBox(height: 8),
                               want,
@@ -419,6 +445,53 @@ class _GameDetailPageState extends State<_GameDetailPage> {
       const SizedBox(height: 8),
       note,
     ]);
+  }
+
+  /// The page's main action with Play in browser: first outside a room,
+  /// after Add to queue in one.
+  List<Widget> _withPlay(Widget action) {
+    final play = _playInBrowser();
+    if (play == null) return [action];
+    final inRoom = widget.host != null && widget.onAdd != null;
+    return inRoom
+        ? [action, const SizedBox(height: 8), play]
+        : [play, const SizedBox(height: 8), action];
+  }
+
+  /// Play in browser: this browser becomes the TV screen with this game.
+  /// Only where the browser host runs; elsewhere a word on where it does.
+  Widget? _playInBrowser() {
+    final id = widget.browserId;
+    if (id == null) return null;
+    final blocker = widget.browserBlocker;
+    if (blocker == BrowserHostBlocker.app) return null;
+    if (blocker != null) {
+      return _Note(blocker == BrowserHostBlocker.phone
+          ? 'Plays in the browser on a computer: open splitscreen.club on '
+              'the TV computer.'
+          : 'Plays in the browser in Chrome, Edge or Safari.');
+    }
+    final url =
+        Uri.parse('$apiOrigin/play/?game=${Uri.encodeQueryComponent(id)}');
+    final inRoom = widget.host != null && widget.onAdd != null;
+    const icon = Icon(Icons.play_arrow);
+    const label = Text('Play in this browser');
+    void open() => launchUrl(url, webOnlyWindowName: '_self');
+    return inRoom
+        ? OutlinedButton.icon(
+            key: const ValueKey('play-in-browser'),
+            style: OutlinedButton.styleFrom(
+                minimumSize: const Size.fromHeight(48)),
+            onPressed: open,
+            icon: icon,
+            label: label)
+        : FilledButton.icon(
+            key: const ValueKey('play-in-browser'),
+            style:
+                FilledButton.styleFrom(minimumSize: const Size.fromHeight(50)),
+            onPressed: open,
+            icon: icon,
+            label: label);
   }
 
   bool get _canWant =>

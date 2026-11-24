@@ -369,11 +369,16 @@ class Catalog {
     }
   }
 
-  Future<Set<String>>? _browser;
+  Future<Map<String, String>>? _browser;
 
   /// Games the browser host (splitscreen.club/play) runs, by catalog id;
   /// empty when the list can't load (tried again next time).
-  Future<Set<String>> browserGames() async {
+  Future<Set<String>> browserGames() async =>
+      (await browserLibrary()).keys.toSet();
+
+  /// The browser host's id for each catalog id it runs (see
+  /// [browserLibraryIds]); empty when the list can't load.
+  Future<Map<String, String>> browserLibrary() async {
     final pending = _browser ??= () async {
       final client = _client ?? http.Client();
       try {
@@ -381,7 +386,7 @@ class Catalog {
             .get(storeBase.replace(path: browserLibraryPath))
             .timeout(const Duration(seconds: 20));
         if (response.statusCode != 200) throw const CatalogError('');
-        return browserGameIds(jsonDecode(utf8.decode(response.bodyBytes)));
+        return browserLibraryIds(jsonDecode(utf8.decode(response.bodyBytes)));
       } finally {
         if (_client == null) client.close();
       }

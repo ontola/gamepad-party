@@ -79,6 +79,20 @@ void main() {
     await tester.pumpAndSettle();
     expect(sidebar.hitTestable(), findsOneWidget);
     expect(builds, 1, reason: 'Resizing must keep the existing route');
+    // Host a room is a page in the app, marked in the sidebar while open.
+    await tester.tap(find.byKey(const ValueKey('desktop-host')));
+    await tester.pumpAndSettle();
+    expect(find.text('Play right in your browser'), findsOneWidget);
+    expect(
+        tester
+            .widget<Semantics>(find
+                .descendant(
+                    of: find.byKey(const ValueKey('desktop-host')),
+                    matching: find.byType(Semantics))
+                .first)
+            .properties
+            .selected,
+        isTrue);
     await tester.tap(find.byKey(const ValueKey('desktop-tab-2')));
     await tester.pumpAndSettle();
     expect(find.text('Detail route'), findsNothing);

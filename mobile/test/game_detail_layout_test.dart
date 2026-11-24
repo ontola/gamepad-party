@@ -7,6 +7,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gamenight/catalog.dart';
+import 'package:gamenight/navigation/browser_host_stub.dart';
 import 'package:gamenight/screens/game_detail_screen.dart';
 import 'package:gamenight/theme.dart';
 import 'package:gamenight/room_controls.dart';
@@ -32,18 +33,27 @@ Future<void> _capture(WidgetTester tester, String name) async {
 }
 
 Future<void> _open(WidgetTester tester,
-    {Future<ShareResult> Function(ShareParams)? share}) async {
+    {Future<ShareResult> Function(ShareParams)? share,
+    Map<String, String>? browserGames,
+    BrowserHostBlocker? Function() browserBlocker = browserHostBlocker}) async {
   tester.view.physicalSize = const Size(390, 844);
   tester.view.devicePixelRatio = 1;
   tester.view.padding = const FakeViewPadding(top: 24, bottom: 48);
   tester.view.viewPadding = const FakeViewPadding(top: 24, bottom: 48);
   addTearDown(tester.view.reset);
+  // A fresh page each time, not the previous one with new arguments.
+  await tester.pumpWidget(const SizedBox());
   await tester.pumpWidget(RepaintBoundary(
       key: _preview,
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
         theme: gameNightTheme(),
-        home: GameDetailScreen(game: _games.first, games: _games, share: share),
+        home: GameDetailScreen(
+            game: _games.first,
+            games: _games,
+            share: share,
+            browserGames: browserGames,
+            browserBlocker: browserBlocker),
       )));
   // Decode committed catalog art on the real clock. No external image request.
   await tester.runAsync(() async {
@@ -273,5 +283,25 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(SelectableText), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Play in this browser only where the browser host runs',
+      (tester) async {
+    final id = _games.first.id;
+    await _open(tester,
+        browserGames: {id: '$id-warp'}, browserBlocker: () => null);
+    expect(find.byKey(const ValueKey('play-in-browser')), findsOneWidget);
+    await _capture(tester, 'game-play-in-browser');
+    await _open(tester,
+        browserGames: {id: '$id-warp'},
+        browserBlocker: () => BrowserHostBlocker.phone);
+    expect(find.byKey(const ValueKey('play-in-browser')), findsNothing);
+    expect(find.textContaining('Plays in the browser on a computer'),
+        findsOneWidget);
+    // The app itself never offers it, and games the host lacks neither.
+    await _open(tester, browserGames: {id: '$id-warp'});
+    expect(find.textContaining('Plays in the browser'), findsNothing);
+    await _open(tester, browserGames: const {}, browserBlocker: () => null);
+    expect(find.byKey(const ValueKey('play-in-browser')), findsNothing);
   });
 }

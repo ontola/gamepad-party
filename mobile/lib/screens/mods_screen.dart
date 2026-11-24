@@ -468,7 +468,14 @@ class _ModScreenState extends State<ModScreen> {
 /// Shown in the browser, where mods cannot be kept: the reason to install
 /// the app, with a download for every platform and the visitor's own first.
 class GetTheApp extends StatelessWidget {
-  const GetTheApp({super.key});
+  final String title;
+  final String text;
+  const GetTheApp(
+      {super.key,
+      this.title = 'Make your own games in the app',
+      this.text = 'Your own games and mods are made by the Assistant while you '
+          'play. They live in the Splitscreen Club app on your phone or '
+          'computer, so install it to make one.'});
 
   @override
   Widget build(BuildContext context) {
@@ -505,13 +512,11 @@ class GetTheApp extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Make your own games in the app',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+            Text(title,
+                style:
+                    const TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
             const SizedBox(height: 6),
-            const Hint(
-                'Your own games and mods are made by the Assistant while you '
-                'play. They live in the Splitscreen Club app on your phone or '
-                'computer, so install it to make one.'),
+            Hint(text),
             const SizedBox(height: 14),
             Wrap(spacing: 8, runSpacing: 8, children: [
               for (final link in links)
