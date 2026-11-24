@@ -1,8 +1,8 @@
 # macOS distribution
 
-The website serves `/download/GameNight.dmg` as a static file. Publishing a Windows release does not update that file. The server deployment and download replacement procedure are documented in the internal repository at `deploy/cloud/HOSTED.md`.
+The website serves `/download/Splitscreen-Club.dmg` as a static file. Publishing a Windows release does not update that file. The server deployment and download replacement procedure are documented in the internal repository at `deploy/cloud/HOSTED.md`.
 
-Download the [Mac preview](https://gamenight.ontola.io/download/GameNight.dmg) and drag `GameNight.app` into Applications, replacing the old copy. The September 22 release is [0.1.4 Preview](https://github.com/ontola/gamepad-party/releases/tag/macos-v0.1.4-preview).
+Download the [Mac preview](https://splitscreen.club/download/Splitscreen-Club.dmg) and drag `Splitscreen Club.app` into Applications, replacing the old copy. The September 22 release is [0.1.4 Preview](https://github.com/ontola/gamepad-party/releases/tag/macos-v0.1.4-preview).
 
 ## Build
 
@@ -13,7 +13,7 @@ The packaging job installs the pinned universal Godot 4.5.2 (`.github/actions/se
 The app contains:
 
 - `Contents/MacOS/GameNight`: launcher, without a separate Dock icon.
-- `Contents/Helpers/GameNight.app`: the visible lobby, whose process and app name are both Splitscreen Club. Its executable is Godot's universal editor binary; the launcher starts it with `--main-pack` on `Contents/Resources/GameNight.pck` (the exported Game Room), so no export templates are needed, as on Windows.
+- `Contents/Helpers/GameNight.app`: the visible lobby, app name Splitscreen Club. Its executable is the universal Warp Game Room (`game-room` from ontola/warp-game-engine), as on Windows.
 - `Contents/Resources/bin/gamenight-daemon`: session host.
 - `Contents/Resources/notices/game-room`: Godot's and the lobby fonts' licenses.
 - `Contents/Resources/catalog`: downloadable Mac games. Shared LÖVE games use the same game archives as Windows and a separately pinned Mac runtime.
@@ -28,7 +28,7 @@ For changes limited to packaging or catalog metadata, `binaries_run` can reuse s
 
 ## Signing and notarization
 
-Without Developer ID credentials the build falls back to ad-hoc signatures, with a workflow warning. Those permit native Apple Silicon execution on the build machine, but Gatekeeper blocks the downloaded app ("Apple could not verify GameNight.app"). Testers can then use System Settings > Privacy & Security > Open Anyway, or `xattr -dr com.apple.quarantine /Applications/GameNight.app`.
+Without Developer ID credentials the build falls back to ad-hoc signatures, with a workflow warning. Those permit native Apple Silicon execution on the build machine, but Gatekeeper blocks the downloaded app ("Apple could not verify Splitscreen Club.app"). Testers can then use System Settings > Privacy & Security > Open Anyway, or `xattr -dr com.apple.quarantine "/Applications/Splitscreen Club.app"`.
 
 With these repository secrets, the workflow signs every executable inside out with hardened runtime and a secure timestamp, signs the DMG, notarizes it with `notarytool`, staples the ticket and checks it with `spctl`:
 

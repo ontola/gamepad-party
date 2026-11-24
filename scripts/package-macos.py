@@ -8,8 +8,8 @@ import subprocess
 from pathlib import Path
 
 
-def plist(name, identifier, version, background=False):
-    return dict(CFBundleName=name, CFBundleDisplayName=name, CFBundleExecutable=name,
+def plist(name, identifier, version, background=False, executable="GameNight"):
+    return dict(CFBundleName=name, CFBundleDisplayName=name, CFBundleExecutable=executable,
                 CFBundleIdentifier=identifier, CFBundlePackageType="APPL",
                 CFBundleShortVersionString=version, CFBundleVersion=version,
                 CFBundleIconFile="GameNight.icns", NSHighResolutionCapable=True,
@@ -18,7 +18,9 @@ def plist(name, identifier, version, background=False):
 
 
 def package(repo, binaries, game_room, output, version, binary_revision=None):
-    app = output / "GameNight.app"
+    # The bundle the player sees is Splitscreen Club; executables, helper
+    # paths and bundle ids keep their technical GameNight names.
+    app = output / "Splitscreen Club.app"
     contents = app / "Contents"
     resources = contents / "Resources"
     helper = contents / "Helpers/GameNight.app/Contents"
@@ -33,7 +35,7 @@ def package(repo, binaries, game_room, output, version, binary_revision=None):
         target.chmod(0o755)
     for target, ident, background in [(contents, "io.ontola.gamenight", True),
                                        (helper, "io.ontola.gamenight.lobby", False)]:
-        (target / "Info.plist").write_bytes(plistlib.dumps(plist("GameNight", ident, version, background)))
+        (target / "Info.plist").write_bytes(plistlib.dumps(plist("Splitscreen Club", ident, version, background)))
     notices = resources / "notices/game-room"
     notices.mkdir(parents=True)
     for notice in (repo / "lobbies/game-room/assets/fonts").glob("*LICENSE*.txt"):
@@ -82,10 +84,9 @@ def main():
     links = app / "Contents/Helpers/GameNight Link.app/Contents"
     (links / "MacOS").mkdir(parents=True)
     (links / "Resources").mkdir()
-    link_plist = plist("Splitscreen Club Link", "io.ontola.gamenight.link", args.version, True)
     # The executable is "GameNight Link"; a CFBundleExecutable that names
     # another file leaves it unsigned and Developer ID signing fails.
-    link_plist["CFBundleExecutable"] = "GameNight Link"
+    link_plist = plist("Splitscreen Club Link", "io.ontola.gamenight.link", args.version, True, "GameNight Link")
     link_plist["CFBundleURLTypes"] = [{"CFBundleURLName": "Splitscreen Club games", "CFBundleURLSchemes": ["gamenight"]}]
     (links / "Info.plist").write_bytes(plistlib.dumps(link_plist))
     shutil.copy2(icon, links / "Resources/GameNight.icns")

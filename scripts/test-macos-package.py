@@ -8,6 +8,7 @@ from pathlib import Path
 
 
 def verify(app):
+    assert app.name == "Splitscreen Club.app", app.name
     contents = app / "Contents"
     resources = contents / "Resources"
     helper = contents / "Helpers/GameNight.app/Contents"
@@ -18,8 +19,9 @@ def verify(app):
     subprocess.run(["lipo", str(links / "MacOS/GameNight Link"), "-verify_arch", "arm64", "x86_64"], check=True)
     for bundle in [contents, helper]:
         data = plistlib.loads((bundle / "Info.plist").read_bytes())
-        for key in ["CFBundleName", "CFBundleDisplayName", "CFBundleExecutable"]:
-            assert data[key] == "GameNight", (bundle, key)
+        for key in ["CFBundleName", "CFBundleDisplayName"]:
+            assert data[key] == "Splitscreen Club", (bundle, key)
+        assert data["CFBundleExecutable"] == "GameNight", bundle
         assert (bundle / "Resources" / data["CFBundleIconFile"]).stat().st_size > 100
     for binary in [contents / "MacOS/GameNight", helper / "MacOS/GameNight", resources / "bin/gamenight-daemon"]:
         subprocess.run(["lipo", str(binary), "-verify_arch", "arm64", "x86_64"], check=True)

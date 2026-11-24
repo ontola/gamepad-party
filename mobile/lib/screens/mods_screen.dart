@@ -486,14 +486,14 @@ class GetTheApp extends StatelessWidget {
       key: 'get-windows',
       label: 'Download for Windows',
       icon: Icons.desktop_windows_outlined,
-      url: Uri.parse('$hostedOrigin/download/GameNight-Setup.exe'),
+      url: Uri.parse('$hostedOrigin/download/Splitscreen-Club-Setup.exe'),
       mine: platform == TargetPlatform.windows,
     );
     final mac = (
       key: 'get-mac',
       label: 'Download for Mac',
       icon: Icons.laptop_mac,
-      url: Uri.parse('$hostedOrigin/download/GameNight.dmg'),
+      url: Uri.parse('$hostedOrigin/download/Splitscreen-Club.dmg'),
       mine: platform == TargetPlatform.macOS,
     );
     final links = [android, windows, mac]

@@ -144,22 +144,22 @@ jobs:
           binary_revision=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$BINARY_RUN" --jq .head_sha)
           if [ -n "$SOURCE_REVISION" ]; then binary_revision="$SOURCE_REVISION"; fi
           python3 scripts/package-macos.py --binaries universal --game-room universal/game-room --output stage --version "$VERSION" --binary-revision "$binary_revision" --sign-identity "$SIGN_IDENTITY"
-          python3 scripts/test-macos-package.py stage/GameNight.app
+          python3 scripts/test-macos-package.py "stage/Splitscreen Club.app"
       - name: Launch packaged host outside source directory
         run: |
-          python3 scripts/smoke-macos-package.py stage/GameNight.app --output smoke
+          python3 scripts/smoke-macos-package.py "stage/Splitscreen Club.app" --output smoke
       - name: Create disk image
         run: |
           mkdir dmg-root
-          ditto stage/GameNight.app dmg-root/GameNight.app
+          ditto "stage/Splitscreen Club.app" "dmg-root/Splitscreen Club.app"
           ln -s /Applications dmg-root/Applications
           # hdiutil on CI runners fails now and then with "Resource busy".
           for attempt in 1 2 3 4 5; do
-            hdiutil create -volname GameNight -srcfolder dmg-root -ov -format UDZO release/GameNight.dmg && break
+            hdiutil create -volname "Splitscreen Club" -srcfolder dmg-root -ov -format UDZO release/Splitscreen-Club.dmg && break
             if [ $attempt = 5 ]; then exit 1; fi
             sleep $((attempt * 10))
           done
-          hdiutil verify release/GameNight.dmg
+          hdiutil verify release/Splitscreen-Club.dmg
       - name: Sign and notarize disk image
         if: steps.signing.outputs.identity != '-'
         env:
@@ -171,11 +171,11 @@ jobs:
           if [ -z "$API_KEY_P8" ] || [ -z "$API_KEY_ID" ] || [ -z "$API_ISSUER_ID" ]; then
             echo "::error::Signing is configured but APPLE_API_KEY_P8, APPLE_API_KEY_ID or APPLE_API_ISSUER_ID is missing"; exit 1
           fi
-          codesign --force --sign "$SIGN_IDENTITY" --timestamp release/GameNight.dmg
+          codesign --force --sign "$SIGN_IDENTITY" --timestamp release/Splitscreen-Club.dmg
           key="$RUNNER_TEMP/AuthKey.p8"
           printf '%s' "$API_KEY_P8" > "$key"
           if ! grep -q "BEGIN PRIVATE KEY" "$key"; then printf '%s' "$API_KEY_P8" | base64 --decode > "$key"; fi
-          xcrun notarytool submit release/GameNight.dmg --key "$key" --key-id "$API_KEY_ID" --issuer "$API_ISSUER_ID" --wait --timeout 30m --output-format json | tee notarization.json
+          xcrun notarytool submit release/Splitscreen-Club.dmg --key "$key" --key-id "$API_KEY_ID" --issuer "$API_ISSUER_ID" --wait --timeout 30m --output-format json | tee notarization.json
           status=$(python3 -c "import json; print(json.load(open('notarization.json'))['status'])")
           if [ "$status" != "Accepted" ]; then
             id=$(python3 -c "import json; print(json.load(open('notarization.json'))['id'])")
@@ -183,13 +183,13 @@ jobs:
             exit 1
           fi
           rm "$key"
-          xcrun stapler staple release/GameNight.dmg
-          xcrun stapler validate release/GameNight.dmg
-          spctl --assess --type open --context context:primary-signature --verbose release/GameNight.dmg
+          xcrun stapler staple release/Splitscreen-Club.dmg
+          xcrun stapler validate release/Splitscreen-Club.dmg
+          spctl --assess --type open --context context:primary-signature --verbose release/Splitscreen-Club.dmg
       - name: Checksum disk image
         run: |
           cd release
-          shasum -a 256 GameNight.dmg > GameNight.dmg.sha256
+          shasum -a 256 Splitscreen-Club.dmg > Splitscreen-Club.dmg.sha256
       - uses: actions/upload-artifact@v4
         with:
           name: gamenight-macos-installer

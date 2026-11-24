@@ -39,12 +39,12 @@ class ReleaseTests(unittest.TestCase):
             module = load('release-manifest')
             with self.assertRaises(ValueError):
                 module.manifest(root, '0.2.1', 'a'*40, '123')
-            for name in ('GameNight-Setup.exe', 'GameNight.dmg', 'catalog.tar.gz', 'game-contract-windows.tar.gz'):
+            for name in ('GameNight-Setup.exe', 'Splitscreen-Club.dmg', 'catalog.tar.gz', 'game-contract-windows.tar.gz'):
                 (root/name).write_bytes(name.encode())
             result = module.manifest(root, '0.2.1', 'a'*40, '123')
             self.assertEqual(len(result['sha256']), 4)
             self.assertEqual(result['run_id'], 123)
-            (root/'GameNight.dmg').unlink()
+            (root/'Splitscreen-Club.dmg').unlink()
             with self.assertRaises(ValueError):
                 module.manifest(root, '0.2.1', 'a'*40, '123')
             self.assertNotIn('mac', module.manifest(root, '0.2.1', 'a'*40, '123', windows_only=True)['installers'])

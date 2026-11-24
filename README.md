@@ -13,8 +13,8 @@ players across integrated games.
 - Companion app & website to keep your profile, edit game settings, choose the next game
 - Powerful AI integration: mod games while you play, or create your own game
 
-[Download for Windows](https://gamenight.ontola.io/download/GameNight-Setup.exe) ·
-[Download for Mac](https://gamenight.ontola.io/download/GameNight.dmg) ·
+[Download for Windows](https://splitscreen.club/download/Splitscreen-Club-Setup.exe) ·
+[Download for Mac](https://splitscreen.club/download/Splitscreen-Club.dmg) ·
 [Browse games](https://gamenight.ontola.io/catalog) ·
 [Developer docs](https://splitscreen.club/docs)
 

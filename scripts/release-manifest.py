@@ -5,9 +5,12 @@ import json
 from pathlib import Path
 
 
+MAC = 'Splitscreen-Club.dmg'
+
+
 def manifest(directory, version, revision, run, windows_only=False):
     setups = list(directory.glob('*Setup.exe'))
-    if len(setups) != 1 or not (windows_only or (directory/'GameNight.dmg').is_file()):
+    if len(setups) != 1 or not (windows_only or (directory/MAC).is_file()):
         raise ValueError('Both installers are required')
     for required in ('catalog.tar.gz', 'game-contract-windows.tar.gz'):
         if not (directory/required).is_file():
@@ -15,7 +18,7 @@ def manifest(directory, version, revision, run, windows_only=False):
     assets = {p.name: hashlib.sha256(p.read_bytes()).hexdigest()
               for p in sorted(directory.iterdir()) if p.is_file() and p.name not in ('release.json', 'SHA256SUMS.txt')}
     result = dict(schema=1, version=version, commit=revision, run_id=int(run),
-                  installers={'windows': setups[0].name, **({} if windows_only else {'mac': 'GameNight.dmg'})},
+                  installers={'windows': setups[0].name, **({} if windows_only else {'mac': MAC})},
                   sha256=assets)
     (directory/'release.json').write_text(json.dumps(result, indent=2)+'\n')
     (directory/'SHA256SUMS.txt').write_text(''.join(f'{v}  {k}\n' for k, v in assets.items()))

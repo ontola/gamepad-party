@@ -4,8 +4,8 @@ async function updateDownloadSizes() {
   if (checked || location.pathname !== '/host') return;
   checked = true;
   await Promise.allSettled([
-    ['windows', '/download/GameNight-Setup.exe'],
-    ['macos', '/download/GameNight.dmg'],
+    ['windows', '/download/Splitscreen-Club-Setup.exe'],
+    ['macos', '/download/Splitscreen-Club.dmg'],
   ].map(async ([platform, url]) => {
     const response = await fetch(url, { method: 'HEAD', signal: AbortSignal.timeout(5000) });
     const bytes = Number(response.headers.get('content-length'));
