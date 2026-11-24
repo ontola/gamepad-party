@@ -817,6 +817,13 @@ this is what makes &quot;what's next&quot; feel like Netflix instead of a file p
 <ul>
 <li><code>cover</code> is portrait art; <code>icon</code> is the square case-spine image; <code>screenshot</code>
 is gameplay imagery for the TV. Missing artwork uses a readable title fallback.</li>
+<li>In the lobby's <code>party_state</code> the desktop host sends <code>screenshot</code> as a PNG
+data URI: the store's (it downloads HTTPS store images itself), or, for a
+game without one, the host's last capture of it from an earlier night.
+<code>live_screenshot</code> is the game as the party left it: when the host pauses
+the game in front for the lobby (Back, Alt+Tab), it captures that window
+(Windows) and keeps it until the game prepares a new match. Show
+<code>live_screenshot</code> first. Games never receive either.</li>
 <li><code>connected_games</code> says which titles have a live process — overlays show the
 rest as offline (queueable, but they won't warm until their process
 appears).</li>
@@ -1165,7 +1172,7 @@ fallback colours. When a colour becomes available, a player waiting for that
 preference receives it. Games can still use team colours when required by their
 rules. Older profiles without this field retain automatic colour selection.</p>
 
-<footer class="docs-source"><a href="https://github.com/ontola/gamepad-party/blob/main/docs/protocol.md">Edit this page</a><span data-source-fingerprint="315a2ca37322fb3ece33eb50c9cdbc47a24fb6a769a180a983d0e31ac71ce308">Built from repository sources</span></footer>
+<footer class="docs-source"><a href="https://github.com/ontola/gamepad-party/blob/main/docs/protocol.md">Edit this page</a><span data-source-fingerprint="af66769b4ae4519345f87772f39cefa05fdf15c30a10dcac9e0be86ed9f6c749">Built from repository sources</span></footer>
 <nav class="docs-pager" aria-label="Adjacent documentation pages"><a href="/docs/settings"><small>Previous</small>Game settings</a></nav></article>
 <aside class="docs-toc" aria-label="On this page"><strong>On this page</strong><a href="#transport">Transport</a><a href="#roles">Roles</a><a href="#session-lifecycle">Session lifecycle</a><a href="#party-commands-overlay-daemon">Party commands (overlay → daemon)</a><a href="#party-state-daemon-overlays">Party state (daemon → overlays)</a><a href="#room-log">Room log</a><a href="#phone-buttons">Phone buttons</a><a href="#the-hosts-music">The host&#x27;s music</a><a href="#match-settings">Match settings</a><a href="#phone-screens">Phone screens</a><a href="#plain-text-requests">Plain-text requests</a><a href="#the-night-end-to-end">The night, end to end</a><a href="#rules-the-daemon-enforces">Rules the daemon enforces</a><a href="#errors">Errors</a><a href="#future-kept-off-v1-on-purpose">Future (kept off v1 on purpose)</a><a href="#player-activity-sleep-and-joining-during-play">Player activity, sleep and joining during play</a><a href="#circular-player-faces">Circular player faces</a><a href="#session-diagnostics">Session diagnostics</a><a href="#preferred-player-colours">Preferred player colours</a></aside>
 <p class="docs-copy-status" role="status" aria-live="polite"></p></main></body></html>

@@ -257,6 +257,7 @@ mod tests {
             cover: None,
             icon: None,
             screenshot: None,
+            live_screenshot: None,
             color: None,
             emoji: None,
             players: None,

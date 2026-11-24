@@ -684,6 +684,13 @@ this is what makes "what's next" feel like Netflix instead of a file picker.
 
 - `cover` is portrait art; `icon` is the square case-spine image; `screenshot`
   is gameplay imagery for the TV. Missing artwork uses a readable title fallback.
+- In the lobby's `party_state` the desktop host sends `screenshot` as a PNG
+  data URI: the store's (it downloads HTTPS store images itself), or, for a
+  game without one, the host's last capture of it from an earlier night.
+  `live_screenshot` is the game as the party left it: when the host pauses
+  the game in front for the lobby (Back, Alt+Tab), it captures that window
+  (Windows) and keeps it until the game prepares a new match. Show
+  `live_screenshot` first. Games never receive either.
 - `connected_games` says which titles have a live process — overlays show the
   rest as offline (queueable, but they won't warm until their process
   appears).

@@ -311,6 +311,7 @@ pub async fn certify(config: Config) -> Result<Report, String> {
         cover: None,
         icon: None,
         screenshot: None,
+        live_screenshot: None,
         color: None,
         emoji: None,
         players: None,

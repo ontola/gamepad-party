@@ -11,6 +11,7 @@ mod lobby_input;
 #[cfg(target_os = "macos")]
 mod macos;
 mod nowplaying;
+mod screenshots;
 #[cfg(windows)]
 pub mod windows_launch;
 
@@ -55,6 +56,17 @@ struct PendingLaunch {
 /// Everything shared between connections.
 struct Shared {
     night: GameNight,
+    /// Each game as the party last left it this night, captured when the
+    /// host paused it for the lobby: the lobby's `live_screenshot`.
+    live_shots: HashMap<GameId, String>,
+    /// Store screenshots downloaded for the lobby (data URIs), by game.
+    store_shots: HashMap<GameId, String>,
+    /// Store screenshot URLs already tried, so a failing one is not
+    /// fetched over and over.
+    store_shot_tries: std::collections::HashSet<String>,
+    /// Captures from earlier nights, for games the store has no
+    /// screenshot of (Sideways): shown while the game loads.
+    saved_shots: HashMap<GameId, String>,
     /// Where players' own settings and progress are saved between nights
     /// (the host's Atomic store); `None` keeps them in memory (tests).
     store: Option<gamenight_store::StoreHandle>,
@@ -382,8 +394,18 @@ impl Shared {
         night.set_library(library);
         let mut room_log = activity::RoomLog::default();
         room_log.settle(night.snapshot());
+        let saved_shots = night
+            .snapshot()
+            .library
+            .iter()
+            .filter_map(|g| Some((g.id.clone(), screenshots::load(&g.id)?)))
+            .collect();
         Self {
             night,
+            live_shots: HashMap::new(),
+            store_shots: HashMap::new(),
+            store_shot_tries: Default::default(),
+            saved_shots,
             games: HashMap::new(),
             overlays: HashMap::new(),
             next_overlay_id: 0,
@@ -1010,6 +1032,28 @@ impl Shared {
     /// with nobody having asked for anything.
     fn apply_effects(&mut self, effects: Vec<Effect>, origin: Option<&Tx>) {
         let mut broadcast = false;
+        // Before anything raises the lobby: the game still fills the screen.
+        let active = self.night.snapshot().active_session.map(|s| (s.game, s.id));
+        for effect in &effects {
+            if let Effect::ToGame {
+                game,
+                session,
+                command,
+            } = effect
+            {
+                match command {
+                    GameCommand::Pause if active.as_ref() == Some(&(game.clone(), *session)) => {
+                        self.capture_for_tv(game);
+                        broadcast = true;
+                    }
+                    // A new match: the old picture is not what it looks like.
+                    GameCommand::Prepare { .. } => {
+                        broadcast |= self.live_shots.remove(game).is_some();
+                    }
+                    _ => {}
+                }
+            }
+        }
         for effect in effects {
             debug!(?effect, "effect");
             match effect {
@@ -1184,7 +1228,7 @@ impl Shared {
             send(tx, &msg);
         }
         let lobby_msg = ServerMessage::PartyState {
-            party: lobby_snapshot(self.snapshot()),
+            party: self.lobby_party(),
         };
         for id in &self.lobby_connections {
             if let Some(tx) = self.games.get(id) {
@@ -1497,6 +1541,51 @@ impl Shared {
         for player in players {
             player.profile_key = self.night.profile_key(game, player.id);
         }
+    }
+
+    /// The party as the lobby sees it, with the TV's screenshots as data
+    /// URIs: the game as it was left (`live_screenshot`), and as `screenshot`
+    /// the store's, or the last capture of an earlier night.
+    fn lobby_party(&self) -> gamenight_protocol::PartySnapshot {
+        let mut party = lobby_snapshot(self.snapshot());
+        for game in &mut party.library {
+            game.live_screenshot = self.live_shots.get(&game.id).cloned();
+            if !game
+                .screenshot
+                .as_deref()
+                .is_some_and(|s| s.starts_with("data:"))
+            {
+                game.screenshot = self
+                    .store_shots
+                    .get(&game.id)
+                    .or_else(|| self.saved_shots.get(&game.id))
+                    .cloned();
+            }
+        }
+        party
+    }
+
+    /// The game in front is about to be paused for the lobby: keep what the
+    /// screen shows as its `live_screenshot` (Windows; elsewhere nothing).
+    fn capture_for_tv(&mut self, game: &GameId) {
+        if !cfg!(windows) || self.front(game) != focus::Front::Game {
+            return;
+        }
+        let started = std::time::Instant::now();
+        let Some(shot) = screenshots::capture_foreground() else {
+            return;
+        };
+        if screenshots::blank(&shot) {
+            info!(%game, "capture for the TV was black; keeping the store screenshot");
+            return;
+        }
+        let Some(uri) = screenshots::data_uri(&shot) else {
+            return;
+        };
+        info!(%game, ms = started.elapsed().as_millis() as u64, "captured the game for the TV");
+        screenshots::save(game, &uri);
+        self.saved_shots.insert(game.clone(), uri.clone());
+        self.live_shots.insert(game.clone(), uri);
     }
 
     /// The party as a game process sees it.
@@ -1915,6 +2004,44 @@ fn spawn_launcher_watch(shared: Arc<Mutex<Shared>>, lobby_game: GameId) {
 /// Off by an env var because talking to another app is a thing macOS asks the
 /// host to approve, and a host who doesn't want GameNight anywhere near their
 /// music should be able to say so without giving up the daemon.
+/// Download the store screenshots the lobby's TV shows (HTTPS URLs in the
+/// published catalogue, which a lobby cannot fetch itself), once each, and
+/// again for games that arrive on the shelf later.
+fn spawn_store_screenshots(shared: Arc<Mutex<Shared>>) {
+    tokio::spawn(async move {
+        loop {
+            let wanted: Vec<(GameId, String)> = {
+                let mut s = shared.lock().await;
+                let library = s.night.snapshot().library;
+                let wanted: Vec<_> = library
+                    .into_iter()
+                    .filter_map(|g| Some((g.id, g.screenshot?)))
+                    .filter(|(id, url)| {
+                        url.starts_with("https://")
+                            && !s.store_shots.contains_key(id)
+                            && !s.store_shot_tries.contains(url)
+                    })
+                    .collect();
+                for (_, url) in &wanted {
+                    s.store_shot_tries.insert(url.clone());
+                }
+                wanted
+            };
+            for (game, url) in wanted {
+                match screenshots::fetch_store(&url).await {
+                    Some(uri) => {
+                        let mut s = shared.lock().await;
+                        s.store_shots.insert(game, uri);
+                        s.broadcast_party();
+                    }
+                    None => warn!(%game, "could not fetch the store screenshot for the TV"),
+                }
+            }
+            tokio::time::sleep(std::time::Duration::from_secs(30)).await;
+        }
+    });
+}
+
 fn spawn_now_playing_watch(shared: Arc<Mutex<Shared>>) {
     if std::env::var_os("GAMENIGHT_NO_MUSIC").is_some() {
         info!("not watching the host's music (GAMENIGHT_NO_MUSIC)");
@@ -2242,6 +2369,7 @@ pub fn demo_library() -> Vec<GameMeta> {
         cover: None,
         icon: None,
         screenshot: None,
+        live_screenshot: None,
         color: Some("#3ddc97".into()),
         emoji: Some("🎲".into()),
         players: Some("1–4".into()),
@@ -2706,6 +2834,7 @@ fn project_meta(
         cover: None,
         icon: None,
         screenshot: None,
+        live_screenshot: None,
         color: None,
         emoji: Some("🛠️".into()),
         players: base.and_then(|b| b.players.clone()),
@@ -2866,6 +2995,9 @@ async fn run_inner(
     }
     if music {
         spawn_now_playing_watch(shared.clone());
+    }
+    if std::env::var("GAMENIGHT_OFFLINE").as_deref() != Ok("1") {
+        spawn_store_screenshots(shared.clone());
     }
     if let Some(lobby_game) = lobby_game {
         let mut s = shared.lock().await;
@@ -3201,7 +3333,7 @@ async fn serve(
                     protocol_version: PROTOCOL_VERSION,
                     godot_sdk: GODOT_SDK_VERSION,
                     party: if role == Role::Lobby {
-                        lobby_snapshot(s.snapshot())
+                        s.lobby_party()
                     } else {
                         s.game_snapshot(&game_id)
                     },
@@ -5062,6 +5194,46 @@ mod desktop_lifetime_tests {
 
 #[cfg(test)]
 mod local_artwork_tests {
+    #[test]
+    fn the_lobby_tv_gets_the_capture_then_the_store_screenshot_as_data() {
+        let mut library = super::demo_library();
+        library[0].screenshot = Some("https://example.com/s.png".into());
+        let game = library[0].id.clone();
+        let mut s = super::Shared::new(library, "127.0.0.1:0".into(), None);
+        s.saved_shots.clear();
+        let shot = |s: &super::Shared| s.lobby_party().library[0].clone();
+        assert_eq!(
+            shot(&s).screenshot,
+            None,
+            "never a URL the lobby cannot fetch"
+        );
+        s.saved_shots
+            .insert(game.clone(), "data:image/png;base64,old".into());
+        assert_eq!(
+            shot(&s).screenshot.as_deref(),
+            Some("data:image/png;base64,old")
+        );
+        s.store_shots
+            .insert(game.clone(), "data:image/png;base64,store".into());
+        assert_eq!(
+            shot(&s).screenshot.as_deref(),
+            Some("data:image/png;base64,store")
+        );
+        assert_eq!(shot(&s).live_screenshot, None);
+        s.live_shots
+            .insert(game.clone(), "data:image/png;base64,live".into());
+        assert_eq!(
+            shot(&s).live_screenshot.as_deref(),
+            Some("data:image/png;base64,live")
+        );
+        assert!(
+            super::game_welcome_snapshot(s.snapshot()).library[0]
+                .live_screenshot
+                .is_none(),
+            "games never get it"
+        );
+    }
+
     #[test]
     fn local_shelf_entries_keep_their_catalogue_art() {
         let mut library = super::demo_library();

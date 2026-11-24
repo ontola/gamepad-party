@@ -1769,6 +1769,13 @@
           ],
           "description": "How to start this game. Absent = the daemon waits for the process to\nshow up on its own (dev mode / externally managed)."
         },
+        "live_screenshot": {
+          "description": "The game as the party left it: a PNG data URI the host captured when\nit last paused this game for the lobby. Lobbies show it on the TV\nbefore `screenshot`. Only in the lobby's party state.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
         "max_players": {
           "format": "uint8",
           "maximum": 255,

@@ -567,6 +567,11 @@ pub struct GameMeta {
     /// Gameplay screenshot, displayed on the lobby TV.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub screenshot: Option<String>,
+    /// The game as the party left it: a PNG data URI the host captured when
+    /// it last paused this game for the lobby. Lobbies show it on the TV
+    /// before `screenshot`. Only in the lobby's party state.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub live_screenshot: Option<String>,
     /// Accent color (`#rrggbb`) for generated covers and highlights.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub color: Option<String>,

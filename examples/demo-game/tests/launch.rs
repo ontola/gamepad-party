@@ -21,6 +21,7 @@ fn spawnable_meta(id: &str) -> GameMeta {
         cover: None,
         icon: None,
         screenshot: None,
+        live_screenshot: None,
         color: None,
         emoji: None,
         players: None,

@@ -3627,7 +3627,7 @@ pub struct ControllerState {
 }
 ```
 
-[Source: crates/gamenight-protocol/src/lib.rs](https://github.com/ontola/gamepad-party/blob/main/crates/gamenight-protocol/src/lib.rs#L1263)
+[Source: crates/gamenight-protocol/src/lib.rs](https://github.com/ontola/gamepad-party/blob/main/crates/gamenight-protocol/src/lib.rs#L1268)
 
 Treat player IDs and controller tokens as opaque values. See [Controllers & players](https://splitscreen.club/docs/controllers) for the matching rules and [Faces & colours](https://splitscreen.club/docs/faces) for rendering player artwork.
 
@@ -3657,7 +3657,7 @@ pub struct ControllerState {
 }
 ```
 
-[Source: crates/gamenight-protocol/src/lib.rs](https://github.com/ontola/gamepad-party/blob/main/crates/gamenight-protocol/src/lib.rs#L1263)
+[Source: crates/gamenight-protocol/src/lib.rs](https://github.com/ontola/gamepad-party/blob/main/crates/gamenight-protocol/src/lib.rs#L1268)
 
 Axes are left X/Y, right X/Y and left/right trigger. Divide signed axis values by 32767. The button bits are A, B, X, Y, LB, RB, Back, Start, LS, RS, Up, Down, Left and Right, beginning at bit zero.
 
@@ -5656,6 +5656,13 @@ this is what makes "what's next" feel like Netflix instead of a file picker.
 
 - `cover` is portrait art; `icon` is the square case-spine image; `screenshot`
   is gameplay imagery for the TV. Missing artwork uses a readable title fallback.
+- In the lobby's `party_state` the desktop host sends `screenshot` as a PNG
+  data URI: the store's (it downloads HTTPS store images itself), or, for a
+  game without one, the host's last capture of it from an earlier night.
+  `live_screenshot` is the game as the party left it: when the host pauses
+  the game in front for the lobby (Back, Alt+Tab), it captures that window
+  (Windows) and keeps it until the game prepares a new match. Show
+  `live_screenshot` first. Games never receive either.
 - `connected_games` says which titles have a live process — overlays show the
   rest as offline (queueable, but they won't warm until their process
   appears).
