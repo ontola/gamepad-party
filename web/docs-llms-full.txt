@@ -4689,12 +4689,13 @@ run with a fixed seed), followed by how many frames to use:
 
 The cuts' `frames` add up to exactly 150. `{frames}` is `skip` plus `frames`,
 and `{w}` and `{h}` are the render size. `cwd` (relative to the recipe) sets
-where a command runs.
+where a command runs, and `env` (on the recipe or on one cut) adds environment
+variables.
 
 ```sh
 python3 gamenight-publish.py clip                        # render, cut, encode, check
 python3 gamenight-publish.py clip --render-size 480x270  # a quick draft
-python3 gamenight-publish.py clip --reuse --only boss    # redo one cut
+python3 gamenight-publish.py clip --only boss            # redo one cut
 GAMENIGHT_API_TOKEN=gn_pub_... python3 gamenight-publish.py clip --reuse --publish
 ```
 

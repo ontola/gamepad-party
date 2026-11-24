@@ -266,13 +266,14 @@ def clip(args):
         folder = out / 'cuts' / cut['name']
         need = cut.get('skip', 0) + cut['frames']
         have = sorted(folder.glob('*.png')) if folder.is_dir() else []
-        if not (args.reuse and len(have) >= need) and (not args.only or cut['name'] in args.only):
+        # --only redoes those cuts and keeps the rest; --reuse keeps every cut that has its frames.
+        if (cut['name'] in args.only) if args.only else not (args.reuse and len(have) >= need):
             shutil.rmtree(folder, ignore_errors=True)
             folder.mkdir(parents=True)
             fill = {'dir': str(folder), 'w': w, 'h': h, 'frames': str(need)}
             command = [str(a).format(**fill) for a in cut['run']]
             print(f"[{cut['name']}] {' '.join(command)}", file=sys.stderr)
-            subprocess.run(command, cwd=base / cut.get('cwd', '.'), env=env, check=True)
+            subprocess.run(command, cwd=base / cut.get('cwd', '.'), env={**env, **{k: str(v) for k, v in cut.get('env', {}).items()}}, check=True)
             have = sorted(folder.glob('*.png'))
         if len(have) < need:
             raise ValueError(f"Cut {cut['name']} made {len(have)} frames, it needs {need} (skip {cut.get('skip', 0)} + {cut['frames']})")
@@ -383,7 +384,7 @@ def main():
     p.add_argument('--recipe', type=Path, default=Path('preview.json'), help='Cuts: a command each that writes PNG frames into {dir}')
     p.add_argument('--out', type=Path, help='Work folder (default build/preview next to the recipe); keep it out of git')
     p.add_argument('--render-size', help='WxH for {w} and {h}, e.g. 480x270 for a quick draft')
-    p.add_argument('--only', action='append', help='Render only this cut again; repeat for more')
+    p.add_argument('--only', action='append', help='Render only this cut again and keep the others; repeat for more')
     p.add_argument('--reuse', action='store_true', help="Keep cuts that already have their frames")
     p.add_argument('--publish', action='store_true', help='Upload the clip and poster to the store (needs GAMENIGHT_API_TOKEN)')
     p.add_argument('--game', help='Defaults to the id in the gamenight.json next to the recipe')

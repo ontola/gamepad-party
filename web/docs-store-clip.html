@@ -88,10 +88,11 @@ run with a fixed seed), followed by how many frames to use:</p>
 </code></pre></div>
 <p>The cuts' <code>frames</code> add up to exactly 150. <code>{frames}</code> is <code>skip</code> plus <code>frames</code>,
 and <code>{w}</code> and <code>{h}</code> are the render size. <code>cwd</code> (relative to the recipe) sets
-where a command runs.</p>
+where a command runs, and <code>env</code> (on the recipe or on one cut) adds environment
+variables.</p>
 <div class="docs-code"><button type="button" class="docs-copy" aria-label="Copy code example">Copy</button><pre><code class="language-sh">python3 gamenight-publish.py clip                        # render, cut, encode, check
 python3 gamenight-publish.py clip --render-size 480x270  # a quick draft
-python3 gamenight-publish.py clip --reuse --only boss    # redo one cut
+python3 gamenight-publish.py clip --only boss            # redo one cut
 GAMENIGHT_API_TOKEN=gn_pub_... python3 gamenight-publish.py clip --reuse --publish
 </code></pre></div>
 <p><code>clip</code> works in <code>build/preview/</code> (keep it out of git). It encodes to the
@@ -125,7 +126,7 @@ why this game is fun without reading its description? If not, revise the edit.</
 <p>The hosted service's <code>deploy/cloud/previews/README.md</code> contains engine-specific
 capture commands and publishing steps. Its <code>PREVIEWS.json</code> records shipped clips.</p>
 
-<footer class="docs-source"><a href="https://github.com/ontola/gamepad-party/blob/main/docs/gameplay-previews.md">Edit this page</a><span data-source-fingerprint="5bf42241a2c8df96685a03c7a48752bcb2f8a6ff9dbb6f3496616d427151737a">Built from repository sources</span></footer>
+<footer class="docs-source"><a href="https://github.com/ontola/gamepad-party/blob/main/docs/gameplay-previews.md">Edit this page</a><span data-source-fingerprint="600852961a769ec98da7b3cbb63e3c68b80d7a6b1d5a11fe36d3117dfa56a4e2">Built from repository sources</span></footer>
 <nav class="docs-pager" aria-label="Adjacent documentation pages"><a href="/docs/publishing"><small>Previous</small>Publish a game</a><a href="/docs/settings"><small>Next</small>Game settings</a></nav></article>
 <aside class="docs-toc" aria-label="On this page"><strong>On this page</strong><a href="#plan-the-five-seconds">Plan the five seconds</a><a href="#make-the-action-legible">Make the action legible</a><a href="#capture-real-gameplay">Capture real gameplay</a><a href="#keep-the-recipe-not-the-video">Keep the recipe, not the video</a><a href="#delivery-and-acceptance">Delivery and acceptance</a></aside>
 <p class="docs-copy-status" role="status" aria-live="polite"></p></main></body></html>
