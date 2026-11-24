@@ -2,6 +2,7 @@
 """Upload a signed Play bundle to internal testing. Never targets production."""
 import json
 import os
+import socket
 from pathlib import Path
 import sys
 
@@ -15,6 +16,9 @@ def publish(bundle, version):
         json.loads(os.environ["GOOGLE_PLAY_SERVICE_ACCOUNT_JSON"]),
         scopes=["https://www.googleapis.com/auth/androidpublisher"],
     )
+    # Play takes minutes to answer for a large bundle (the native host's
+    # library made it ~60 MB bigger); the default 60 s read timeout cut it off.
+    socket.setdefaulttimeout(900)
     service = build("androidpublisher", "v3", credentials=credentials,
                     cache_discovery=False)
     edits = service.edits()
@@ -25,8 +29,8 @@ def publish(bundle, version):
         uploaded = edits.bundles().upload(
             **args,
             media_body=MediaFileUpload(str(bundle), mimetype="application/octet-stream",
-                                      resumable=True),
-        ).execute()
+                                      resumable=True, chunksize=8 * 1024 * 1024),
+        ).execute(num_retries=3)
         if int(uploaded["versionCode"]) != version:
             raise ValueError("Uploaded bundle version does not match this workflow run")
         edits.tracks().update(**args, track="internal", body={
