@@ -24,6 +24,25 @@ class MainActivity : FlutterActivity() {
     private val main = Handler(Looper.getMainLooper())
     private val host by lazy { HostLauncher(this) }
 
+    override fun onCreate(savedInstanceState: android.os.Bundle?) {
+        super.onCreate(savedInstanceState)
+        hostFromIntent(intent)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        hostFromIntent(intent)
+    }
+
+    /// Testing over adb: the host activity isn't exported, so
+    /// `adb shell am start -n io.ontola.gamenight/.MainActivity --es host_query "cloud=off&players=1"`
+    /// starts Host on this phone with that query string.
+    private fun hostFromIntent(intent: Intent?) {
+        val query = intent?.getStringExtra("host_query") ?: return
+        intent.removeExtra("host_query")
+        host.launch("https://splitscreen.club/play/?$query")
+    }
+
     override fun onDestroy() {
         host.destroy()
         super.onDestroy()
