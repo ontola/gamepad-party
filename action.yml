@@ -23,8 +23,8 @@ inputs:
     description: preview or stable
     default: preview
   server:
-    description: GameNight server origin
-    default: https://gamenight.ontola.io
+    description: Splitscreen Club server origin
+    default: https://splitscreen.club
 outputs:
   build-id:
     description: Immutable build ID

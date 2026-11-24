@@ -63,7 +63,10 @@ class Client:
 
     def download(self, url, destination, authenticated=True):
         u = urllib.parse.urlsplit(url)
-        if authenticated and urllib.parse.urlunsplit((u.scheme, u.netloc, '', '', '')).rstrip('/') != self.base:
+        # gamenight.ontola.io is the server's old name; it hands out download
+        # links on it until its public URL moves to splitscreen.club.
+        same = {self.base} | ({'https://gamenight.ontola.io'} if self.base == 'https://splitscreen.club' else set())
+        if authenticated and urllib.parse.urlunsplit((u.scheme, u.netloc, '', '', '')).rstrip('/') not in same:
             raise ValueError('Refusing to send publishing credentials to another server')
         if not authenticated and (u.scheme != 'https' or u.username or u.password):
             raise ValueError('Runtime downloads require HTTPS without account credentials')
@@ -352,7 +355,7 @@ def schema(client, args):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--server', default='https://gamenight.ontola.io')
+    parser.add_argument('--server', default='https://splitscreen.club')
     commands = parser.add_subparsers(dest='command', required=True)
     p = commands.add_parser('push')
     p.add_argument('--game', required=True)
