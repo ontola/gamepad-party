@@ -509,7 +509,7 @@ class _GameDetailPageState extends State<_GameDetailPage> {
       return _Note(blocker == BrowserHostBlocker.phone
           ? 'Plays in the browser on a computer: open splitscreen.club on '
               'the TV computer.'
-          : 'Plays in the browser in Chrome, Edge or Safari.');
+          : 'Plays in the browser in a recent Chrome, Edge, Firefox or Safari.');
     }
     final url =
         Uri.parse('$apiOrigin/play/?game=${Uri.encodeQueryComponent(id)}');

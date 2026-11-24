@@ -66,7 +66,7 @@ void main() {
     await _show(tester, BrowserHostBlocker.browser);
     expect(find.byKey(const ValueKey('host-here')), findsNothing);
     expect(find.text('gamenight.ontola.io/play'), findsOneWidget);
-    expect(find.textContaining('Chrome, Edge or Safari.'), findsWidgets);
+    expect(find.textContaining('has no WebGPU'), findsWidgets);
     await _show(tester, BrowserHostBlocker.phone);
     expect(find.textContaining('A phone is too slow'), findsOneWidget);
   });

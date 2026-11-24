@@ -46,7 +46,7 @@ class HostScreen extends StatelessWidget {
     (
       Icons.tv,
       'Open it on the TV computer',
-      'Chrome, Edge or Safari on the computer that is on the TV. '
+      'Chrome, Edge, Firefox or Safari on the computer that is on the TV. '
           'Nothing to install.',
     ),
     (
@@ -191,7 +191,7 @@ class _OpenElsewhere extends StatelessWidget {
             const SizedBox(height: 8),
             Hint(switch (blocker) {
               BrowserHostBlocker.browser =>
-                'This browser can not run it yet. Use Chrome, Edge or Safari.',
+                'This browser has no WebGPU. Use a recent Chrome, Edge, Firefox or Safari.',
               _ => 'A phone is too slow to be the TV screen, so open it on a '
                   'computer.',
             }),
