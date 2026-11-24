@@ -246,6 +246,8 @@ const RB: u32 = 1 << 5;
 const LB: u32 = 1 << 4;
 /// B (East).
 const B_BUTTON: u32 = 1 << 1;
+/// Y (North).
+const Y_BUTTON: u32 = 1 << 3;
 
 /// A: the press that joins an unseated controller (Joep: only A joins;
 /// any other button or stick just jiggles that controller on the table).
@@ -280,7 +282,7 @@ struct BackHold {
 const BACK_HOLD: Duration = Duration::from_millis(300);
 
 /// Buttons that are chords while Back is held, never game or lobby input.
-const CHORD_BUTTONS: u32 = RB | LB | B_BUTTON;
+const CHORD_BUTTONS: u32 = RB | LB | B_BUTTON | Y_BUTTON;
 
 /// Back and its chords.
 ///
@@ -359,6 +361,10 @@ fn back_chords(
                     hold.acted = true;
                     hold.leave_armed = false;
                 }
+            } else if pressed & Y_BUTTON != 0 {
+                hold.acted = true;
+                hold.leave_armed = false;
+                s.report_bug(&c.controller);
             } else if pressed & B_BUTTON != 0 {
                 if let Some(player) = seated_player(&s.night.snapshot(), &c.controller) {
                     if hold.leave_armed {
@@ -424,6 +430,64 @@ impl Shared {
     }
 }
 
+/// Bug reports from one host at most this often: one press, one report.
+const BUG_REPORT_INTERVAL: Duration = Duration::from_secs(10);
+
+impl Shared {
+    /// Back+Y: report a bug. Screenshot what is on screen (Windows), send it
+    /// to the cloud room with the game in front, then open the room so the
+    /// game waits. The phones at the table are asked what went wrong.
+    pub(crate) fn report_bug(&mut self, controller: &str) {
+        if self
+            .bug_reported
+            .is_some_and(|at| at.elapsed() < BUG_REPORT_INTERVAL)
+        {
+            return;
+        }
+        self.bug_reported = Some(Instant::now());
+        let party = self.night.snapshot();
+        let game = party
+            .active_session
+            .as_ref()
+            .filter(|_| !party.overlay_open)
+            .map(|session| session.game.clone());
+        let started = Instant::now();
+        let shot = screenshots::capture_foreground()
+            .filter(|shot| !screenshots::blank(shot))
+            .and_then(|shot| screenshots::jpeg_data_uri(&shot));
+        info!(
+            game = game.as_ref().map(|g| g.0.as_str()).unwrap_or("room"),
+            screenshot = shot.is_some(),
+            ms = started.elapsed().as_millis() as u64,
+            controller,
+            "Back+Y: bug reported"
+        );
+        let title = game.as_ref().map(|g| title(&party, g));
+        gamenight_local_web::report_bug(serde_json::json!({
+            "id": uuid::Uuid::new_v4(),
+            "app_version": env!("CARGO_PKG_VERSION"),
+            "platform": std::env::consts::OS,
+            "game": game.as_ref().map(|g| g.0.clone()),
+            "title": title,
+            "screenshot": shot,
+        }));
+        let mut change = gamenight_core::activity::Change::new(
+            gamenight_protocol::ActivityKind::Game,
+            match &title {
+                Some(title) => format!("Bug reported in {title}. Say what happened on your phone."),
+                None => "Bug reported. Say what happened on your phone.".into(),
+            },
+        );
+        change.game = game.clone();
+        self.room_log.push(change);
+        if game.is_some() {
+            self.dispatch(Command::OverlayOpened, None);
+        } else {
+            self.apply_effects(vec![Effect::StateChanged], None);
+        }
+    }
+}
+
 fn skip_to_next(s: &mut Shared, skips: &mut usize) {
     info!("Back+RB pressed on a controller; skipping to the next game");
     s.overlay_opened_by_request = None;
@@ -477,6 +541,11 @@ fn back_menu(party: &PartySnapshot, controller: &str, confirm_leave: bool) -> Ba
             label: format!("Previous: {}", title(party, &game)),
         });
     }
+    chords.push(BackChord {
+        button: BackChordButton::Y,
+        action: BackChordAction::ReportBug,
+        label: "Report a bug".into(),
+    });
     let player = seated_player(party, controller);
     if player.is_some() {
         chords.push(BackChord {
@@ -966,7 +1035,7 @@ mod tests {
         let buttons: Vec<_> = menu.chords.iter().map(|c| c.button).collect();
         assert_eq!(
             buttons,
-            vec![BackChordButton::B],
+            vec![BackChordButton::Y, BackChordButton::B],
             "only chords that work now: nothing queued, nothing played before"
         );
         router.route(&mut s, frame(0));
@@ -1000,6 +1069,36 @@ mod tests {
         assert!(
             s.night.snapshot().players.is_empty(),
             "the B under Back never joins again"
+        );
+    }
+
+    #[tokio::test]
+    async fn back_y_reports_a_bug_once_and_tells_the_phones() {
+        let mut s = Shared::new(Vec::new(), "127.0.0.1:0".into(), None);
+        let mut router = InputRouter::default();
+        join(&mut s, &mut router);
+        s.dispatch(Command::OverlayOpened, None);
+        let before = gamenight_local_web::queued_bug_reports().len();
+        router.route(&mut s, frame(BACK));
+        router.route(&mut s, frame(BACK | Y_BUTTON));
+        router.route(&mut s, frame(BACK));
+        router.route(&mut s, frame(BACK | Y_BUTTON));
+        router.route(&mut s, frame(0));
+        let queued = gamenight_local_web::queued_bug_reports();
+        assert_eq!(queued.len(), before + 1, "one report per 10 seconds");
+        let report = queued.last().unwrap();
+        assert_eq!(report["app_version"], env!("CARGO_PKG_VERSION"));
+        assert!(report["id"].as_str().is_some_and(|id| id.len() == 36));
+        assert!(s
+            .room_log
+            .entries()
+            .iter()
+            .any(|e| e.text.starts_with("Bug reported")));
+        assert!(s.night.snapshot().overlay_open, "a chord is no tap");
+        assert_eq!(
+            s.night.snapshot().players.len(),
+            1,
+            "Y under Back is no input"
         );
     }
 

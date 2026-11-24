@@ -33,7 +33,9 @@ alongside it. Select Start game to launch the head of the queue. Back returns to
 the lobby (when it is let go) or resumes an overlay-paused game. Hold Back to
 see the chords:
 Back+RB skips straight to the next game, Back+LB goes back to the previous
-game and Back+B (press B twice) leaves the party. Lobbies draw the host's
+game, Back+B (press B twice) leaves the party and Back+Y reports a bug (a
+screenshot goes to Splitscreen Club, the phones at the table are asked what
+went wrong). Lobbies draw the host's
 `back_menu` while someone holds Back. Y leaves that controller's seat.
 
 The controller hint bar shows **X Play now · A Queue · LT Previous · RT Next**

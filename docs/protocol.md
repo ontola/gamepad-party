@@ -295,12 +295,14 @@ screen and starts the next round itself. Players can keep playing indefinitely.
 Back/Select pauses and opens the lobby when it is let go; Resume continues.
 The host owns Back chords, games need no code: while Back is held, RB skips
 straight to the next game in the queue (RB then Back works too), LB goes back
-to the previous game, and B twice takes that controller's player out of the
-party. After a chord, letting go of Back does nothing, so the lobby never shows
+to the previous game, B twice takes that controller's player out of the
+party, and Y reports a bug: the host screenshots the game on screen, sends it
+to the cloud room and opens the lobby, and the phones at the table are asked
+what went wrong. After a chord, letting go of Back does nothing, so the lobby never shows
 in between. A game's own `request_overlay` for that same Back press is folded
 into it. In the lobby a Back tap closes it; holding Back for 300 ms shows
 `back_menu` in the party state (the controller, its player and the chords that
-work right now) for lobbies to draw. RB, LB and B under a held Back never reach
+work right now) for lobbies to draw. RB, LB, B and Y under a held Back never reach
 games or lobbies. Play next explicitly
 switches games, while Skip changes only the queued next game. A prepared next
 session stays ready across rounds. Pausing also freezes the game's results timer.

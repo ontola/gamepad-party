@@ -115,6 +115,11 @@
           "const": "leave",
           "description": "Take this controller's player out of the party (asks to confirm).",
           "type": "string"
+        },
+        {
+          "const": "report_bug",
+          "description": "Report a bug: screenshot the game on screen and ask the phones at\nthe table what went wrong.",
+          "type": "string"
         }
       ]
     },
@@ -123,7 +128,8 @@
       "enum": [
         "rb",
         "lb",
-        "b"
+        "b",
+        "y"
       ],
       "type": "string"
     },

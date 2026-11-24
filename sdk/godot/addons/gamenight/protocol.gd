@@ -117,11 +117,13 @@ const ACTIVITY_KIND_GAME := "game"
 const BACK_CHORD_ACTION_NEXT := "next"
 const BACK_CHORD_ACTION_PREVIOUS := "previous"
 const BACK_CHORD_ACTION_LEAVE := "leave"
+const BACK_CHORD_ACTION_REPORT_BUG := "report_bug"
 
 ## BackChordButton
 const BACK_CHORD_BUTTON_RB := "rb"
 const BACK_CHORD_BUTTON_LB := "lb"
 const BACK_CHORD_BUTTON_B := "b"
+const BACK_CHORD_BUTTON_Y := "y"
 
 ## GameIssueKind
 const GAME_ISSUE_KIND_CLOSED := "closed"

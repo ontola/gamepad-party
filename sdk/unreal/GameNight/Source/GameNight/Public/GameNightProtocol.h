@@ -120,11 +120,13 @@ inline constexpr const char* ACTIVITY_KIND_GAME = "game";
 inline constexpr const char* BACK_CHORD_ACTION_NEXT = "next";
 inline constexpr const char* BACK_CHORD_ACTION_PREVIOUS = "previous";
 inline constexpr const char* BACK_CHORD_ACTION_LEAVE = "leave";
+inline constexpr const char* BACK_CHORD_ACTION_REPORT_BUG = "report_bug";
 
 // BackChordButton
 inline constexpr const char* BACK_CHORD_BUTTON_RB = "rb";
 inline constexpr const char* BACK_CHORD_BUTTON_LB = "lb";
 inline constexpr const char* BACK_CHORD_BUTTON_B = "b";
+inline constexpr const char* BACK_CHORD_BUTTON_Y = "y";
 
 // GameIssueKind
 inline constexpr const char* GAME_ISSUE_KIND_CLOSED = "closed";

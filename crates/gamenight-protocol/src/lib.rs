@@ -940,6 +940,7 @@ pub enum BackChordButton {
     Rb,
     Lb,
     B,
+    Y,
 }
 
 /// What a Back chord does.
@@ -953,6 +954,9 @@ pub enum BackChordAction {
     Previous,
     /// Take this controller's player out of the party (asks to confirm).
     Leave,
+    /// Report a bug: screenshot the game on screen and ask the phones at
+    /// the table what went wrong.
+    ReportBug,
 }
 
 /// One chord the Back menu offers right now.

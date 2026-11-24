@@ -216,7 +216,57 @@ mod configuration_tests {
     }
 }
 
+/// Bugs reported at the table (Back+Y), waiting for the cloud room.
+static BUG_REPORTS: Mutex<Vec<serde_json::Value>> = Mutex::new(Vec::new());
+static BUG_REPORTED: tokio::sync::Notify = tokio::sync::Notify::const_new();
+
+/// Send a bug report to the cloud room (`/v1/lobbies/bug-report`): `id`,
+/// `app_version`, `platform`, the `game` in front, its `game_version` and
+/// `title`, and a JPEG `screenshot` data URI. The seated phones are then
+/// asked what went wrong. Without a cloud room it waits for one.
+pub fn report_bug(report: serde_json::Value) {
+    if let Ok(mut queue) = BUG_REPORTS.lock() {
+        // A night offline keeps the latest few, not every press.
+        if queue.len() >= 4 {
+            queue.remove(0);
+        }
+        queue.push(report);
+    }
+    BUG_REPORTED.notify_one();
+}
+
+/// Bug reports not sent yet (for tests).
+#[doc(hidden)]
+pub fn queued_bug_reports() -> Vec<serde_json::Value> {
+    BUG_REPORTS.lock().unwrap().clone()
+}
+
 impl Bridge {
+    /// Post queued bug reports. Kept for a later try when the cloud fails.
+    async fn send_bug_reports(&self, token: &str) {
+        let queued: Vec<_> = std::mem::take(&mut *BUG_REPORTS.lock().unwrap());
+        for report in queued {
+            let sent = self
+                .http
+                .post(format!("{}/v1/lobbies/bug-report", self.origin))
+                .bearer_auth(token)
+                .timeout(Duration::from_secs(60))
+                .json(&report)
+                .send()
+                .await;
+            match sent.map(|r| r.status().as_u16()) {
+                Ok(200) => tracing::info!("bug report sent to the cloud room"),
+                // Refused for good (bad image, too big): retrying will not help.
+                Ok(400 | 413) => tracing::warn!("the cloud refused a bug report"),
+                _ => {
+                    tracing::warn!("could not send a bug report; trying again later");
+                    report_bug(report);
+                    return;
+                }
+            }
+        }
+    }
+
     pub fn configured() -> Option<Self> {
         let origin = service_origin(
             std::env::var("GAMENIGHT_CLOUD_URL").ok().as_deref(),
@@ -438,6 +488,7 @@ impl Bridge {
             tokio::select! {
                 _ = tokio::time::sleep(Duration::from_secs(3)) => {},
                 _ = self.refresh.notified() => {},
+                _ = BUG_REPORTED.notified() => {},
             }
             let Some((seats, party, store_agent)) = self.snapshot(&state).await else {
                 continue;
@@ -467,6 +518,9 @@ impl Bridge {
                 acknowledged = None;
                 receipt = None;
                 sent_activity = None;
+            }
+            if !BUG_REPORTS.lock().unwrap().is_empty() {
+                self.send_bug_reports(token.as_deref().unwrap()).await;
             }
             let mut discovery = discovery::snapshot(&party, &acknowledged);
             discovery["agent_receipt"] = receipt.clone().unwrap_or(serde_json::Value::Null);
@@ -1059,5 +1113,60 @@ mod retire_tests {
         assert_eq!(still_vacant(&local, vacated.clone(), &present), vec![other]);
         // A player that already left needs no new name.
         assert!(still_vacant(&local, vacated, &[seat, phone]).is_empty());
+    }
+}
+
+#[cfg(test)]
+mod bug_report_tests {
+    use super::*;
+    use axum::{routing::post, Json, Router};
+    use tokio::net::TcpListener;
+
+    #[tokio::test]
+    async fn bug_reports_reach_the_cloud_room_and_wait_when_it_is_down() {
+        let up = Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let received: Arc<Mutex<Vec<serde_json::Value>>> = Arc::default();
+        let app = Router::new().route(
+            "/v1/lobbies/bug-report",
+            post({
+                let (up, received) = (up.clone(), received.clone());
+                move |headers: axum::http::HeaderMap, Json(body): Json<serde_json::Value>| {
+                    let (up, received) = (up.clone(), received.clone());
+                    async move {
+                        assert_eq!(headers["authorization"], "Bearer room-token");
+                        if !up.load(std::sync::atomic::Ordering::SeqCst) {
+                            return axum::http::StatusCode::SERVICE_UNAVAILABLE;
+                        }
+                        received.lock().unwrap().push(body);
+                        axum::http::StatusCode::OK
+                    }
+                }
+            }),
+        );
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let origin = format!("http://{}", listener.local_addr().unwrap());
+        tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
+        let bridge = Bridge {
+            origin,
+            http: reqwest::Client::new(),
+            session: Arc::default(),
+            seats: Arc::default(),
+            waiting: Arc::default(),
+            pairing: Arc::default(),
+            pairing_request: Arc::default(),
+            refresh: Arc::default(),
+        };
+        let id = uuid::Uuid::new_v4().to_string();
+        report_bug(serde_json::json!({"id": id, "app_version": "1", "platform": "windows"}));
+        bridge.send_bug_reports("room-token").await;
+        assert!(received.lock().unwrap().is_empty());
+        assert!(
+            queued_bug_reports().iter().any(|r| r["id"] == id),
+            "kept for later"
+        );
+        up.store(true, std::sync::atomic::Ordering::SeqCst);
+        bridge.send_bug_reports("room-token").await;
+        assert!(received.lock().unwrap().iter().any(|r| r["id"] == id));
+        assert!(!queued_bug_reports().iter().any(|r| r["id"] == id));
     }
 }

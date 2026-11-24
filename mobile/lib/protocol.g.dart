@@ -103,10 +103,10 @@ const String msgWelcome = 'welcome';
 const List<String> activityKindValues = ['joined', 'left', 'controller', 'phone', 'game_started', 'setting', 'profile', 'round', 'action', 'game'];
 
 /// BackChordAction
-const List<String> backChordActionValues = ['next', 'previous', 'leave'];
+const List<String> backChordActionValues = ['next', 'previous', 'leave', 'report_bug'];
 
 /// BackChordButton
-const List<String> backChordButtonValues = ['rb', 'lb', 'b'];
+const List<String> backChordButtonValues = ['rb', 'lb', 'b', 'y'];
 
 /// GameIssueKind
 const List<String> gameIssueKindValues = ['closed', 'disconnected', 'exited_unexpectedly', 'failed_to_start', 'startup_timeout'];

@@ -3129,7 +3129,9 @@ alongside it. Select Start game to launch the head of the queue. Back returns to
 the lobby (when it is let go) or resumes an overlay-paused game. Hold Back to
 see the chords:
 Back+RB skips straight to the next game, Back+LB goes back to the previous
-game and Back+B (press B twice) leaves the party. Lobbies draw the host's
+game, Back+B (press B twice) leaves the party and Back+Y reports a bug (a
+screenshot goes to Splitscreen Club, the phones at the table are asked what
+went wrong). Lobbies draw the host's
 `back_menu` while someone holds Back. Y leaves that controller's seat.
 
 The controller hint bar shows **X Play now · A Queue · LT Previous · RT Next**
@@ -3571,7 +3573,7 @@ typedef enum {
 } gn_event_type;
 ```
 
-[Source: sdk/c/gamenight.h](https://github.com/ontola/gamepad-party/blob/main/sdk/c/gamenight.h#L277)
+[Source: sdk/c/gamenight.h](https://github.com/ontola/gamepad-party/blob/main/sdk/c/gamenight.h#L279)
 
 On Prepare, load your level while hidden, then call `gn_ready`. Start shows play. Pause freezes simulation and audio; Resume restores them. Dispose frees session resources. Keep the socket alive for the next Prepare.
 
@@ -3627,7 +3629,7 @@ pub struct ControllerState {
 }
 ```
 
-[Source: crates/gamenight-protocol/src/lib.rs](https://github.com/ontola/gamepad-party/blob/main/crates/gamenight-protocol/src/lib.rs#L1268)
+[Source: crates/gamenight-protocol/src/lib.rs](https://github.com/ontola/gamepad-party/blob/main/crates/gamenight-protocol/src/lib.rs#L1272)
 
 Treat player IDs and controller tokens as opaque values. See [Controllers & players](https://splitscreen.club/docs/controllers) for the matching rules and [Faces & colours](https://splitscreen.club/docs/faces) for rendering player artwork.
 
@@ -3657,7 +3659,7 @@ pub struct ControllerState {
 }
 ```
 
-[Source: crates/gamenight-protocol/src/lib.rs](https://github.com/ontola/gamepad-party/blob/main/crates/gamenight-protocol/src/lib.rs#L1268)
+[Source: crates/gamenight-protocol/src/lib.rs](https://github.com/ontola/gamepad-party/blob/main/crates/gamenight-protocol/src/lib.rs#L1272)
 
 Axes are left X/Y, right X/Y and left/right trigger. Divide signed axis values by 32767. The button bits are A, B, X, Y, LB, RB, Back, Start, LS, RS, Up, Down, Left and Right, beginning at bit zero.
 
@@ -5267,12 +5269,14 @@ screen and starts the next round itself. Players can keep playing indefinitely.
 Back/Select pauses and opens the lobby when it is let go; Resume continues.
 The host owns Back chords, games need no code: while Back is held, RB skips
 straight to the next game in the queue (RB then Back works too), LB goes back
-to the previous game, and B twice takes that controller's player out of the
-party. After a chord, letting go of Back does nothing, so the lobby never shows
+to the previous game, B twice takes that controller's player out of the
+party, and Y reports a bug: the host screenshots the game on screen, sends it
+to the cloud room and opens the lobby, and the phones at the table are asked
+what went wrong. After a chord, letting go of Back does nothing, so the lobby never shows
 in between. A game's own `request_overlay` for that same Back press is folded
 into it. In the lobby a Back tap closes it; holding Back for 300 ms shows
 `back_menu` in the party state (the controller, its player and the chords that
-work right now) for lobbies to draw. RB, LB and B under a held Back never reach
+work right now) for lobbies to draw. RB, LB, B and Y under a held Back never reach
 games or lobbies. Play next explicitly
 switches games, while Skip changes only the queued next game. A prepared next
 session stays ready across rounds. Pausing also freezes the game's results timer.

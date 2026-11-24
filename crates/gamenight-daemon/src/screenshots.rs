@@ -60,6 +60,37 @@ pub(crate) fn data_uri(image: &image::RgbaImage) -> Option<String> {
     None
 }
 
+/// A JPEG data URI of `image` for a bug report: full detail up to 1920
+/// pixels wide, small enough to send (the cloud takes up to 3 MB).
+pub(crate) fn jpeg_data_uri(image: &image::RgbaImage) -> Option<String> {
+    use base64::Engine;
+    let (w, h) = image.dimensions();
+    if w == 0 || h == 0 {
+        return None;
+    }
+    let width = w.min(1920);
+    let height = ((h as u64 * width as u64) / w as u64).max(1) as u32;
+    let small = image::DynamicImage::ImageRgba8(if width == w {
+        image.clone()
+    } else {
+        image::imageops::resize(image, width, height, image::imageops::FilterType::Triangle)
+    })
+    .to_rgb8();
+    for quality in [85, 70, 50] {
+        let mut jpeg = Vec::new();
+        image::codecs::jpeg::JpegEncoder::new_with_quality(&mut jpeg, quality)
+            .encode_image(&small)
+            .ok()?;
+        if jpeg.len() <= 2_500_000 {
+            return Some(format!(
+                "data:image/jpeg;base64,{}",
+                base64::engine::general_purpose::STANDARD.encode(jpeg)
+            ));
+        }
+    }
+    None
+}
+
 /// Nearly every pixel black: a capture of an exclusive-fullscreen game or
 /// a window not drawn yet. Not worth putting on the TV.
 pub(crate) fn blank(image: &image::RgbaImage) -> bool {
@@ -209,6 +240,22 @@ pub(crate) fn capture_foreground() -> Option<image::RgbaImage> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn bug_screenshots_are_jpeg_and_at_most_1920_wide() {
+        use base64::Engine;
+        let shot = image::RgbaImage::from_fn(2560, 1440, |x, y| {
+            image::Rgba([(x % 255) as u8, (y % 255) as u8, 90, 255])
+        });
+        let uri = jpeg_data_uri(&shot).unwrap();
+        let data = uri.strip_prefix("data:image/jpeg;base64,").unwrap();
+        let bytes = base64::engine::general_purpose::STANDARD
+            .decode(data)
+            .unwrap();
+        let decoded = image::load_from_memory(&bytes).unwrap();
+        assert_eq!((decoded.width(), decoded.height()), (1920, 1080));
+        assert!(bytes.len() <= 2_500_000);
+    }
 
     #[test]
     fn a_capture_becomes_a_tv_sized_png_and_black_frames_are_skipped() {

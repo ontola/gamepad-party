@@ -6,6 +6,7 @@ use axum::{
     Json, Router,
 };
 mod cloud;
+pub use cloud::{queued_bug_reports, report_bug};
 mod companion;
 mod dev_catalog;
 mod dev_web;

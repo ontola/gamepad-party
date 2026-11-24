@@ -391,12 +391,14 @@ screen and starts the next round itself. Players can keep playing indefinitely.
 Back/Select pauses and opens the lobby when it is let go; Resume continues.
 The host owns Back chords, games need no code: while Back is held, RB skips
 straight to the next game in the queue (RB then Back works too), LB goes back
-to the previous game, and B twice takes that controller's player out of the
-party. After a chord, letting go of Back does nothing, so the lobby never shows
+to the previous game, B twice takes that controller's player out of the
+party, and Y reports a bug: the host screenshots the game on screen, sends it
+to the cloud room and opens the lobby, and the phones at the table are asked
+what went wrong. After a chord, letting go of Back does nothing, so the lobby never shows
 in between. A game's own <code>request_overlay</code> for that same Back press is folded
 into it. In the lobby a Back tap closes it; holding Back for 300 ms shows
 <code>back_menu</code> in the party state (the controller, its player and the chords that
-work right now) for lobbies to draw. RB, LB and B under a held Back never reach
+work right now) for lobbies to draw. RB, LB, B and Y under a held Back never reach
 games or lobbies. Play next explicitly
 switches games, while Skip changes only the queued next game. A prepared next
 session stays ready across rounds. Pausing also freezes the game's results timer.</p>
@@ -1172,7 +1174,7 @@ fallback colours. When a colour becomes available, a player waiting for that
 preference receives it. Games can still use team colours when required by their
 rules. Older profiles without this field retain automatic colour selection.</p>
 
-<footer class="docs-source"><a href="https://github.com/ontola/gamepad-party/blob/main/docs/protocol.md">Edit this page</a><span data-source-fingerprint="af66769b4ae4519345f87772f39cefa05fdf15c30a10dcac9e0be86ed9f6c749">Built from repository sources</span></footer>
+<footer class="docs-source"><a href="https://github.com/ontola/gamepad-party/blob/main/docs/protocol.md">Edit this page</a><span data-source-fingerprint="4cc2d9a0757f9262c1b1fda705c429b5a6cb0462a025c7f625994b2de6c35407">Built from repository sources</span></footer>
 <nav class="docs-pager" aria-label="Adjacent documentation pages"><a href="/docs/settings"><small>Previous</small>Game settings</a></nav></article>
 <aside class="docs-toc" aria-label="On this page"><strong>On this page</strong><a href="#transport">Transport</a><a href="#roles">Roles</a><a href="#session-lifecycle">Session lifecycle</a><a href="#party-commands-overlay-daemon">Party commands (overlay → daemon)</a><a href="#party-state-daemon-overlays">Party state (daemon → overlays)</a><a href="#room-log">Room log</a><a href="#phone-buttons">Phone buttons</a><a href="#the-hosts-music">The host&#x27;s music</a><a href="#match-settings">Match settings</a><a href="#phone-screens">Phone screens</a><a href="#plain-text-requests">Plain-text requests</a><a href="#the-night-end-to-end">The night, end to end</a><a href="#rules-the-daemon-enforces">Rules the daemon enforces</a><a href="#errors">Errors</a><a href="#future-kept-off-v1-on-purpose">Future (kept off v1 on purpose)</a><a href="#player-activity-sleep-and-joining-during-play">Player activity, sleep and joining during play</a><a href="#circular-player-faces">Circular player faces</a><a href="#session-diagnostics">Session diagnostics</a><a href="#preferred-player-colours">Preferred player colours</a></aside>
 <p class="docs-copy-status" role="status" aria-live="polite"></p></main></body></html>

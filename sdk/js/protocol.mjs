@@ -872,12 +872,14 @@ export const ENUMS = {
   "BackChordAction": [
     "next",
     "previous",
-    "leave"
+    "leave",
+    "report_bug"
   ],
   "BackChordButton": [
     "rb",
     "lb",
-    "b"
+    "b",
+    "y"
   ],
   "GameIssueKind": [
     "closed",
@@ -974,13 +976,15 @@ export const ActivityKind = Object.freeze({
 export const BackChordAction = Object.freeze({
   "NEXT": "next",
   "PREVIOUS": "previous",
-  "LEAVE": "leave"
+  "LEAVE": "leave",
+  "REPORT_BUG": "report_bug"
 });
 
 export const BackChordButton = Object.freeze({
   "RB": "rb",
   "LB": "lb",
-  "B": "b"
+  "B": "b",
+  "Y": "y"
 });
 
 export const GameIssueKind = Object.freeze({

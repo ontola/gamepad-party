@@ -125,6 +125,7 @@ namespace GameNightSdk
             public const string Next = "next";
             public const string Previous = "previous";
             public const string Leave = "leave";
+            public const string ReportBug = "report_bug";
         }
 
         public static class BackChordButton
@@ -132,6 +133,7 @@ namespace GameNightSdk
             public const string Rb = "rb";
             public const string Lb = "lb";
             public const string B = "b";
+            public const string Y = "y";
         }
 
         public static class GameIssueKind

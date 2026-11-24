@@ -186,6 +186,8 @@ struct Shared {
     lobbies: Vec<gamenight_protocol::LobbyChoice>,
     /// What happened tonight, for phones to read back.
     room_log: activity::RoomLog,
+    /// The last Back+Y bug report, to send one per press.
+    bug_reported: Option<std::time::Instant>,
 }
 
 /// The update handoff with the desktop launcher. The launcher downloads in
@@ -458,6 +460,7 @@ impl Shared {
             lobby_paths: None,
             lobbies: Vec::new(),
             room_log,
+            bug_reported: None,
         }
     }
 

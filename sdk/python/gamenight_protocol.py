@@ -117,11 +117,13 @@ ACTIVITY_KIND_GAME = "game"
 BACK_CHORD_ACTION_NEXT = "next"
 BACK_CHORD_ACTION_PREVIOUS = "previous"
 BACK_CHORD_ACTION_LEAVE = "leave"
+BACK_CHORD_ACTION_REPORT_BUG = "report_bug"
 
 # BackChordButton
 BACK_CHORD_BUTTON_RB = "rb"
 BACK_CHORD_BUTTON_LB = "lb"
 BACK_CHORD_BUTTON_B = "b"
+BACK_CHORD_BUTTON_Y = "y"
 
 # GameIssueKind
 GAME_ISSUE_KIND_CLOSED = "closed"
@@ -970,12 +972,14 @@ ENUMS = {
     "BackChordAction": [
         "next",
         "previous",
-        "leave"
+        "leave",
+        "report_bug"
     ],
     "BackChordButton": [
         "rb",
         "lb",
-        "b"
+        "b",
+        "y"
     ],
     "GameIssueKind": [
         "closed",

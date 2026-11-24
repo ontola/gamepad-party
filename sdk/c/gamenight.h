@@ -178,11 +178,13 @@ extern "C" {
 #define GN_BACK_CHORD_ACTION_NEXT "next"
 #define GN_BACK_CHORD_ACTION_PREVIOUS "previous"
 #define GN_BACK_CHORD_ACTION_LEAVE "leave"
+#define GN_BACK_CHORD_ACTION_REPORT_BUG "report_bug"
 
 /* BackChordButton */
 #define GN_BACK_CHORD_BUTTON_RB "rb"
 #define GN_BACK_CHORD_BUTTON_LB "lb"
 #define GN_BACK_CHORD_BUTTON_B "b"
+#define GN_BACK_CHORD_BUTTON_Y "y"
 
 /* GameIssueKind */
 #define GN_GAME_ISSUE_KIND_CLOSED "closed"
