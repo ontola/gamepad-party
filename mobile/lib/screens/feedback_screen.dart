@@ -1,17 +1,31 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 
+import '../account.dart' show TableBug;
 import '../reports.dart';
 import '../theme.dart';
 import '../voice_feedback.dart';
 
 class FeedbackScreen extends StatefulWidget {
   const FeedbackScreen(
-      {super.key, required this.reports, this.voice, this.initialGame});
+      {super.key,
+      required this.reports,
+      this.voice,
+      this.initialGame,
+      this.bug,
+      this.bugScreenshot,
+      this.onBug});
   final ReportService reports;
   final VoiceFeedback? voice;
   final String? initialGame;
+
+  /// Describing a bug reported at the table (Back+Y, F4): no target to
+  /// pick, the host's screenshot on top, and the words go to that report.
+  final TableBug? bug;
+  final Future<Uint8List?>? bugScreenshot;
+  final Future<void> Function(String text)? onBug;
 
   @override
   State<FeedbackScreen> createState() => _FeedbackScreenState();
@@ -33,10 +47,13 @@ class _FeedbackScreenState extends State<FeedbackScreen>
   void initState() {
     super.initState();
     _voice = widget.voice ?? VoiceFeedback.instance;
-    _draft = TextEditingController(text: widget.reports.draft);
-    _game = widget.reports.draft.isNotEmpty
-        ? widget.reports.draftGame
-        : widget.initialGame ?? widget.reports.currentGame;
+    _draft = TextEditingController(
+        text: widget.bug != null ? '' : widget.reports.draft);
+    _game = widget.bug != null
+        ? widget.bug!.game
+        : widget.reports.draft.isNotEmpty
+            ? widget.reports.draftGame
+            : widget.initialGame ?? widget.reports.currentGame;
     _lastVoiceText = _voice.text;
     _voice.addListener(_speechChanged);
     WidgetsBinding.instance.addObserver(this);
@@ -71,6 +88,8 @@ class _FeedbackScreenState extends State<FeedbackScreen>
   }
 
   void _saveDraft() {
+    // A bug's words belong to that report, not the feedback draft.
+    if (widget.bug != null) return;
     unawaited(widget.reports
         .saveDraft(_draft.text, game: _game)
         .catchError((Object _) {
@@ -125,8 +144,11 @@ class _FeedbackScreenState extends State<FeedbackScreen>
     _focus.unfocus();
     await _voice.cancel();
     try {
-      final delivered =
-          await widget.reports.submitFeedback(_draft.text.trim(), game: _game);
+      final onBug = widget.onBug;
+      final delivered = onBug != null
+          ? await onBug(_draft.text.trim()).then((_) => true)
+          : await widget.reports
+              .submitFeedback(_draft.text.trim(), game: _game);
       if (mounted) {
         setState(() {
           _delivered = delivered;
@@ -148,7 +170,9 @@ class _FeedbackScreenState extends State<FeedbackScreen>
     final recording = _voice.listening;
     final draft = _draft.text.trim().isNotEmpty;
     return Scaffold(
-      appBar: AppBar(title: const Text('Send feedback')),
+      appBar: AppBar(
+          title:
+              Text(widget.bug != null ? 'Describe the bug' : 'Send feedback')),
       body: SafeArea(
         child: Center(
           child: ConstrainedBox(
@@ -158,27 +182,31 @@ class _FeedbackScreenState extends State<FeedbackScreen>
                 : ListView(
                     padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
                     children: [
-                      const Text('Feedback for',
-                          style: TextStyle(
-                              fontSize: 14, fontWeight: FontWeight.w600)),
-                      const SizedBox(height: 8),
-                      Wrap(spacing: 8, runSpacing: 8, children: [
-                        ChoiceChip(
-                            key: const ValueKey('feedback-target-club'),
-                            label: const Text('Splitscreen Club'),
-                            selected: _game == null,
-                            onSelected: _sending || recording
-                                ? null
-                                : (_) => _pickGame(null)),
-                        _gamePicker(locked: _sending || recording),
-                      ]),
-                      const SizedBox(height: 5),
-                      Text(
-                          _game == null
-                              ? 'Sent to the Splitscreen Club team.'
-                              : 'Sent to the developer of ${_gameTitle(_game!)}.',
-                          style: const TextStyle(
-                              color: GnColors.muted, fontSize: 12)),
+                      if (widget.bug != null)
+                        ..._bugHeader()
+                      else ...[
+                        const Text('Feedback for',
+                            style: TextStyle(
+                                fontSize: 14, fontWeight: FontWeight.w600)),
+                        const SizedBox(height: 8),
+                        Wrap(spacing: 8, runSpacing: 8, children: [
+                          ChoiceChip(
+                              key: const ValueKey('feedback-target-club'),
+                              label: const Text('Splitscreen Club'),
+                              selected: _game == null,
+                              onSelected: _sending || recording
+                                  ? null
+                                  : (_) => _pickGame(null)),
+                          _gamePicker(locked: _sending || recording),
+                        ]),
+                        const SizedBox(height: 5),
+                        Text(
+                            _game == null
+                                ? 'Sent to the Splitscreen Club team.'
+                                : 'Sent to the developer of ${_gameTitle(_game!)}.',
+                            style: const TextStyle(
+                                color: GnColors.muted, fontSize: 12)),
+                      ],
                       const SizedBox(height: 20),
                       Container(
                         padding: const EdgeInsets.fromLTRB(20, 16, 20, 4),
@@ -345,9 +373,11 @@ class _FeedbackScreenState extends State<FeedbackScreen>
                   const TextStyle(fontSize: 26, fontWeight: FontWeight.w700)),
           const SizedBox(height: 12),
           Text(
-              _delivered!
-                  ? 'Your feedback helps make the next Splitscreen Club better.'
-                  : 'Your feedback is saved on this phone and will be retried when the app can connect.',
+              _delivered! && widget.bug != null
+                  ? 'Your words and the screenshot are with the people who can fix it.'
+                  : _delivered!
+                      ? 'Your feedback helps make the next Splitscreen Club better.'
+                      : 'Your feedback is saved on this phone and will be retried when the app can connect.',
               textAlign: TextAlign.center,
               style: const TextStyle(color: GnColors.muted, height: 1.5)),
           const SizedBox(height: 28),
@@ -358,6 +388,30 @@ class _FeedbackScreenState extends State<FeedbackScreen>
                   child: const Text('Done'))),
         ]),
       );
+
+  List<Widget> _bugHeader() {
+    final bug = widget.bug!;
+    final title =
+        bug.title ?? (bug.game != null ? _gameTitle(bug.game!) : null);
+    return [
+      Text(title != null ? 'Bug in $title' : 'Bug at the table',
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+      const SizedBox(height: 4),
+      const Text(
+          'Someone reported a bug at the table. What went wrong? Your words go with this screenshot.',
+          style: TextStyle(color: GnColors.muted, fontSize: 13, height: 1.4)),
+      const SizedBox(height: 12),
+      FutureBuilder<Uint8List?>(
+        future: widget.bugScreenshot,
+        builder: (context, shot) => shot.data == null
+            ? const SizedBox.shrink()
+            : ClipRRect(
+                key: const ValueKey('bug-screenshot'),
+                borderRadius: BorderRadius.circular(12),
+                child: Image.memory(shot.data!, fit: BoxFit.cover)),
+      ),
+    ];
+  }
 
   /// Games to offer in the picker: the one this page was opened for, the
   /// game on the table and recently played games, newest first.

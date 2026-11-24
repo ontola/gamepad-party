@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../account.dart' show TableBug;
 import '../app_state.dart';
+import '../report_scope.dart';
 import '../link.dart';
 import '../navigation/host_room.dart';
 import '../theme.dart';
@@ -9,6 +11,7 @@ import '../widgets/name_dialog.dart';
 import '../widgets/onboarding.dart';
 import '../widgets/room_code_field.dart';
 import 'scanner_screen.dart';
+import 'feedback_screen.dart';
 import 'game_screen.dart';
 import 'playlist_screen.dart';
 import 'room_log_screen.dart';
@@ -190,15 +193,19 @@ class RoomScreenState extends State<RoomScreen> {
             label: const Text('Leave room'),
           ),
         );
+        final bug = state.pendingBug;
+        final meet = state.metPlayer
+            ? null
+            : MeetYourPlayer(
+                key: const ValueKey('meet-player-banner'),
+                state: state,
+              );
         final game = GameScreen(
           state: state,
           onJoin: () {},
-          above: state.metPlayer
-              ? null
-              : MeetYourPlayer(
-                  key: const ValueKey('meet-player-banner'),
-                  state: state,
-                ),
+          above: bug == null
+              ? meet
+              : Column(children: [_bugCard(bug), if (meet != null) meet]),
           below: [...cards, if (!state.inHostedRoom) leave],
         );
         // A game's phone screen fills the page, so the way out stays on top.
@@ -211,6 +218,81 @@ class RoomScreenState extends State<RoomScreen> {
           ],
         );
       },
+    );
+  }
+
+  /// Someone at the table pressed Back+Y (or F4): ask this phone what went
+  /// wrong, with the host's screenshot.
+  Widget _bugCard(TableBug bug) {
+    final title = bug.title ?? 'the room';
+    return Container(
+      key: const ValueKey('table-bug'),
+      margin: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
+      decoration: BoxDecoration(
+        color: GnColors.card,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: GnColors.accent),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.bug_report_outlined, color: GnColors.accent),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Bug reported in $title',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'What went wrong? Say it in a few words; the screenshot is already sent.',
+            style: TextStyle(color: GnColors.muted, height: 1.4),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              FilledButton.icon(
+                key: const ValueKey('table-bug-describe'),
+                onPressed: () => _describeBug(bug),
+                icon: const Icon(Icons.mic_rounded, size: 18),
+                label: const Text('Describe it'),
+              ),
+              const SizedBox(width: 8),
+              TextButton(
+                key: const ValueKey('table-bug-dismiss'),
+                onPressed: () =>
+                    state.answerBug(bug.id, '').catchError((_) {}),
+                child: const Text('Not now'),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _describeBug(TableBug bug) {
+    final reports = ReportScope.of(context);
+    if (reports == null) return;
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        settings: const RouteSettings(name: 'feedback'),
+        builder: (_) => FeedbackScreen(
+          reports: reports,
+          bug: bug,
+          bugScreenshot: state.cloud.bugScreenshot().catchError((_) => null),
+          onBug: (text) => state.answerBug(bug.id, text),
+        ),
+      ),
     );
   }
 

@@ -1153,6 +1153,22 @@ class AppState extends ChangeNotifier {
     await refreshHostedRoom();
   }
 
+  /// Table bug reports this phone described or waved off.
+  final Set<String> _answeredBugs = {};
+
+  /// A bug reported at this table that this phone has not answered.
+  TableBug? get pendingBug {
+    final bug = hostedRoom?.bug;
+    return bug == null || _answeredBugs.contains(bug.id) ? null : bug;
+  }
+
+  /// Describe the table's bug (or wave it off with empty `text`).
+  Future<void> answerBug(String id, String text) async {
+    await cloud.describeBug(id, text);
+    _answeredBugs.add(id);
+    notifyListeners();
+  }
+
   Future<void> refreshHostedRoom() async {
     if (!cloud.hasRoomSession) return;
     try {

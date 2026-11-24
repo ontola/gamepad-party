@@ -6,6 +6,7 @@
 // without the browser's CSRF header.
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http/http.dart' as http;
@@ -73,6 +74,15 @@ class StudioDocument {
   }
 }
 
+/// A bug reported at the table: the host sent a screenshot, the phones
+/// seated there are asked what went wrong.
+class TableBug {
+  final String id;
+  final String? game;
+  final String? title;
+  const TableBug({required this.id, this.game, this.title});
+}
+
 /// `GET /v1/rooms/status` for a hosted room.
 class HostedRoom {
   /// `none`, `waiting` (walk to your door in the lobby) or `connected`.
@@ -134,6 +144,17 @@ class HostedRoom {
       .map((v) => Map<String, dynamic>.from(v))
       .toList();
   bool get none => !connected && !waiting && !choosingPlayer;
+
+  /// A bug reported at the table (Back+Y or F4 on the host) that this phone
+  /// has not described yet.
+  TableBug? get bug {
+    final bug = raw['bug_report'];
+    if (bug is! Map || bug['id'] is! String) return null;
+    return TableBug(
+        id: bug['id'] as String,
+        game: bug['game'] as String?,
+        title: bug['title'] as String?);
+  }
 }
 
 /// `GET /v1/pairing/<ticket>`: what a hosted lobby QR would connect.
@@ -688,6 +709,26 @@ class CloudApi {
           body: {'code': code, 'enabled': enabled});
 
   /// Other room calls, for the Game tab's controls.
+  /// The screenshot of the bug reported at this phone's table, if any.
+  Future<Uint8List?> bugScreenshot() async {
+    final response = await _raw('GET', '/v1/rooms/bug-report/screenshot',
+        headers: const {'Accept': 'image/*'});
+    final type = response.headers['content-type'] ?? '';
+    return response.statusCode == 200 && type.startsWith('image/')
+        ? response.bodyBytes
+        : null;
+  }
+
+  /// Add this phone's words to the bug reported at its table. Empty text
+  /// says "not now": the phone is not asked again.
+  Future<void> describeBug(String id, String text) =>
+      _send('POST', '/v1/rooms/bug-report', body: {
+        'id': id,
+        'text': text
+      }, errors: const {
+        403: 'This bug report has closed. Send it as feedback instead.'
+      });
+
   Future<dynamic> request(String method, String path,
           {Object? body, Map<int, String> errors = const {}}) =>
       _send(method, path, body: body, errors: errors);

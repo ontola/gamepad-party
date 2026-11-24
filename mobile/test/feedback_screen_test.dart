@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:gamenight/account.dart' show TableBug;
 import 'package:gamenight/reports.dart';
 import 'package:gamenight/screens/feedback_screen.dart';
 import 'package:gamenight/theme.dart';
@@ -36,7 +37,10 @@ Future<void> _capture(WidgetTester tester, String name) async {
 
 Future<void> _open(
     WidgetTester tester, ReportService reports, VoiceFeedback voice,
-    {String? initialGame}) async {
+    {String? initialGame,
+    TableBug? bug,
+    Future<Uint8List?>? bugScreenshot,
+    Future<void> Function(String)? onBug}) async {
   tester.view.physicalSize = const Size(390, 844);
   tester.view.devicePixelRatio = 1;
   var theme = gameNightTheme();
@@ -56,7 +60,12 @@ Future<void> _open(
           debugShowCheckedModeBanner: false,
           theme: theme,
           home: FeedbackScreen(
-              reports: reports, voice: voice, initialGame: initialGame))));
+              reports: reports,
+              voice: voice,
+              initialGame: initialGame,
+              bug: bug,
+              bugScreenshot: bugScreenshot,
+              onBug: onBug))));
   await tester.pumpAndSettle();
 }
 
@@ -162,6 +171,51 @@ void main() {
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull,
         reason: 'narrow phone has no overflow');
+  });
+
+  testWidgets(
+      'a bug from the table shows its screenshot and sends the words to it',
+      (tester) async {
+    SharedPreferences.setMockInitialValues({'feedback_draft': 'old draft'});
+    final reports = ReportService(await SharedPreferences.getInstance());
+    final voice = VoiceFeedback(speech: FakeSpeech());
+    addTearDown(() {
+      reports.close();
+      voice.dispose();
+      tester.view.reset();
+    });
+    // A real game screenshot for review previews, else a 1x1 PNG.
+    final preview = Platform.environment['FEEDBACK_BUG_SHOT'];
+    final shot = preview != null
+        ? File(preview).readAsBytesSync()
+        : base64Decode(
+            'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==');
+    final sent = <String>[];
+    await _open(tester, reports, voice,
+        bug: const TableBug(
+            id: 'b1', game: 'ballkickers', title: 'Ball Kickers'),
+        bugScreenshot: Future.value(Uint8List.fromList(shot)),
+        onBug: (text) async => sent.add(text));
+    await tester
+        .runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
+    await tester.pumpAndSettle();
+    expect(find.text('Bug in Ball Kickers'), findsOneWidget);
+    expect(find.byType(ChoiceChip), findsNothing, reason: 'no target to pick');
+    expect(find.byKey(const ValueKey('bug-screenshot')), findsOneWidget);
+    expect(find.text('old draft'), findsNothing, reason: 'starts empty');
+    await tester.enterText(find.byKey(const ValueKey('feedback-draft')),
+        'The goal counted for the wrong team.');
+    await tester.pumpAndSettle();
+    await _capture(tester, 'bug-describe');
+    await tester.scrollUntilVisible(
+        find.byKey(const ValueKey('feedback-send')), 150,
+        scrollable: find.byType(Scrollable).first);
+    await _tap(tester, find.byKey(const ValueKey('feedback-send')));
+    expect(sent, ['The goal counted for the wrong team.']);
+    expect(reports.draft, 'old draft', reason: 'the feedback draft is kept');
+    expect(find.text('Thanks for the feedback'), findsOneWidget);
+    await _capture(tester, 'bug-sent');
+    await tester.pumpWidget(const SizedBox());
   });
 
   testWidgets('one Splitscreen Club pill plus a dropdown of recent games',
