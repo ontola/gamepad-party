@@ -330,7 +330,12 @@ class _GameDetailPageState extends State<_GameDetailPage> {
                                 _Fact(Icons.timer_outlined,
                                     '${game.matchMinutes} min'),
                               _Fact(Icons.sell_outlined, game.priceLabel),
-                              _Fact(Icons.computer, game.platformLabel),
+                              _Fact(
+                                  Icons.computer,
+                                  widget.browserId == null ||
+                                          game.platformLabel.contains('Browser')
+                                      ? game.platformLabel
+                                      : '${game.platformLabel} · Browser'),
                             ]),
                             if (widget.cloud != null && !game.unreviewed) ...[
                               const SizedBox(height: 12),
@@ -340,22 +345,7 @@ class _GameDetailPageState extends State<_GameDetailPage> {
                                   cloud: widget.cloud),
                             ],
                             const SizedBox(height: 16),
-                            ..._withPlay(_action()),
-                            if (_wantButton() case final want?) ...[
-                              const SizedBox(height: 8),
-                              want,
-                            ],
-                            if (widget.onManage case final manage?) ...[
-                              const SizedBox(height: 8),
-                              OutlinedButton.icon(
-                                style: OutlinedButton.styleFrom(
-                                    minimumSize: const Size.fromHeight(48)),
-                                onPressed: () => manage(game),
-                                icon:
-                                    const Icon(Icons.build_outlined, size: 18),
-                                label: const Text('Manage game'),
-                              ),
-                            ],
+                            _actions(),
                             if (game.tags.isNotEmpty) ...[
                               const SizedBox(height: 16),
                               Wrap(spacing: 6, runSpacing: 6, children: [
@@ -445,6 +435,56 @@ class _GameDetailPageState extends State<_GameDetailPage> {
       const SizedBox(height: 8),
       note,
     ]);
+  }
+
+  /// Play, Add to queue, Want to play and Manage: full width stacked on a
+  /// phone; side by side at button width on a wide screen, notes below.
+  Widget _actions() {
+    final items = <Widget>[];
+    void add(Widget widget) {
+      if (widget is SizedBox && widget.child == null) return;
+      if (widget is Column) {
+        widget.children.forEach(add);
+      } else {
+        items.add(widget);
+      }
+    }
+
+    _withPlay(_action()).forEach(add);
+    if (_wantButton() case final want?) add(want);
+    if (widget.onManage case final manage?) {
+      add(OutlinedButton.icon(
+        style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+        onPressed: () => manage(game),
+        icon: const Icon(Icons.build_outlined, size: 18),
+        label: const Text('Manage game'),
+      ));
+    }
+    if (items.isEmpty) return const SizedBox.shrink();
+    return LayoutBuilder(builder: (context, constraints) {
+      if (constraints.maxWidth < 640) {
+        return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              for (final (i, item) in items.indexed) ...[
+                if (i > 0) const SizedBox(height: 8),
+                item,
+              ],
+            ]);
+      }
+      final buttons = items.where((item) => item is! _Note).toList();
+      final notes = items.whereType<_Note>().toList();
+      return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        if (buttons.isNotEmpty)
+          Wrap(spacing: 8, runSpacing: 8, children: [
+            for (final button in buttons) SizedBox(width: 280, child: button),
+          ]),
+        for (final note in notes) ...[
+          const SizedBox(height: 8),
+          note,
+        ],
+      ]);
+    });
   }
 
   /// The page's main action with Play in browser: first outside a room,
@@ -618,7 +658,7 @@ class _Fact extends StatelessWidget {
         child: Row(mainAxisSize: MainAxisSize.min, children: [
           Icon(icon, size: 16, color: GnColors.muted),
           const SizedBox(width: 6),
-          Text(text, style: const TextStyle(fontSize: 13)),
+          Flexible(child: Text(text, style: const TextStyle(fontSize: 13))),
         ]),
       );
 }
