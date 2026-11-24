@@ -118,7 +118,7 @@ void main() {
     expect(shown(tester), ['a', 'b', 'c']);
 
     Future<void> sortBy(String label) async {
-      await tester.tap(find.byKey(const ValueKey('catalog-sort')));
+      await tester.tap(find.byTooltip('Sort games'));
       await tester.pumpAndSettle();
       await tester.tap(find.text(label).last);
       await tester.pumpAndSettle();

@@ -432,12 +432,16 @@ class _CatalogSectionState extends State<CatalogSection> {
             ]));
       });
 
+  final _sortMenu =
+      GlobalKey<PopupMenuButtonState<CatalogSort>>(debugLabel: 'catalog-sort');
+  final _playersMenu = GlobalKey<PopupMenuButtonState<int>>();
+
   String get _sortLabel => _sort == CatalogSort.store ? 'Sort' : _sort.short;
 
   Widget _sortButton(bool ready, String? label) {
     final signedIn = widget.cloud?.signedIn == true;
     return PopupMenuButton<CatalogSort>(
-      key: const ValueKey('catalog-sort'),
+      key: _sortMenu,
       enabled: ready,
       tooltip: 'Sort games',
       initialValue: _sort,
@@ -447,19 +451,21 @@ class _CatalogSectionState extends State<CatalogSection> {
           if (!sort.personal || signedIn)
             PopupMenuItem(value: sort, child: Text(sort.label)),
       ],
-      child: IgnorePointer(
-          child: _BarButton(
-              icon: Icons.sort,
-              label: label,
-              name: 'Sort',
-              selected: _sort != CatalogSort.store,
-              onPressed: ready ? () {} : null)),
+      // The button itself opens the menu, so it hovers like the others.
+      child: _BarButton(
+          icon: Icons.sort,
+          label: label,
+          name: 'Sort',
+          selected: _sort != CatalogSort.store,
+          onPressed:
+              ready ? () => _sortMenu.currentState?.showButtonMenu() : null),
     );
   }
 
   Widget _playersButton(bool ready) {
     final n = _filter.players;
     return PopupMenuButton<int>(
+      key: _playersMenu,
       enabled: ready,
       tooltip: 'Player count',
       initialValue: n ?? 0,
@@ -472,17 +478,16 @@ class _CatalogSectionState extends State<CatalogSection> {
               value: count,
               child: Text(count == 1 ? '1 player' : '$count players')),
       ],
-      child: IgnorePointer(
-        child: _BarButton(
-            icon: Icons.group_outlined,
-            label: n == null
-                ? 'Players'
-                : n == 1
-                    ? '1 player'
-                    : '$n players',
-            selected: n != null,
-            onPressed: ready ? () {} : null),
-      ),
+      child: _BarButton(
+          icon: Icons.group_outlined,
+          label: n == null
+              ? 'Players'
+              : n == 1
+                  ? '1 player'
+                  : '$n players',
+          selected: n != null,
+          onPressed:
+              ready ? () => _playersMenu.currentState?.showButtonMenu() : null),
     );
   }
 
@@ -825,8 +830,12 @@ class _BarButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final style = OutlinedButton.styleFrom(
+      // Exactly as high as the search field, also where the theme is
+      // compact (desktop).
       minimumSize: const Size(44, 44),
       maximumSize: const Size(double.infinity, 44),
+      visualDensity: VisualDensity.standard,
+      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
       padding: label == null
           ? EdgeInsets.zero
           : const EdgeInsets.only(left: 12, right: 16),
