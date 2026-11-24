@@ -363,24 +363,24 @@ class _SetupItem extends StatelessWidget {
       );
 
   Widget _row() => Row(children: [
-        Icon(done ? Icons.check_circle : icon,
-            color: done ? GnColors.ok : GnColors.muted),
-        const SizedBox(width: 12),
-        Expanded(
-          child:
-              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(title,
-                style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    color: done ? GnColors.muted : GnColors.text,
-                    decoration: done ? TextDecoration.lineThrough : null,
-                    decorationColor: GnColors.muted)),
-            if (!done) Hint(hint),
-          ]),
-        ),
-        if (!done && action != null) ...[
-          const SizedBox(width: 8),
-          OutlinedButton(onPressed: onTap, child: Text(action!)),
-        ],
-      ]);
+          Icon(done ? Icons.check_circle : icon,
+              color: done ? GnColors.ok : GnColors.muted),
+          const SizedBox(width: 12),
+          Expanded(
+            child:
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(title,
+                  style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: done ? GnColors.muted : GnColors.text,
+                      decoration: done ? TextDecoration.lineThrough : null,
+                      decorationColor: GnColors.muted)),
+              if (!done) Hint(hint),
+            ]),
+          ),
+          if (!done && action != null) ...[
+            const SizedBox(width: 8),
+            OutlinedButton(onPressed: onTap, child: Text(action!)),
+          ],
+        ]);
 }
