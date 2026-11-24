@@ -824,6 +824,9 @@ pub fn print_summary(game: &GameId, report: &Report) {
         println!("   □ {item}");
     }
     println!("─────────────────────────────────────────────────────");
+    println!(
+        " Optionally resize the window to 4:3 and ultrawide during a match to check that every player and the HUD stay visible."
+    );
 }
 
 /// `MANUAL_CHECKS`, phrased against what this specific run actually primed

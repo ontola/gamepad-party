@@ -93,6 +93,16 @@ with real controllers: two people, unplug a pad, press Back and Resume a few
 times, switch to another game and back. The certifier cannot see your screen
 or your pads. More checks: [Test your integration](/docs/testing).
 
+**Recommended layout check.** Choose a design aspect ratio that suits the game,
+such as 16:9 or 4:3. When the browser window changes shape, adjust the camera
+and HUD to fit. Keep the whole shared arena in view at its original proportions,
+using extra space for scenery or margins.
+
+During a round, resize the window from 4:3 to ultrawide (21:9). Try rotating a
+phone too if your game supports portrait. Move players to opposite edges and
+open the pause menu. Can everyone see their character, read the score and reach
+the menu controls?
+
 **Done when** the certifier reports no failures and the real-controller round
 went right.
 
