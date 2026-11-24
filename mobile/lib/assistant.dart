@@ -194,6 +194,11 @@ class Assistant extends ChangeNotifier {
       await _request('POST', '',
           {'request_id': id, 'text': text, 'max_credits': local ? 0 : quote});
       if (generation != _generation || _disposed) return;
+      // A question about the player's own game goes in its chat.
+      final game = status?['commands'] is Map
+          ? (status!['commands'] as Map)['game']?.toString()
+          : null;
+      if (game != null) unawaited(PhoneStore.instance?.noteAsked(game, text));
       pending = id;
       draft = '';
       quote = null;

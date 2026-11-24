@@ -1101,6 +1101,7 @@ dependencies = [
  "futures-util",
  "gamenight-core",
  "gamenight-protocol",
+ "loro",
  "rustls",
  "serde",
  "serde_json",

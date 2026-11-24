@@ -356,6 +356,14 @@ impl Store {
             .map_err(atomic)?
         {
             if let Ok(path) = file.get(FILE_PATH) {
+                // A listed resource is a summary without its Loro document:
+                // the stored one is what edits must build on.
+                let subject = file.get_subject().to_string();
+                let file = self
+                    .db
+                    .get_resource(&subject.as_str().into())
+                    .await
+                    .map_err(atomic)?;
                 files.insert(path.to_string(), file);
             }
         }
@@ -426,6 +434,15 @@ impl Store {
             .await
             .map_err(atomic)?;
         Ok((project_of(owner, &resource), changed))
+    }
+
+    /// [`Self::save_files`] for the rest of the crate.
+    pub(crate) async fn save_files_of(
+        &mut self,
+        subject: &str,
+        files: &BTreeMap<String, String>,
+    ) -> Result<usize> {
+        self.save_files(subject, files).await
     }
 
     /// Make the project `subject`'s files these: new and changed files are

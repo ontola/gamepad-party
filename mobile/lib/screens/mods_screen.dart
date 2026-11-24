@@ -290,6 +290,8 @@ class ModScreen extends StatefulWidget {
 
 class _ModScreenState extends State<ModScreen> {
   late GameMod _mod = widget.mod;
+  List<ChatEntry> _chat = const [];
+  bool _restoring = false;
   _Room? _roomNow;
   Timer? _timer;
   bool _starting = false;
@@ -314,11 +316,61 @@ class _ModScreenState extends State<ModScreen> {
     final mods = await store.mods();
     final room = await _room(widget.state);
     final mod = mods.where((m) => m.id == _mod.id).firstOrNull;
+    List<ChatEntry>? chat;
+    try {
+      chat = await store.chat(_mod.id);
+    } catch (error) {
+      debugPrint('Could not read the chat: $error');
+    }
     if (!mounted) return;
     setState(() {
       if (mod != null) _mod = mod;
+      if (chat != null) _chat = chat;
       _roomNow = room;
     });
+  }
+
+  /// Put the game back as the answer `index` left it. A note goes in the
+  /// chat first, so the version from before going back can be found too.
+  Future<void> _restore(int index) async {
+    final at = versionAfter(_chat, index);
+    final store = PhoneStore.instance;
+    if (at == null || store == null) return;
+    final sure = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+              title: const Text('Go back to this version?'),
+              content: const Text(
+                  'Your game becomes what it was after this answer. Nothing is lost: you can go back to any later version from the chat too.'),
+              actions: [
+                TextButton(
+                    onPressed: () => Navigator.pop(context, false),
+                    child: const Text('Cancel')),
+                FilledButton(
+                    onPressed: () => Navigator.pop(context, true),
+                    child: const Text('Go back')),
+              ],
+            ));
+    if (sure != true) return;
+    setState(() => _restoring = true);
+    try {
+      await store.addChat(_mod.id, 'assistant',
+          'Went back to the version after: “${_cutText(_chat[index].text, 80)}”',
+          ok: true);
+      final changed = await store.restoreMod(_mod.id, at);
+      if (mounted) {
+        toast(
+            context,
+            changed == 0
+                ? 'It already was that version.'
+                : 'Back to that version. A running game picks it up in a moment.');
+      }
+    } catch (error) {
+      if (mounted) toast(context, '$error');
+    } finally {
+      if (mounted) setState(() => _restoring = false);
+      await _refresh();
+    }
   }
 
   bool get _playing => _roomNow?.playing == _mod.game;
@@ -443,7 +495,21 @@ class _ModScreenState extends State<ModScreen> {
                 icon: const Icon(Icons.auto_awesome_outlined),
                 label: const Text('Assistant')),
           ),
-          if (_mod.changes.isNotEmpty) ...[
+          if (_chat.isNotEmpty) ...[
+            const SizedBox(height: 24),
+            const Text('Chat',
+                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+            const SizedBox(height: 8),
+            for (final (i, entry) in _chat.indexed)
+              _ChatBubble(
+                  entry: entry,
+                  onRestore: !entry.mine &&
+                          entry.ok == true &&
+                          versionAfter(_chat, i) != null &&
+                          !_restoring
+                      ? () => _restore(i)
+                      : null),
+          ] else if (_mod.changes.isNotEmpty) ...[
             const SizedBox(height: 24),
             const Text('Changes',
                 style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
@@ -460,6 +526,58 @@ class _ModScreenState extends State<ModScreen> {
               ),
           ],
         ]),
+      ),
+    );
+  }
+}
+
+String _cutText(String text, int max) =>
+    text.length <= max ? text : '${text.substring(0, max)}…';
+
+/// One message in a game's chat: the player's on the right, the Assistant's
+/// on the left with, for a change that worked, a way back to that version.
+class _ChatBubble extends StatelessWidget {
+  final ChatEntry entry;
+  final VoidCallback? onRestore;
+  const _ChatBubble({required this.entry, this.onRestore});
+
+  @override
+  Widget build(BuildContext context) {
+    final mine = entry.mine;
+    final failed = entry.ok == false;
+    return Align(
+      alignment: mine ? Alignment.centerRight : Alignment.centerLeft,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 520),
+        child: Container(
+          margin: const EdgeInsets.symmetric(vertical: 4),
+          padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+          decoration: BoxDecoration(
+            color:
+                mine ? GnColors.accent.withValues(alpha: 0.18) : GnColors.field,
+            borderRadius: BorderRadius.circular(14),
+            border: failed ? Border.all(color: GnColors.warn) : null,
+          ),
+          child:
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(entry.text),
+            if (failed)
+              const Padding(
+                padding: EdgeInsets.only(top: 4),
+                child: Text('This change did not work.',
+                    style: TextStyle(color: GnColors.warn, fontSize: 12)),
+              ),
+            if (onRestore != null)
+              TextButton.icon(
+                  key: ValueKey('restore-${entry.key}'),
+                  style: TextButton.styleFrom(
+                      padding: EdgeInsets.zero,
+                      visualDensity: VisualDensity.compact),
+                  onPressed: onRestore,
+                  icon: const Icon(Icons.history, size: 18),
+                  label: const Text('Back to this version')),
+          ]),
+        ),
       ),
     );
   }

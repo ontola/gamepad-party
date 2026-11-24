@@ -17,6 +17,8 @@ tokio-tungstenite = { workspace = true, features = ["rustls-tls-webpki-roots"] }
 rustls = { workspace = true }
 futures-util = { workspace = true }
 tracing = { workspace = true }
+# The Loro atomic_lib keeps chat logs in; the same version as atomic_lib's.
+loro = "1.12"
 
 [dev-dependencies]
 uuid = { workspace = true }

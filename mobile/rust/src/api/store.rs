@@ -264,6 +264,51 @@ impl PhoneStore {
             .map_err(|e| e.to_string())
     }
 
+    /// The chat about the signed-in player's game `id`, oldest first, as
+    /// JSON: `[{key, role, text, at, ok}]` (`role` is `user` or `assistant`,
+    /// `at` milliseconds since 1970, `ok` whether an answer's change worked).
+    pub async fn chat(&self, id: String) -> Result<String, String> {
+        let owner = self.signed_in().await?;
+        let entries = self
+            .store
+            .lock()
+            .await
+            .chat(&owner, &id)
+            .await
+            .map_err(|e| e.to_string())?;
+        serde_json::to_string(&entries).map_err(|e| e.to_string())
+    }
+
+    /// Add a message to the chat about game `id`; returns its key.
+    pub async fn add_chat(
+        &self,
+        id: String,
+        role: String,
+        text: String,
+        ok: Option<bool>,
+    ) -> Result<String, String> {
+        let owner = self.signed_in().await?;
+        self.store
+            .lock()
+            .await
+            .add_chat(&owner, &id, &role, &text, ok)
+            .await
+            .map_err(|e| e.to_string())
+    }
+
+    /// Put game `id`'s files back as they were at `at` (milliseconds since
+    /// 1970), as a new change; returns how many files changed.
+    pub async fn restore_mod(&self, id: String, at: i64) -> Result<u32, String> {
+        let owner = self.signed_in().await?;
+        self.store
+            .lock()
+            .await
+            .restore_project(&owner, &id, at)
+            .await
+            .map(|n| n as u32)
+            .map_err(|e| e.to_string())
+    }
+
     async fn signed_in(&self) -> Result<String, String> {
         let owner = self.owner.lock().await.clone();
         if owner == OWNER {

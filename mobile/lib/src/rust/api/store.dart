@@ -10,11 +10,23 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
 // Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<PhoneStore>>
 abstract class PhoneStore implements RustOpaqueInterface {
+  /// Add a message to the chat about game `id`; returns its key.
+  Future<String> addChat(
+      {required String id,
+      required String role,
+      required String text,
+      bool? ok});
+
   /// This phone's Atomic agent, which signs every change.
   Future<String?> agent();
 
   /// Every game's saved settings, as a JSON object: game -> key -> value.
   Future<String> allSettings();
+
+  /// The chat about the signed-in player's game `id`, oldest first, as
+  /// JSON: `[{key, role, text, at, ok}]` (`role` is `user` or `assistant`,
+  /// `at` milliseconds since 1970, `ok` whether an answer's change worked).
+  Future<String> chat({required String id});
 
   /// After signing in: the account's records live in `drive` on the hub
   /// at `url` (`wss://host/atomic/ws`) from now on. Takes what the account
@@ -52,6 +64,10 @@ abstract class PhoneStore implements RustOpaqueInterface {
   Future<void> removeMod({required String id});
 
   Future<void> renameMod({required String id, required String title});
+
+  /// Put game `id`'s files back as they were at `at` (milliseconds since
+  /// 1970), as a new change; returns how many files changed.
+  Future<int> restoreMod({required String id, required PlatformInt64 at});
 
   /// Keep this player's progress in `game`.
   Future<void> setProgress(

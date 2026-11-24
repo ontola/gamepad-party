@@ -169,3 +169,19 @@ makes a new one: a starting point, a name and optionally what it should be.
   player's own game, made with the Assistant") and the Assistant builds it
   with the saving tools while it runs. The idea typed when making it is the
   Assistant's first request. The Mods page lists only mods of real games.
+
+### A game's chat
+
+Each of a player's own games and mods has a chat: an atomic_lib `ChatLog`
+page that is a child of its `GameProject`, so it syncs with the game
+(`gamenight-store` `chat.rs`). Entries are Atomic chat-log entries with
+`role` (`user` or `assistant`) and, for an answer, `ok`. The phone writes
+both: the question when it is sent to the Assistant, the answer when the
+request finishes. The game's page in the app shows the chat.
+
+Every answer that worked is a version. **Back to this version** puts the
+files back as they were just before the next message in the chat, from
+each `ProjectFile`'s Loro history (`Store::restore_project`), as a new
+edit, so going back can be undone. The app writes a note in the chat
+before it changes the files. The host where the game runs gets the files
+on its next sync and hot reloads them.

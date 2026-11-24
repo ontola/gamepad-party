@@ -10,6 +10,7 @@
 //! Games never see any of this: the daemon reads and writes it, and games
 //! only get `player_settings` / `player_data` for the players in the room.
 
+pub mod chat;
 pub mod projects;
 pub mod schema;
 pub mod sync;

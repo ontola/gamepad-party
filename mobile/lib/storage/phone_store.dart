@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
+import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart'
+    show PlatformInt64Util;
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -186,8 +188,22 @@ class PhoneStore {
     unawaited(syncNow());
   }
 
+  /// The player asked the Assistant something about the running `game`:
+  /// when that game is one of this player's mods, it goes in its chat.
+  Future<void> noteAsked(String game, String text) async {
+    if (!signedIn) return;
+    try {
+      for (final mod in await mods()) {
+        if (mod.game != game) continue;
+        await addChat(mod.id, 'user', text);
+      }
+    } catch (error) {
+      debugPrint('Could not keep the question: $error');
+    }
+  }
+
   /// An Assistant request for the running `game` finished: when that game
-  /// is one of this player's mods, keep it in the mod's history.
+  /// is one of this player's mods, keep it in the mod's history and chat.
   Future<void> noteRequest(String game,
       {required String asked, required String answer, required bool ok}) async {
     if (!signedIn) return;
@@ -198,10 +214,33 @@ class PhoneStore {
             mod.id,
             ModChange(
                 at: DateTime.now(), asked: asked, answer: answer, ok: ok));
+        await addChat(mod.id, 'assistant', answer, ok: ok);
       }
     } catch (error) {
       debugPrint('Could not keep the mod change: $error');
     }
+  }
+
+  /// The chat about the mod `id`, oldest first. Kept in the account's drive
+  /// with the game, so it shows on every phone the player signs in on.
+  Future<List<ChatEntry>> chat(String id) async => [
+        for (final e in jsonDecode(await _store.chat(id: id)) as List)
+          ChatEntry.fromJson(e as Map)
+      ];
+
+  Future<void> addChat(String id, String role, String text, {bool? ok}) async {
+    await _store.addChat(id: id, role: role, text: text, ok: ok);
+    _syncSoon();
+  }
+
+  /// Put the mod `id` back as it was at `at`, as a new change (so that can
+  /// be undone too). The host where it runs picks it up when it syncs.
+  /// Returns how many files changed.
+  Future<int> restoreMod(String id, DateTime at) async {
+    final changed = await _store.restoreMod(
+        id: id, at: PlatformInt64Util.from(at.millisecondsSinceEpoch));
+    unawaited(syncNow());
+    return changed;
   }
 
   /// Remember what was asked of a mod and what came of it.
@@ -257,3 +296,36 @@ class ModChange {
       answer: j['answer']?.toString() ?? '',
       ok: j['ok'] == true);
 }
+
+/// One message in the chat about a player's own game.
+class ChatEntry {
+  final String key, role, text;
+  final DateTime at;
+
+  /// For an answer: whether the change worked.
+  final bool? ok;
+  const ChatEntry(
+      {required this.key,
+      required this.role,
+      required this.text,
+      required this.at,
+      this.ok});
+
+  bool get mine => role == 'user';
+
+  factory ChatEntry.fromJson(Map j) => ChatEntry(
+      key: j['key']?.toString() ?? '',
+      role: j['role']?.toString() ?? 'user',
+      text: j['text']?.toString() ?? '',
+      at: DateTime.fromMillisecondsSinceEpoch(((j['at'] as num?) ?? 0).toInt()),
+      ok: j['ok'] as bool?);
+}
+
+/// The moment the game was as the answer `answer` left it: just before the
+/// next message (a question, whose changes come after, or a note about going
+/// back, which is written before the files change), or null for the newest
+/// message, which is how the game is now. Changes are kept per second.
+DateTime? versionAfter(List<ChatEntry> chat, int answer) =>
+    answer + 1 < chat.length
+        ? chat[answer + 1].at.subtract(const Duration(seconds: 1))
+        : null;
