@@ -710,9 +710,38 @@ class _MakeGameScreenState extends State<MakeGameScreen> {
     unawaited(_signedIn());
   }
 
+  /// Signed in, but this phone's store never reached the account's drive
+  /// (say the hub was unreachable at sign-in): try again here, and say so
+  /// when it fails instead of waiting forever.
+  bool _connecting = false;
+  String? _connectError;
+  Future<void> _connect() async {
+    final store = _store;
+    if (store == null || _connecting || !widget.state.signedIn) return;
+    setState(() {
+      _connecting = true;
+      _connectError = null;
+    });
+    final error = await store
+        .connect(widget.state.cloud)
+        .timeout(const Duration(seconds: 30), onTimeout: () => 'timed out');
+    if (!mounted) return;
+    setState(() {
+      _connecting = false;
+      _connectError = error == null
+          ? null
+          : 'Could not reach your saved games. Check your connection and try again.';
+    });
+    if (error == null) await _refresh(sync: true);
+  }
+
   Future<void> _refresh({bool sync = false}) async {
     final store = _store;
-    if (store == null || !store.signedIn) return;
+    if (store == null) return;
+    if (!store.signedIn) {
+      if (widget.state.signedIn && _connectError == null) await _connect();
+      return;
+    }
     try {
       if (sync) await store.syncNow();
       final games = [
@@ -798,7 +827,19 @@ class _MakeGameScreenState extends State<MakeGameScreen> {
       children.add(const GetTheApp());
     } else if (!store.signedIn) {
       if (widget.state.signedIn) {
-        children.add(const Hint('Getting your games…'));
+        if (_connectError case final error?) {
+          children
+              .add(Text(error, style: const TextStyle(color: GnColors.warn)));
+          children.add(Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                  key: const ValueKey('make-game-retry'),
+                  onPressed: _connect,
+                  icon: const Icon(Icons.refresh),
+                  label: const Text('Try again'))));
+        } else {
+          children.add(const Hint('Getting your games…'));
+        }
       }
     } else if (!widget.state.assistantAvailable) {
       children.add(const Hint(

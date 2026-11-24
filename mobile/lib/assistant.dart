@@ -41,6 +41,14 @@ class Assistant extends ChangeNotifier {
         for (final r in status?['requests'] as List? ?? [])
           if (r is Map) Map<String, dynamic>.from(r)
       ];
+
+  /// What the player asked in words: the chat. Settings applied, Undo and
+  /// Keep are commands, not questions, and stay out of it.
+  List<Map<String, dynamic>> get chat => [
+        for (final r in requests)
+          if (!isCommand(r['prompt'])) r
+      ];
+
   bool get waiting =>
       pending != null ||
       requests.any((r) => r['state'] == 'thinking' || r['state'] == 'queued');
@@ -134,7 +142,7 @@ class Assistant extends ChangeNotifier {
           final game = status?['commands'] is Map
               ? (status!['commands'] as Map)['game']?.toString()
               : null;
-          if (game != null) {
+          if (game != null && !isCommand(r['prompt'])) {
             unawaited(PhoneStore.instance?.noteRequest(game,
                 asked: r['prompt']?.toString() ?? '',
                 answer: notice,
@@ -312,5 +320,17 @@ class Assistant extends ChangeNotifier {
     _disposed = true;
     _generation++;
     super.dispose();
+  }
+}
+
+/// Whether a request's prompt is a direct command (a JSON object with an
+/// `action`, such as applying settings) rather than something asked.
+bool isCommand(Object? prompt) {
+  if (prompt is! String || !prompt.trimLeft().startsWith('{')) return false;
+  try {
+    final value = jsonDecode(prompt);
+    return value is Map && value['action'] != null;
+  } catch (_) {
+    return false;
   }
 }

@@ -242,7 +242,7 @@ class _AssistantScreenState extends State<AssistantScreen>
                               padding: EdgeInsets.symmetric(vertical: 16),
                               child: Text('The Assistant is not available yet.',
                                   style: TextStyle(color: GnColors.warn))),
-                        if (_agent.requests.isEmpty && _agent.available) ...[
+                        if (_agent.chat.isEmpty && _agent.available) ...[
                           const SizedBox(height: 24),
                           const Text('What shall we change?',
                               style: TextStyle(
@@ -266,7 +266,7 @@ class _AssistantScreenState extends State<AssistantScreen>
                                           : () => _agent.setDraft(prompt))
                           ]),
                         ],
-                        for (final request in _agent.requests.reversed)
+                        for (final request in _agent.chat.reversed)
                           SelectionArea(child: _message(request)),
                         if (controls != null &&
                             _agent.owner &&

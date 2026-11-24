@@ -85,11 +85,12 @@ class PhoneStore {
 
   /// After signing in: register this phone's agent with the account and
   /// keep the player's records in the account's drive from now on.
-  Future<void> connect(CloudApi cloud) async {
-    if (!cloud.signedIn) return;
+  /// Returns why it failed, or null.
+  Future<String?> connect(CloudApi cloud) async {
+    if (!cloud.signedIn) return 'Not signed in';
     try {
       final agent = await _store.agent();
-      if (agent == null) return;
+      if (agent == null) return 'This phone has no Atomic agent';
       final reply = await cloud.request('POST', '/v1/me/atomic-device', body: {
         'agent': agent,
       }) as Map;
@@ -105,8 +106,10 @@ class PhoneStore {
       await _prefs?.setString(
           accountKey, jsonEncode({'owner': owner, 'drive': drive, 'url': url}));
       await _copySettings();
+      return null;
     } catch (error) {
       Diagnostics.failure('Could not connect the phone store: $error');
+      return '$error';
     }
   }
 

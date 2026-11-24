@@ -119,6 +119,22 @@ void main() {
     await a.send();
     expect(paths, ['/v1/rooms/agent']);
   });
+  test('applied settings, Undo and Keep stay out of the chat', () {
+    expect(isCommand('{"action":"set","values":{}}'), isTrue);
+    expect(isCommand('Make it {harder}'), isFalse);
+    expect(isCommand('{not json'), isFalse);
+    final a = Assistant(api((r) async => json({})));
+    addTearDown(a.dispose);
+    a.status = ready(requests: [
+      {'id': '1', 'prompt': 'Make it easier', 'state': 'complete'},
+      {
+        'id': '2',
+        'prompt': '{"action":"set","values":{}}',
+        'state': 'complete'
+      },
+    ]);
+    expect(a.chat.map((r) => r['id']), ['1']);
+  });
   test('local request waits for its own host receipt and shows failure',
       () async {
     String? id;
