@@ -224,7 +224,7 @@ pub(crate) fn capture_foreground() -> Option<image::RgbaImage> {
         if rows != h {
             return None;
         }
-        for px in pixels.chunks_exact_mut(4) {
+        for px in pixels.as_chunks_mut::<4>().0 {
             px.swap(0, 2); // BGRA to RGBA
             px[3] = 255;
         }
