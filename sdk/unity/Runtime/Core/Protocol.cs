@@ -33,6 +33,7 @@ namespace GameNightSdk
             public const string ActionTriggered = "action_triggered";
             public const string ApplyUpdate = "apply_update";
             public const string AssignSeat = "assign_seat";
+            public const string BackMenu = "back_menu";
             public const string BindController = "bind_controller";
             public const string CloseOverlay = "close_overlay";
             public const string CommandResult = "command_result";

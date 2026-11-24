@@ -3573,7 +3573,7 @@ typedef enum {
 } gn_event_type;
 ```
 
-[Source: sdk/c/gamenight.h](https://github.com/ontola/gamepad-party/blob/main/sdk/c/gamenight.h#L279)
+[Source: sdk/c/gamenight.h](https://github.com/ontola/gamepad-party/blob/main/sdk/c/gamenight.h#L280)
 
 On Prepare, load your level while hidden, then call `gn_ready`. Start shows play. Pause freezes simulation and audio; Resume restores them. Dispose frees session resources. Keep the socket alive for the next Prepare.
 
@@ -5274,7 +5274,7 @@ party, and Y reports a bug: the host screenshots the game on screen, sends it
 to the cloud room and opens the lobby, and the phones at the table are asked
 what went wrong. After a chord, letting go of Back does nothing, so the lobby never shows
 in between. A game's own `request_overlay` for that same Back press is folded
-into it. In the lobby a Back tap closes it; holding Back for 300 ms shows
+into it. In the lobby a Back tap closes it; holding Back for 160 ms shows
 `back_menu` in the party state (the controller, its player and the chords that
 work right now) for lobbies to draw. RB, LB, B and Y under a held Back never reach
 games or lobbies. Play next explicitly

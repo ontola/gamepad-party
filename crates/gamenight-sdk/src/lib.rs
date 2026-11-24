@@ -322,6 +322,11 @@ impl GameNight {
                             revision,
                         },
                         ServerMessage::LobbyFocus { active } => GameEvent::LobbyFocus { active },
+                        // Only lobbies draw it; keep the cached party in step.
+                        ServerMessage::BackMenu { menu } => {
+                            self.party.back_menu = menu;
+                            continue;
+                        }
                         ServerMessage::PartyState { party } => {
                             if !self.party_events {
                                 self.party = party;

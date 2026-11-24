@@ -2775,6 +2775,29 @@
           "type": "object"
         },
         {
+          "description": "The Back chord menu changed (shown, armed or gone): the same value\nas `party_state.party.back_menu`, sent on its own so lobbies show and\nhide it at once instead of waiting for a whole party with its art.",
+          "properties": {
+            "menu": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/BackMenu"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": {
+              "const": "back_menu",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        },
+        {
           "description": "Warm up: load assets, map the given seats, then reply `ready`.",
           "properties": {
             "game": {

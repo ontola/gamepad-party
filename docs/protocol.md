@@ -300,7 +300,7 @@ party, and Y reports a bug: the host screenshots the game on screen, sends it
 to the cloud room and opens the lobby, and the phones at the table are asked
 what went wrong. After a chord, letting go of Back does nothing, so the lobby never shows
 in between. A game's own `request_overlay` for that same Back press is folded
-into it. In the lobby a Back tap closes it; holding Back for 300 ms shows
+into it. In the lobby a Back tap closes it; holding Back for 160 ms shows
 `back_menu` in the party state (the controller, its player and the chords that
 work right now) for lobbies to draw. RB, LB, B and Y under a held Back never reach
 games or lobbies. Play next explicitly

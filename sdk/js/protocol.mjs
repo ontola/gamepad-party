@@ -29,6 +29,7 @@ export const MSG = Object.freeze({
   "ACTION_TRIGGERED": "action_triggered",
   "APPLY_UPDATE": "apply_update",
   "ASSIGN_SEAT": "assign_seat",
+  "BACK_MENU": "back_menu",
   "BIND_CONTROLLER": "bind_controller",
   "CLOSE_OVERLAY": "close_overlay",
   "COMMAND_RESULT": "command_result",
@@ -681,6 +682,12 @@ export const SERVER_MESSAGES = {
     "required": [
       "party"
     ]
+  },
+  "back_menu": {
+    "fields": [
+      "menu"
+    ],
+    "required": []
   },
   "prepare": {
     "fields": [

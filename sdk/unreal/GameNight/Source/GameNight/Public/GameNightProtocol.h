@@ -32,6 +32,7 @@ inline constexpr int PROTOCOL_VERSION = 1;
 inline constexpr const char* MSG_ACTION_TRIGGERED = "action_triggered";
 inline constexpr const char* MSG_APPLY_UPDATE = "apply_update";
 inline constexpr const char* MSG_ASSIGN_SEAT = "assign_seat";
+inline constexpr const char* MSG_BACK_MENU = "back_menu";
 inline constexpr const char* MSG_BIND_CONTROLLER = "bind_controller";
 inline constexpr const char* MSG_CLOSE_OVERLAY = "close_overlay";
 inline constexpr const char* MSG_COMMAND_RESULT = "command_result";

@@ -90,6 +90,7 @@ extern "C" {
 #define GN_MSG_ACTION_TRIGGERED "action_triggered"
 #define GN_MSG_APPLY_UPDATE "apply_update"
 #define GN_MSG_ASSIGN_SEAT "assign_seat"
+#define GN_MSG_BACK_MENU "back_menu"
 #define GN_MSG_BIND_CONTROLLER "bind_controller"
 #define GN_MSG_CLOSE_OVERLAY "close_overlay"
 #define GN_MSG_COMMAND_RESULT "command_result"

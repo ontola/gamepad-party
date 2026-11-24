@@ -29,6 +29,7 @@ const PROTOCOL_VERSION := 1
 const MSG_ACTION_TRIGGERED := "action_triggered"
 const MSG_APPLY_UPDATE := "apply_update"
 const MSG_ASSIGN_SEAT := "assign_seat"
+const MSG_BACK_MENU := "back_menu"
 const MSG_BIND_CONTROLLER := "bind_controller"
 const MSG_CLOSE_OVERLAY := "close_overlay"
 const MSG_COMMAND_RESULT := "command_result"

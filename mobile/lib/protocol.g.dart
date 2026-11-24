@@ -27,6 +27,7 @@ const int protocolVersion = 1;
 const String msgActionTriggered = 'action_triggered';
 const String msgApplyUpdate = 'apply_update';
 const String msgAssignSeat = 'assign_seat';
+const String msgBackMenu = 'back_menu';
 const String msgBindController = 'bind_controller';
 const String msgCloseOverlay = 'close_overlay';
 const String msgCommandResult = 'command_result';

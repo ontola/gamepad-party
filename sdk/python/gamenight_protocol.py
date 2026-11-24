@@ -29,6 +29,7 @@ PROTOCOL_VERSION = 1
 MSG_ACTION_TRIGGERED = "action_triggered"
 MSG_APPLY_UPDATE = "apply_update"
 MSG_ASSIGN_SEAT = "assign_seat"
+MSG_BACK_MENU = "back_menu"
 MSG_BIND_CONTROLLER = "bind_controller"
 MSG_CLOSE_OVERLAY = "close_overlay"
 MSG_COMMAND_RESULT = "command_result"
@@ -781,6 +782,12 @@ SERVER_MESSAGES = {
         "required": [
             "party"
         ]
+    },
+    "back_menu": {
+        "fields": [
+            "menu"
+        ],
+        "required": []
     },
     "prepare": {
         "fields": [

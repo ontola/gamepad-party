@@ -29,6 +29,7 @@ const PROTOCOL_VERSION := 1
 const MSG_ACTION_TRIGGERED := "action_triggered"
 const MSG_APPLY_UPDATE := "apply_update"
 const MSG_ASSIGN_SEAT := "assign_seat"
+const MSG_BACK_MENU := "back_menu"
 const MSG_BIND_CONTROLLER := "bind_controller"
 const MSG_CLOSE_OVERLAY := "close_overlay"
 const MSG_COMMAND_RESULT := "command_result"
@@ -117,11 +118,13 @@ const ACTIVITY_KIND_GAME := "game"
 const BACK_CHORD_ACTION_NEXT := "next"
 const BACK_CHORD_ACTION_PREVIOUS := "previous"
 const BACK_CHORD_ACTION_LEAVE := "leave"
+const BACK_CHORD_ACTION_REPORT_BUG := "report_bug"
 
 ## BackChordButton
 const BACK_CHORD_BUTTON_RB := "rb"
 const BACK_CHORD_BUTTON_LB := "lb"
 const BACK_CHORD_BUTTON_B := "b"
+const BACK_CHORD_BUTTON_Y := "y"
 
 ## GameIssueKind
 const GAME_ISSUE_KIND_CLOSED := "closed"

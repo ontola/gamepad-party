@@ -1721,6 +1721,13 @@ pub enum ServerMessage {
     PartyState {
         party: PartySnapshot,
     },
+    /// The Back chord menu changed (shown, armed or gone): the same value
+    /// as `party_state.party.back_menu`, sent on its own so lobbies show and
+    /// hide it at once instead of waiting for a whole party with its art.
+    BackMenu {
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        menu: Option<BackMenu>,
+    },
 
     // -- session lifecycle, sent to games -----------------------------------
     /// Warm up: load assets, map the given seats, then reply `ready`.

@@ -278,8 +278,10 @@ struct BackHold {
     leave_armed: bool,
 }
 
-/// Holding Back this long shows the chord menu; releasing sooner is a tap.
-const BACK_HOLD: Duration = Duration::from_millis(300);
+/// Holding Back this long shows the chord menu (Joep: 300 ms felt slow);
+/// releasing sooner is a tap (in the room: close it). Once the menu shows,
+/// letting go keeps the room.
+const BACK_HOLD: Duration = Duration::from_millis(160);
 
 /// Buttons that are chords while Back is held, never game or lobby input.
 const CHORD_BUTTONS: u32 = RB | LB | B_BUTTON | Y_BUTTON;
@@ -401,8 +403,18 @@ fn back_chords(
         shown.then(|| back_menu(&s.night.snapshot(), &c.controller, hold.leave_armed))
     });
     if menu != s.back_menu {
-        s.back_menu = menu;
-        s.apply_effects(vec![Effect::StateChanged], None);
+        s.back_menu = menu.clone();
+        // Not a whole party broadcast: that carries the shelf's screenshots
+        // and made the panel show late and linger after Back was let go.
+        let msg = ServerMessage::BackMenu { menu };
+        for tx in s.overlays.values() {
+            send(tx, &msg);
+        }
+        for id in &s.lobby_connections {
+            if let Some(tx) = s.games.get(id) {
+                send(tx, &msg);
+            }
+        }
     }
 }
 
