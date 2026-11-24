@@ -153,7 +153,12 @@ jobs:
           mkdir dmg-root
           ditto stage/GameNight.app dmg-root/GameNight.app
           ln -s /Applications dmg-root/Applications
-          hdiutil create -volname GameNight -srcfolder dmg-root -ov -format UDZO release/GameNight.dmg
+          # hdiutil on CI runners fails now and then with "Resource busy".
+          for attempt in 1 2 3 4 5; do
+            hdiutil create -volname GameNight -srcfolder dmg-root -ov -format UDZO release/GameNight.dmg && break
+            if [ $attempt = 5 ]; then exit 1; fi
+            sleep $((attempt * 10))
+          done
           hdiutil verify release/GameNight.dmg
       - name: Sign and notarize disk image
         if: steps.signing.outputs.identity != '-'
