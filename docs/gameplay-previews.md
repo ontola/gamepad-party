@@ -67,6 +67,51 @@ Retain a reproducible capture harness and edit decision list: source version/com
 and package hash, seed, staging, each source in/out frame, shot length, and what each
 shot demonstrates. Record hashes for the encoded clip and its poster.
 
+## Keep the recipe, not the video
+
+The clip is built, not kept: put a `preview.json` recipe next to your
+`gamenight.json` and commit that. Never commit the clip itself. When the game
+looks better, run the recipe again. Every cut is a command from your own game
+that writes numbered PNG frames into `{dir}` (a headless capture, a scripted
+run with a fixed seed), followed by how many frames to use:
+
+```json
+{
+  "render": "1920x1080",
+  "env": {"MYGAME_NO_HUD": "1"},
+  "cuts": [
+    {"name": "arena", "note": "four players, first clash",
+     "run": ["./mygame", "--capture", "{dir}", "--size", "{w}x{h}", "--seed", "3", "--frames", "{frames}"],
+     "skip": 20, "frames": 60},
+    {"name": "boss", "note": "the boss slam lands",
+     "run": ["./mygame", "--capture", "{dir}", "--level", "boss", "--frames", "{frames}"],
+     "frames": 90}
+  ],
+  "poster": {"cut": "boss", "frame": 40}
+}
+```
+
+The cuts' `frames` add up to exactly 150. `{frames}` is `skip` plus `frames`,
+and `{w}` and `{h}` are the render size. `cwd` (relative to the recipe) sets
+where a command runs.
+
+```sh
+python3 gamenight-publish.py clip                        # render, cut, encode, check
+python3 gamenight-publish.py clip --render-size 480x270  # a quick draft
+python3 gamenight-publish.py clip --reuse --only boss    # redo one cut
+GAMENIGHT_API_TOKEN=gn_pub_... python3 gamenight-publish.py clip --reuse --publish
+```
+
+`clip` works in `build/preview/` (keep it out of git). It encodes to the
+delivery format below and runs the checks below. It writes `provenance.json`
+with the commit, the recipe hash, every cut and the hashes of the clip and its
+poster. Nothing leaves your machine until you add `--publish`. That uploads the
+clip and the poster to the store's media storage through the API and makes them
+the store page's gameplay video, using the publishing key of your game. Render
+on a real GPU; a software renderer is fine for drafts only. A CI job that runs
+`gamenight-publish.py store` must not have a `preview.mp4` lying around to
+upload, or it puts the old clip back.
+
 ## Delivery and acceptance
 
 - Exactly **5 seconds / 150 frames**, **960×540**, **30 FPS**.

@@ -7,6 +7,7 @@ import json
 import os
 from pathlib import Path
 import shutil
+import subprocess
 import sys
 import tempfile
 import urllib.parse
@@ -240,6 +241,96 @@ def store(client, args):
     if not result.get('preview_ready'):
         print('The store still needs a five-second gameplay clip (preview.mp4) before it can go live.', file=sys.stderr)
 
+CLIP_FRAMES, CLIP_FPS, CLIP_SIZE = 150, 30, (960, 540)
+
+def clip(args):
+    """Render the store clip from a recipe (preview.json), cut, encode and check it.
+
+    The recipe is the source; the clip is rebuilt from it whenever the game
+    changes, and only the clip goes to the store (with --publish), never to git.
+    """
+    recipe_path = args.recipe.resolve()
+    recipe = json.loads(recipe_path.read_text())
+    base = recipe_path.parent
+    cuts = recipe.get('cuts') or []
+    if sum(c['frames'] for c in cuts) != CLIP_FRAMES:
+        raise ValueError(f"The cuts' frames add up to {sum(c['frames'] for c in cuts)}; a store clip is exactly {CLIP_FRAMES} (5 s at {CLIP_FPS} fps)")
+    w, h = (args.render_size or recipe.get('render', '1920x1080')).split('x')
+    out = (args.out or base / 'build' / 'preview').resolve()
+    env = {**os.environ, **{k: str(v) for k, v in recipe.get('env', {}).items()}}
+    seq = out / 'seq'
+    shutil.rmtree(seq, ignore_errors=True)
+    seq.mkdir(parents=True)
+    n, frames_of = 0, {}
+    for cut in cuts:
+        folder = out / 'cuts' / cut['name']
+        need = cut.get('skip', 0) + cut['frames']
+        have = sorted(folder.glob('*.png')) if folder.is_dir() else []
+        if not (args.reuse and len(have) >= need) and (not args.only or cut['name'] in args.only):
+            shutil.rmtree(folder, ignore_errors=True)
+            folder.mkdir(parents=True)
+            fill = {'dir': str(folder), 'w': w, 'h': h, 'frames': str(need)}
+            command = [str(a).format(**fill) for a in cut['run']]
+            print(f"[{cut['name']}] {' '.join(command)}", file=sys.stderr)
+            subprocess.run(command, cwd=base / cut.get('cwd', '.'), env=env, check=True)
+            have = sorted(folder.glob('*.png'))
+        if len(have) < need:
+            raise ValueError(f"Cut {cut['name']} made {len(have)} frames, it needs {need} (skip {cut.get('skip', 0)} + {cut['frames']})")
+        frames_of[cut['name']] = []
+        for frame in have[cut.get('skip', 0):need]:
+            target = seq / f'{n:05d}.png'
+            shutil.copyfile(frame, target)
+            frames_of[cut['name']].append(target)
+            n += 1
+    video, poster = out / 'preview.mp4', out / 'preview.jpg'
+    scale = f'scale={CLIP_SIZE[0]}:{CLIP_SIZE[1]}:flags=lanczos'
+    subprocess.run(['ffmpeg', '-v', 'error', '-y', '-framerate', str(CLIP_FPS), '-i', str(seq / '%05d.png'),
+                    '-vf', scale + ',format=yuv420p', '-c:v', 'libx264', '-crf', '24', '-preset', 'slow',
+                    '-color_range', 'tv', '-movflags', '+faststart', '-an', str(video)], check=True)
+    at = recipe.get('poster', {})
+    still = frames_of.get(at.get('cut'), frames_of[cuts[0]['name']])
+    still = still[min(at.get('frame', len(still) // 2), len(still) - 1)]
+    subprocess.run(['ffmpeg', '-v', 'error', '-y', '-i', str(still), '-vf', scale, '-q:v', '3', str(poster)], check=True)
+    # The checks of docs/gameplay-previews.md, on the decoded clip.
+    probe = json.loads(subprocess.run(['ffprobe', '-v', 'error', '-count_frames', '-select_streams', 'v:0', '-show_entries',
+                                       'stream=width,height,nb_read_frames:format=duration', '-of', 'json', str(video)],
+                                      check=True, capture_output=True, text=True).stdout)
+    stream = probe['streams'][0]
+    hashes = subprocess.run(['ffmpeg', '-v', 'error', '-i', str(video), '-f', 'framemd5', '-'], check=True, capture_output=True, text=True).stdout
+    distinct = len({line.rsplit(',', 1)[-1] for line in hashes.splitlines() if line and not line.startswith('#')})
+    problems = []
+    if (stream['width'], stream['height']) != CLIP_SIZE:
+        problems.append(f"{stream['width']}x{stream['height']}, not {CLIP_SIZE[0]}x{CLIP_SIZE[1]}")
+    if int(stream['nb_read_frames']) != CLIP_FRAMES:
+        problems.append(f"{stream['nb_read_frames']} frames, not {CLIP_FRAMES}")
+    if not 4.9 <= float(probe['format']['duration']) <= 5.1:
+        problems.append(f"{probe['format']['duration']} s long")
+    if distinct < 100:
+        problems.append(f'only {distinct} distinct frames (a frozen cut?)')
+    if problems:
+        raise ValueError('The clip fails the store checks: ' + '; '.join(problems))
+    commit = subprocess.run(['git', 'rev-parse', 'HEAD'], cwd=base, capture_output=True, text=True).stdout.strip()
+    dirty = bool(subprocess.run(['git', 'status', '--porcelain', '.'], cwd=base, capture_output=True, text=True).stdout.strip())
+    provenance = {'recipe': str(recipe_path.name), 'recipe_sha256': sha256(recipe_path), 'commit': commit + ('-dirty' if dirty else ''),
+                  'render': f'{w}x{h}', 'cuts': [{'name': c['name'], 'skip': c.get('skip', 0), 'frames': c['frames'], 'note': c.get('note', '')} for c in cuts],
+                  'distinct_frames': distinct, 'preview.mp4': sha256(video), 'preview.jpg': sha256(poster)}
+    (out / 'provenance.json').write_text(json.dumps(provenance, indent=2) + '\n')
+    print(f'Clip ready: {video} and {poster} ({distinct} distinct frames). Watch it at full speed.', file=sys.stderr)
+    if not args.publish:
+        print('Nothing uploaded. Run again with --reuse --publish to put it in the store.', file=sys.stderr)
+        return
+    manifest_path = recipe_path.with_name('gamenight.json')
+    game = args.game or (json.loads(manifest_path.read_text()).get('id') if manifest_path.is_file() else None)
+    if not game:
+        raise ValueError('Pass --game or keep the recipe next to a gamenight.json with an "id"')
+    client = Client(args.server, os.environ.get('GAMENIGHT_API_TOKEN', ''))
+    path = f'/v1/developer/games/{urllib.parse.quote(game, safe="")}'
+    body = {field: client.request('POST', path + '/uploads', file=file)['url'] for field, file in (('video', video), ('poster', poster))}
+    result = client.request('PUT', path + '/store', body)
+    provenance.update(game=game, **body)
+    (out / 'provenance.json').write_text(json.dumps(provenance, indent=2) + '\n')
+    print(json.dumps({'game': game, **body, 'preview_ready': result.get('preview_ready')}, indent=2))
+
 def save_schema(client, game, file):
     """Publish save-schema.json and write save-schema.lock.json next to it."""
     path = f'/v1/developer/games/{urllib.parse.quote(game, safe="")}/save-schema'
@@ -288,13 +379,23 @@ def main():
     p.add_argument('--game', help='Defaults to the id in gamenight.json')
     p.add_argument('--manifest', type=Path, default=Path('gamenight.json'))
     p.add_argument('--schema', type=Path, default=Path('save-schema.json'))
+    p = commands.add_parser('clip', help='Render the five-second store clip from preview.json; --publish uploads it')
+    p.add_argument('--recipe', type=Path, default=Path('preview.json'), help='Cuts: a command each that writes PNG frames into {dir}')
+    p.add_argument('--out', type=Path, help='Work folder (default build/preview next to the recipe); keep it out of git')
+    p.add_argument('--render-size', help='WxH for {w} and {h}, e.g. 480x270 for a quick draft')
+    p.add_argument('--only', action='append', help='Render only this cut again; repeat for more')
+    p.add_argument('--reuse', action='store_true', help="Keep cuts that already have their frames")
+    p.add_argument('--publish', action='store_true', help='Upload the clip and poster to the store (needs GAMENIGHT_API_TOKEN)')
+    p.add_argument('--game', help='Defaults to the id in the gamenight.json next to the recipe')
     args = parser.parse_args()
+    if args.command == 'clip':
+        return clip(args)
     client = Client(args.server, os.environ.get('GAMENIGHT_API_TOKEN', ''))
     {'push': push, 'preview': preview, 'store': store, 'schema': schema}[args.command](client, args)
 
 if __name__ == '__main__':
     try:
         main()
-    except (ValueError, OSError, http.client.HTTPException) as error:
+    except (ValueError, OSError, http.client.HTTPException, subprocess.CalledProcessError) as error:
         print('Splitscreen Club publishing failed: ' + str(error), file=sys.stderr)
         sys.exit(1)

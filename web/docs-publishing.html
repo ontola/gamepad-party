@@ -16,7 +16,8 @@
 <p>Keep two things in your repository and let Splitscreen Club production hold the rest:</p>
 <ul>
 <li><code>gamenight.json</code> holds the facts about the game: id, title, tagline, developer, players, round length, tags, emoji, colour, requirements and links. Start it with <code>&quot;$schema&quot;: &quot;https://raw.githubusercontent.com/ontola/gamepad-party/main/catalog/schema.json&quot;</code> so editors check it.</li>
-<li><code>assets/gamenight/</code> holds the store media sources: <code>preview.mp4</code>, <code>preview.jpg</code>, <code>cover.png</code>, <code>icon.png</code>, <code>gameplay.png</code> and an optional <code>screenshots/</code> folder.</li>
+<li><code>assets/gamenight/</code> holds the store artwork: <code>cover.png</code>, <code>icon.png</code>, <code>gameplay.png</code> and an optional <code>screenshots/</code> folder.</li>
+<li><code>preview.json</code> is the recipe for the five-second gameplay clip. <code>gamenight-publish.py clip</code> renders the clip from it and <code>--publish</code> uploads it; the clip itself stays out of the repository (see the <a href="/docs/store-clip#keep-the-recipe-not-the-video">store clip guide</a>).</li>
 </ul>
 <p>Builds, the store page, ownership and visibility live in production. <code>gamenight-publish.py push</code> (or the GitHub Action) sends builds and <code>gamenight-publish.py store</code> sends <code>gamenight.json</code> and the media. Do not put store text or media anywhere else. Hosts pick up a stable release from the hosted catalog; a new game needs no entry in the Splitscreen Club repository.</p>
 <h2 id="prepare-a-release">Prepare a release</h2>
@@ -187,7 +188,7 @@ developer, players, tags, round length, links) and uploads what it finds in
 <tbody>
 <tr>
 <td><code>preview.mp4</code> or <code>preview.webm</code></td>
-<td>the five-second gameplay clip</td>
+<td>the five-second gameplay clip (prefer <code>clip --publish</code> from a recipe)</td>
 </tr>
 <tr>
 <td><code>preview.jpg</code></td>
@@ -251,7 +252,7 @@ another game cannot satisfy this game's requirement.</p>
 <p>Run the <a href="/docs/testing">integration checks</a> against the package players will download. Evidence from a different operating system or build does not count for this release. Missing checks remain untested.</p>
 <p>The integration rating separates smooth play, player personalisation and optional extras. Faces are checked separately from colours and names. Staff review the build and distribution permission before publication; sending a message or submitting a build does not publish it automatically.</p>
 
-<footer class="docs-source"><a href="https://github.com/ontola/gamepad-party/blob/main/docs/site/publishing.md">Edit this page</a><span data-source-fingerprint="27f1612955c7558487fe1de1b532f193f29012172c2aa6f781445f5807f0954f">Built from repository sources</span></footer>
+<footer class="docs-source"><a href="https://github.com/ontola/gamepad-party/blob/main/docs/site/publishing.md">Edit this page</a><span data-source-fingerprint="0c786f0b7ae20a2b08fd106d8ed65b9add655a2a91885823f912fd8dbfb20370">Built from repository sources</span></footer>
 <nav class="docs-pager" aria-label="Adjacent documentation pages"><a href="/docs/testing"><small>Previous</small>Test your integration</a><a href="/docs/store-clip"><small>Next</small>Store clip</a></nav></article>
 <aside class="docs-toc" aria-label="On this page"><strong>On this page</strong><a href="#where-your-games-data-lives">Where your game&#x27;s data lives</a><a href="#prepare-a-release">Prepare a release</a><a href="#playtests">Playtests</a><a href="#connect-github-actions">Connect GitHub Actions</a><a href="#other-ci-systems-and-local-previews">Other CI systems and local previews</a><a href="#publishing-api">Publishing API</a><a href="#catalog-updates">Catalog updates</a><a href="#required-gameplay-video">Required gameplay video</a><a href="#optional-artwork">Optional artwork</a><a href="#review-the-exact-build">Review the exact build</a></aside>
 <p class="docs-copy-status" role="status" aria-live="polite"></p></main></body></html>

@@ -66,6 +66,43 @@ match. Work in a scratch copy without affecting active player sessions.</p>
 <p>Retain a reproducible capture harness and edit decision list: source version/commit
 and package hash, seed, staging, each source in/out frame, shot length, and what each
 shot demonstrates. Record hashes for the encoded clip and its poster.</p>
+<h2 id="keep-the-recipe-not-the-video">Keep the recipe, not the video</h2>
+<p>The clip is built, not kept: put a <code>preview.json</code> recipe next to your
+<code>gamenight.json</code> and commit that. Never commit the clip itself. When the game
+looks better, run the recipe again. Every cut is a command from your own game
+that writes numbered PNG frames into <code>{dir}</code> (a headless capture, a scripted
+run with a fixed seed), followed by how many frames to use:</p>
+<div class="docs-code"><button type="button" class="docs-copy" aria-label="Copy code example">Copy</button><pre><code class="language-json">{
+  &quot;render&quot;: &quot;1920x1080&quot;,
+  &quot;env&quot;: {&quot;MYGAME_NO_HUD&quot;: &quot;1&quot;},
+  &quot;cuts&quot;: [
+    {&quot;name&quot;: &quot;arena&quot;, &quot;note&quot;: &quot;four players, first clash&quot;,
+     &quot;run&quot;: [&quot;./mygame&quot;, &quot;--capture&quot;, &quot;{dir}&quot;, &quot;--size&quot;, &quot;{w}x{h}&quot;, &quot;--seed&quot;, &quot;3&quot;, &quot;--frames&quot;, &quot;{frames}&quot;],
+     &quot;skip&quot;: 20, &quot;frames&quot;: 60},
+    {&quot;name&quot;: &quot;boss&quot;, &quot;note&quot;: &quot;the boss slam lands&quot;,
+     &quot;run&quot;: [&quot;./mygame&quot;, &quot;--capture&quot;, &quot;{dir}&quot;, &quot;--level&quot;, &quot;boss&quot;, &quot;--frames&quot;, &quot;{frames}&quot;],
+     &quot;frames&quot;: 90}
+  ],
+  &quot;poster&quot;: {&quot;cut&quot;: &quot;boss&quot;, &quot;frame&quot;: 40}
+}
+</code></pre></div>
+<p>The cuts' <code>frames</code> add up to exactly 150. <code>{frames}</code> is <code>skip</code> plus <code>frames</code>,
+and <code>{w}</code> and <code>{h}</code> are the render size. <code>cwd</code> (relative to the recipe) sets
+where a command runs.</p>
+<div class="docs-code"><button type="button" class="docs-copy" aria-label="Copy code example">Copy</button><pre><code class="language-sh">python3 gamenight-publish.py clip                        # render, cut, encode, check
+python3 gamenight-publish.py clip --render-size 480x270  # a quick draft
+python3 gamenight-publish.py clip --reuse --only boss    # redo one cut
+GAMENIGHT_API_TOKEN=gn_pub_... python3 gamenight-publish.py clip --reuse --publish
+</code></pre></div>
+<p><code>clip</code> works in <code>build/preview/</code> (keep it out of git). It encodes to the
+delivery format below and runs the checks below. It writes <code>provenance.json</code>
+with the commit, the recipe hash, every cut and the hashes of the clip and its
+poster. Nothing leaves your machine until you add <code>--publish</code>. That uploads the
+clip and the poster to the store's media storage through the API and makes them
+the store page's gameplay video, using the publishing key of your game. Render
+on a real GPU; a software renderer is fine for drafts only. A CI job that runs
+<code>gamenight-publish.py store</code> must not have a <code>preview.mp4</code> lying around to
+upload, or it puts the old clip back.</p>
 <h2 id="delivery-and-acceptance">Delivery and acceptance</h2>
 <ul>
 <li>Exactly <strong>5 seconds / 150 frames</strong>, <strong>960×540</strong>, <strong>30 FPS</strong>.</li>
@@ -88,7 +125,7 @@ why this game is fun without reading its description? If not, revise the edit.</
 <p>The hosted service's <code>deploy/cloud/previews/README.md</code> contains engine-specific
 capture commands and publishing steps. Its <code>PREVIEWS.json</code> records shipped clips.</p>
 
-<footer class="docs-source"><a href="https://github.com/ontola/gamepad-party/blob/main/docs/gameplay-previews.md">Edit this page</a><span data-source-fingerprint="1b2d47e856d74920001a2b3df5edca578592505dcd265c9b6103ac0310a7a390">Built from repository sources</span></footer>
+<footer class="docs-source"><a href="https://github.com/ontola/gamepad-party/blob/main/docs/gameplay-previews.md">Edit this page</a><span data-source-fingerprint="5bf42241a2c8df96685a03c7a48752bcb2f8a6ff9dbb6f3496616d427151737a">Built from repository sources</span></footer>
 <nav class="docs-pager" aria-label="Adjacent documentation pages"><a href="/docs/publishing"><small>Previous</small>Publish a game</a><a href="/docs/settings"><small>Next</small>Game settings</a></nav></article>
-<aside class="docs-toc" aria-label="On this page"><strong>On this page</strong><a href="#plan-the-five-seconds">Plan the five seconds</a><a href="#make-the-action-legible">Make the action legible</a><a href="#capture-real-gameplay">Capture real gameplay</a><a href="#delivery-and-acceptance">Delivery and acceptance</a></aside>
+<aside class="docs-toc" aria-label="On this page"><strong>On this page</strong><a href="#plan-the-five-seconds">Plan the five seconds</a><a href="#make-the-action-legible">Make the action legible</a><a href="#capture-real-gameplay">Capture real gameplay</a><a href="#keep-the-recipe-not-the-video">Keep the recipe, not the video</a><a href="#delivery-and-acceptance">Delivery and acceptance</a></aside>
 <p class="docs-copy-status" role="status" aria-live="polite"></p></main></body></html>

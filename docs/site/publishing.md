@@ -9,7 +9,8 @@ Use the [developer portal](/developers) to add your game, upload builds, manage 
 Keep two things in your repository and let Splitscreen Club production hold the rest:
 
 - `gamenight.json` holds the facts about the game: id, title, tagline, developer, players, round length, tags, emoji, colour, requirements and links. Start it with `"$schema": "https://raw.githubusercontent.com/ontola/gamepad-party/main/catalog/schema.json"` so editors check it.
-- `assets/gamenight/` holds the store media sources: `preview.mp4`, `preview.jpg`, `cover.png`, `icon.png`, `gameplay.png` and an optional `screenshots/` folder.
+- `assets/gamenight/` holds the store artwork: `cover.png`, `icon.png`, `gameplay.png` and an optional `screenshots/` folder.
+- `preview.json` is the recipe for the five-second gameplay clip. `gamenight-publish.py clip` renders the clip from it and `--publish` uploads it; the clip itself stays out of the repository (see the [store clip guide](/docs/store-clip#keep-the-recipe-not-the-video)).
 
 Builds, the store page, ownership and visibility live in production. `gamenight-publish.py push` (or the GitHub Action) sends builds and `gamenight-publish.py store` sends `gamenight.json` and the media. Do not put store text or media anywhere else. Hosts pick up a stable release from the hosted catalog; a new game needs no entry in the Splitscreen Club repository.
 
@@ -193,7 +194,7 @@ developer, players, tags, round length, links) and uploads what it finds in
 
 | File | Becomes |
 | --- | --- |
-| `preview.mp4` or `preview.webm` | the five-second gameplay clip |
+| `preview.mp4` or `preview.webm` | the five-second gameplay clip (prefer `clip --publish` from a recipe) |
 | `preview.jpg` | the clip's poster |
 | `cover.png` | portrait cover |
 | `icon.png` | square icon |

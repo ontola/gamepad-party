@@ -135,9 +135,11 @@ Put two things in your repository:
   }
   ```
 
-- `assets/gamenight/` with `preview.mp4` (five seconds of real gameplay, see
-  the [store clip guide](/docs/store-clip)), `cover.png` (portrait 360x480),
-  `icon.png` (128x128) and `gameplay.png` (16:9).
+- `assets/gamenight/` with `cover.png` (portrait 360x480), `icon.png`
+  (128x128) and `gameplay.png` (16:9).
+- `preview.json`, the recipe for five seconds of real gameplay. `python3
+  gamenight-publish.py clip --publish` renders and uploads it (see the
+  [store clip guide](/docs/store-clip#keep-the-recipe-not-the-video)).
 
 Then, in that folder:
 
