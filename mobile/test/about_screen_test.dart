@@ -46,6 +46,7 @@ void main() {
     expect(find.text('Get ready (1 to go)'), findsOneWidget);
     await tester.scrollUntilVisible(
         find.byKey(const ValueKey('about-github')), 200);
+    expect(find.byKey(const ValueKey('about-discord')), findsOneWidget);
     await tester.pumpWidget(const SizedBox());
     state.dispose();
   });

@@ -58,6 +58,7 @@
   <div class="site-links">
     <a href="/catalog" aria-current={($route.startsWith('/catalog') || $route.startsWith('/games/'))?'page':undefined}>Games</a>
     <a class="site-desktop-link" href="/docs" aria-current={$route==='/docs' || $route.startsWith('/docs/')?'page':undefined}>Docs</a>
+    <a class="site-desktop-link" href="https://discord.gg/c8tyuajp4Q" target="_blank" rel="noopener" title="Chat with players and developers on Discord">Discord</a>
     <a href={document.body.dataset.local==='true'?'/studio':'/app/#/you'} aria-current={$route.startsWith('/studio') && !$route.includes('#session')?'page':undefined}>You</a>
     <a href="/app/#/room?section=playlist" hidden={$room!==true || $guestRoom} aria-current={$route==='/studio#session'?'page':undefined}>Playlist</a>
     {#if $room===true && $assistantUrl}
@@ -79,6 +80,7 @@
     <a href="/docs" aria-current={$route==='/docs' || $route.startsWith('/docs/')?'page':undefined} onclick={()=>menuDialog.close()}>Docs <span aria-hidden="true">↗</span></a>
     <a href={document.body.dataset.local==='true'?'https://splitscreen.club/developers':'/developers'} aria-current={$route==='/developers' || $route.startsWith('/developers/')?'page':undefined} onclick={()=>menuDialog.close()}>Developer portal <span aria-hidden="true">→</span></a>
     <a href={hostHref} aria-current={$route==='/host'?'page':undefined} onclick={()=>menuDialog.close()}>Host a room <span aria-hidden="true">→</span></a>
+    <a href="https://discord.gg/c8tyuajp4Q" target="_blank" rel="noopener" onclick={()=>menuDialog.close()}>Discord <span aria-hidden="true">↗</span></a>
     {#if $room===true}<button class="site-menu-leave" onclick={openLeave}>Leave room <span aria-hidden="true">→</span></button>{/if}
   </nav>
 </dialog>

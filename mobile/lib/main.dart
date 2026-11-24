@@ -36,30 +36,37 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   SystemChrome.setSystemUIOverlayStyle(gameNightSystemUi);
   LicenseRegistry.addLicense(() async* {
-    yield LicenseEntryWithLineBreaks(
-        ['Bungee'], await rootBundle.loadString('assets/fonts/OFL-Bungee.txt'));
-    yield LicenseEntryWithLineBreaks(
-        ['Outfit'], await rootBundle.loadString('assets/fonts/OFL-Outfit.txt'));
+    yield LicenseEntryWithLineBreaks([
+      'Bungee',
+    ], await rootBundle.loadString('assets/fonts/OFL-Bungee.txt'));
+    yield LicenseEntryWithLineBreaks([
+      'Outfit',
+    ], await rootBundle.loadString('assets/fonts/OFL-Outfit.txt'));
   });
   final prefs = await SharedPreferences.getInstance();
   if (kIsWeb) await migrateWebsiteRoom(prefs);
   await PhoneStore.start(prefs);
   final push = await FirebasePushDevice.create();
   final state = AppState(prefs, pushDevice: push);
-  final reports = ReportService(prefs,
-      requestHeaders: state.cloud.browserMutationHeaders,
-      context: () => {
-            if (state.hostedRoom?.current ??
-                    state.session?.currentGame ??
-                    state.companion?.game
-                case final String game)
-              'game': game,
-          });
+  final reports = ReportService(
+    prefs,
+    requestHeaders: state.cloud.browserMutationHeaders,
+    context: () => {
+      if (state.hostedRoom?.current ??
+              state.session?.currentGame ??
+              state.companion?.game
+          case final String game)
+        'game': game,
+    },
+  );
   Diagnostics.onFailure = reports.captureFailure;
   FlutterError.onError = (details) {
     FlutterError.presentError(details);
-    reports.captureError(details.exception, details.stack ?? StackTrace.current,
-        source: 'flutter');
+    reports.captureError(
+      details.exception,
+      details.stack ?? StackTrace.current,
+      source: 'flutter',
+    );
   };
   PlatformDispatcher.instance.onError = (error, stack) {
     reports.captureError(error, stack);
@@ -75,13 +82,16 @@ Future<void> main() async {
   } catch (_) {
     Diagnostics.failure('Could not read the app launch link');
   }
-  runApp(GameNightApp(
+  runApp(
+    GameNightApp(
       state: state,
       pushDevice: push,
       links: links.uriLinkStream,
       initialLink: first,
       accountLoading: accountLoading,
-      reports: reports));
+      reports: reports,
+    ),
+  );
 }
 
 class GameNightApp extends StatefulWidget {
@@ -93,14 +103,15 @@ class GameNightApp extends StatefulWidget {
   final Stream<Uri>? links;
   final Uri? initialLink;
   final Future<void>? accountLoading;
-  const GameNightApp(
-      {super.key,
-      required this.state,
-      this.pushDevice,
-      this.links,
-      this.initialLink,
-      this.accountLoading,
-      this.reports});
+  const GameNightApp({
+    super.key,
+    required this.state,
+    this.pushDevice,
+    this.links,
+    this.initialLink,
+    this.accountLoading,
+    this.reports,
+  });
 
   @override
   State<GameNightApp> createState() => _GameNightAppState();
@@ -135,7 +146,9 @@ class _GameNightAppState extends State<GameNightApp> {
       WidgetsBinding.instance.addPostFrameCallback((_) async {
         try {
           if (await push.initialRoom() != null) await _openPushRoom();
-        } catch (_) {/* Push is optional. */}
+        } catch (_) {
+          /* Push is optional. */
+        }
       });
     }
     final initial = widget.initialLink;
@@ -148,9 +161,10 @@ class _GameNightAppState extends State<GameNightApp> {
     }
     if (kIsWeb) {
       _history = BrowserNavigation(
-          navigatorKey: _navigator,
-          fullscreen: () => widget.state.companionFullscreen,
-          setFullscreen: widget.state.setCompanionFullscreen);
+        navigatorKey: _navigator,
+        fullscreen: () => widget.state.companionFullscreen,
+        setFullscreen: widget.state.setCompanionFullscreen,
+      );
       widget.state.addListener(_fullscreenChanged);
       _selectedTab = _history!.tab;
     }
@@ -176,40 +190,47 @@ class _GameNightAppState extends State<GameNightApp> {
   }
 
   Widget _home() => HomeScreen(
-      key: _homeKey,
-      onMore: _menu,
-      onTabChanged: (tab) {
-        if (mounted && _selectedTab != tab) setState(() => _selectedTab = tab);
-      },
-      state: widget.state,
-      links: widget.links,
-      initialLink: widget.initialLink,
-      accountLoading: widget.accountLoading,
-      reports: widget.reports,
-      history: _history);
+    key: _homeKey,
+    onMore: _menu,
+    onTabChanged: (tab) {
+      if (mounted && _selectedTab != tab) setState(() => _selectedTab = tab);
+    },
+    state: widget.state,
+    links: widget.links,
+    initialLink: widget.initialLink,
+    accountLoading: widget.accountLoading,
+    reports: widget.reports,
+    history: _history,
+  );
 
   void _feedback() {
     final reports = widget.reports;
     if (reports == null) return;
     final game = _feedbackGame.game;
-    _navigator.currentState?.push(MaterialPageRoute<void>(
-      settings: const RouteSettings(name: 'feedback'),
-      builder: (_) => FeedbackScreen(reports: reports, initialGame: game),
-    ));
+    _navigator.currentState?.push(
+      MaterialPageRoute<void>(
+        settings: const RouteSettings(name: 'feedback'),
+        builder: (_) => FeedbackScreen(reports: reports, initialGame: game),
+      ),
+    );
   }
 
   void _assistant() {
-    _navigator.currentState?.push(MaterialPageRoute<void>(
-      settings: const RouteSettings(name: 'assistant'),
-      builder: (_) => AssistantScreen(state: widget.state),
-    ));
+    _navigator.currentState?.push(
+      MaterialPageRoute<void>(
+        settings: const RouteSettings(name: 'assistant'),
+        builder: (_) => AssistantScreen(state: widget.state),
+      ),
+    );
   }
 
   void _mods() {
-    _navigator.currentState?.push(MaterialPageRoute<void>(
-      settings: const RouteSettings(name: 'mods'),
-      builder: (_) => ModsScreen(state: widget.state),
-    ));
+    _navigator.currentState?.push(
+      MaterialPageRoute<void>(
+        settings: const RouteSettings(name: 'mods'),
+        builder: (_) => ModsScreen(state: widget.state),
+      ),
+    );
   }
 
   /// Opens a page from the logo or the sidebar once; the sidebar marks it
@@ -225,23 +246,29 @@ class _GameNightAppState extends State<GameNightApp> {
     if (top == name) return;
     setState(() => _page = name);
     navigator
-        .push(MaterialPageRoute<void>(
-            settings: RouteSettings(name: name), builder: builder))
+        .push(
+          MaterialPageRoute<void>(
+            settings: RouteSettings(name: name),
+            builder: builder,
+          ),
+        )
         .whenComplete(() {
-      if (mounted && _page == name) setState(() => _page = null);
-    });
+          if (mounted && _page == name) setState(() => _page = null);
+        });
   }
 
   void _about() => _openPage(
-      'about',
-      (_) => AboutScreen(
-          state: widget.state,
-          onHost: _host,
-          onDocs: () => _openWebsite('/docs'),
-          onScan: () {
-            _selectDestination(0);
-            _homeKey.currentState?._roomKey.currentState?.scan();
-          }));
+    'about',
+    (_) => AboutScreen(
+      state: widget.state,
+      onHost: _host,
+      onDocs: () => _openWebsite('/docs'),
+      onScan: () {
+        _selectDestination(0);
+        _homeKey.currentState?._roomKey.currentState?.scan();
+      },
+    ),
+  );
 
   Future<void> _host() async =>
       _openPage('host', (_) => HostScreen(cloud: widget.state.cloud));
@@ -254,78 +281,95 @@ class _GameNightAppState extends State<GameNightApp> {
     // Eight rows plus the iPhone home bar are taller than a sheet's default
     // 9/16 of the screen: the last rows were cut off. Let it grow and scroll.
     showModalBottomSheet<void>(
-        context: context,
-        isScrollControlled: true,
-        useSafeArea: true,
-        builder: (context) => SafeArea(
-              child: SingleChildScrollView(
-                  child: Column(mainAxisSize: MainAxisSize.min, children: [
-                if (widget.state.assistantAvailable)
-                  ListTile(
-                      leading: const Icon(Icons.auto_awesome),
-                      title: const Text('Assistant'),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () {
-                        Navigator.pop(context);
-                        _assistant();
-                      }),
-                if (widget.state.assistantAvailable)
-                  ListTile(
-                      leading: const Icon(Icons.extension_outlined),
-                      title: const Text('Mods'),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () {
-                        Navigator.pop(context);
-                        _mods();
-                      }),
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (context) => SafeArea(
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (widget.state.assistantAvailable)
                 ListTile(
-                    key: const ValueKey('menu-host'),
-                    leading: const Icon(Icons.tv),
-                    title: const Text('Host a room'),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () {
-                      Navigator.pop(context);
-                      _host();
-                    }),
-                if (GetAppScreen.offered)
-                  ListTile(
-                      key: const ValueKey('menu-get-app'),
-                      leading: const Icon(Icons.install_mobile),
-                      title: const Text('Get the app'),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () {
-                        Navigator.pop(context);
-                        _getApp();
-                      }),
-                if (widget.reports != null)
-                  ListTile(
-                      leading: const Icon(Icons.feedback_outlined),
-                      title: const Text('Feedback'),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () {
-                        Navigator.pop(context);
-                        _feedback();
-                      }),
-                for (final entry in const [
-                  ('/developers', 'Developer portal', Icons.code),
-                  ('/docs', 'Documentation', Icons.menu_book_outlined),
-                  (
-                    '/docs/privacy',
-                    'Privacy policy',
-                    Icons.privacy_tip_outlined
-                  ),
-                  ('/docs/terms', 'Terms of service', Icons.gavel_outlined),
-                ])
-                  ListTile(
-                      leading: Icon(entry.$3),
-                      title: Text(entry.$2),
-                      trailing: const Icon(Icons.open_in_new),
-                      onTap: () {
-                        Navigator.pop(context);
-                        _openWebsite(entry.$1);
-                      }),
-              ])),
-            ));
+                  leading: const Icon(Icons.auto_awesome),
+                  title: const Text('Assistant'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _assistant();
+                  },
+                ),
+              if (widget.state.assistantAvailable)
+                ListTile(
+                  leading: const Icon(Icons.extension_outlined),
+                  title: const Text('Mods'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _mods();
+                  },
+                ),
+              ListTile(
+                key: const ValueKey('menu-host'),
+                leading: const Icon(Icons.tv),
+                title: const Text('Host a room'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () {
+                  Navigator.pop(context);
+                  _host();
+                },
+              ),
+              if (GetAppScreen.offered)
+                ListTile(
+                  key: const ValueKey('menu-get-app'),
+                  leading: const Icon(Icons.install_mobile),
+                  title: const Text('Get the app'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _getApp();
+                  },
+                ),
+              if (widget.reports != null)
+                ListTile(
+                  leading: const Icon(Icons.feedback_outlined),
+                  title: const Text('Feedback'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _feedback();
+                  },
+                ),
+              ListTile(
+                key: const ValueKey('menu-discord'),
+                leading: const Icon(Icons.forum_outlined),
+                title: const Text('Discord'),
+                trailing: const Icon(Icons.open_in_new),
+                onTap: () {
+                  Navigator.pop(context);
+                  openDiscord();
+                },
+              ),
+              for (final entry in const [
+                ('/developers', 'Developer portal', Icons.code),
+                ('/docs', 'Documentation', Icons.menu_book_outlined),
+                ('/docs/privacy', 'Privacy policy', Icons.privacy_tip_outlined),
+                ('/docs/terms', 'Terms of service', Icons.gavel_outlined),
+              ])
+                ListTile(
+                  leading: Icon(entry.$3),
+                  title: Text(entry.$2),
+                  trailing: const Icon(Icons.open_in_new),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _openWebsite(entry.$1);
+                  },
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> _openWebsite(String path) =>
@@ -337,201 +381,240 @@ class _GameNightAppState extends State<GameNightApp> {
   }
 
   Widget _sidebar() => Material(
-        color: GnColors.bg,
-        child: ListView(
-          key: const ValueKey('desktop-sidebar'),
-          padding: const EdgeInsets.fromLTRB(12, 24, 12, 20),
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(0, 0, 0, 20),
-              child: _BrandButton(
-                onTap: _about,
-                padding: const EdgeInsets.fromLTRB(10, 4, 8, 4),
-                child: const Row(children: [
-                  GameNightLogo(size: 28),
-                  SizedBox(width: 9),
-                  Expanded(
-                      child: FittedBox(
-                          fit: BoxFit.scaleDown,
-                          alignment: Alignment.centerLeft,
-                          child: GameNightWordmark(
-                              key: ValueKey('app-brand'), size: 19)))
-                ]),
-              ),
+    color: GnColors.bg,
+    child: ListView(
+      key: const ValueKey('desktop-sidebar'),
+      padding: const EdgeInsets.fromLTRB(12, 24, 12, 20),
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(0, 0, 0, 20),
+          child: _BrandButton(
+            onTap: _about,
+            padding: const EdgeInsets.fromLTRB(10, 4, 8, 4),
+            child: const Row(
+              children: [
+                GameNightLogo(size: 28),
+                SizedBox(width: 9),
+                Expanded(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: GameNightWordmark(
+                      key: ValueKey('app-brand'),
+                      size: 19,
+                    ),
+                  ),
+                ),
+              ],
             ),
-            for (final entry in [
-              (0, 'Room', Icons.meeting_room_outlined, Icons.meeting_room),
-              (1, 'Games', Icons.sports_esports_outlined, Icons.sports_esports),
-            ])
-              _SidebarItem(
-                key: ValueKey('desktop-tab-${entry.$1}'),
-                label: entry.$2,
-                icon: Icon(_selectedTab == entry.$1 ? entry.$4 : entry.$3),
-                selected: _page == null && _selectedTab == entry.$1,
-                onTap: () => _selectDestination(entry.$1),
-              ),
-            _SidebarItem(
-              key: const ValueKey('desktop-tab-2'),
-              label: 'You',
-              icon: FittedBox(
-                  child: PlayerFaceIcon(
-                      face: widget.state.face, skin: widget.state.skinColor)),
-              selected: _page == null && _selectedTab == 2,
-              onTap: () => _selectDestination(2),
-            ),
-            _SidebarItem(
-              key: const ValueKey('desktop-host'),
-              label: 'Host a room',
-              icon: const Icon(Icons.tv),
-              selected: _page == 'host',
-              onTap: _host,
-            ),
-            if (GetAppScreen.offered)
-              _SidebarItem(
-                key: const ValueKey('desktop-get-app'),
-                label: 'Get the app',
-                icon: const Icon(Icons.download_outlined),
-                selected: _page == 'get-app',
-                onTap: _getApp,
-              ),
-            const _SidebarHeading('Help'),
-            if (widget.state.assistantAvailable)
-              _SidebarItem(
-                  label: 'Assistant',
-                  icon: const Icon(Icons.auto_awesome_outlined),
-                  onTap: _assistant),
-            if (widget.state.assistantAvailable)
-              _SidebarItem(
-                  label: 'Mods',
-                  icon: const Icon(Icons.extension_outlined),
-                  onTap: _mods),
-            if (widget.reports != null)
-              _SidebarItem(
-                  label: 'Feedback',
-                  icon: const Icon(Icons.feedback_outlined),
-                  onTap: _feedback),
-            const _SidebarHeading('Website'),
-            for (final entry in const [
-              ('/developers', 'Developer portal', Icons.code),
-              ('/docs', 'Documentation', Icons.menu_book_outlined),
-              ('/docs/privacy', 'Privacy policy', Icons.privacy_tip_outlined),
-              ('/docs/terms', 'Terms of service', Icons.gavel_outlined),
-            ])
-              _SidebarItem(
-                  label: entry.$2,
-                  icon: Icon(entry.$3),
-                  external: true,
-                  onTap: () => _openWebsite(entry.$1)),
-          ],
+          ),
         ),
-      );
+        for (final entry in [
+          (0, 'Room', Icons.meeting_room_outlined, Icons.meeting_room),
+          (1, 'Games', Icons.sports_esports_outlined, Icons.sports_esports),
+        ])
+          _SidebarItem(
+            key: ValueKey('desktop-tab-${entry.$1}'),
+            label: entry.$2,
+            icon: Icon(_selectedTab == entry.$1 ? entry.$4 : entry.$3),
+            selected: _page == null && _selectedTab == entry.$1,
+            onTap: () => _selectDestination(entry.$1),
+          ),
+        _SidebarItem(
+          key: const ValueKey('desktop-tab-2'),
+          label: 'You',
+          icon: FittedBox(
+            child: PlayerFaceIcon(
+              face: widget.state.face,
+              skin: widget.state.skinColor,
+            ),
+          ),
+          selected: _page == null && _selectedTab == 2,
+          onTap: () => _selectDestination(2),
+        ),
+        _SidebarItem(
+          key: const ValueKey('desktop-host'),
+          label: 'Host a room',
+          icon: const Icon(Icons.tv),
+          selected: _page == 'host',
+          onTap: _host,
+        ),
+        if (GetAppScreen.offered)
+          _SidebarItem(
+            key: const ValueKey('desktop-get-app'),
+            label: 'Get the app',
+            icon: const Icon(Icons.download_outlined),
+            selected: _page == 'get-app',
+            onTap: _getApp,
+          ),
+        const _SidebarHeading('Help'),
+        if (widget.state.assistantAvailable)
+          _SidebarItem(
+            label: 'Assistant',
+            icon: const Icon(Icons.auto_awesome_outlined),
+            onTap: _assistant,
+          ),
+        if (widget.state.assistantAvailable)
+          _SidebarItem(
+            label: 'Mods',
+            icon: const Icon(Icons.extension_outlined),
+            onTap: _mods,
+          ),
+        if (widget.reports != null)
+          _SidebarItem(
+            label: 'Feedback',
+            icon: const Icon(Icons.feedback_outlined),
+            onTap: _feedback,
+          ),
+        _SidebarItem(
+          key: const ValueKey('desktop-discord'),
+          label: 'Discord',
+          icon: const Icon(Icons.forum_outlined),
+          external: true,
+          onTap: openDiscord,
+        ),
+        const _SidebarHeading('Website'),
+        for (final entry in const [
+          ('/developers', 'Developer portal', Icons.code),
+          ('/docs', 'Documentation', Icons.menu_book_outlined),
+          ('/docs/privacy', 'Privacy policy', Icons.privacy_tip_outlined),
+          ('/docs/terms', 'Terms of service', Icons.gavel_outlined),
+        ])
+          _SidebarItem(
+            label: entry.$2,
+            icon: Icon(entry.$3),
+            external: true,
+            onTap: () => _openWebsite(entry.$1),
+          ),
+      ],
+    ),
+  );
 
   @override
   Widget build(BuildContext context) => MaterialApp(
-        navigatorKey: kIsWeb ? null : _navigator,
-        title: 'Splitscreen Club',
-        debugShowCheckedModeBanner: false,
-        theme: gameNightTheme(),
-        builder: (context, child) => ListenableBuilder(
-          listenable: widget.state,
-          builder: (context, _) {
-            final desktop = MediaQuery.sizeOf(context).width >= 900;
-            final fullscreen = widget.state.companionFullscreen;
-            return AnnotatedRegion<SystemUiOverlayStyle>(
-              value: gameNightSystemUi,
-              child: ReportScope(
-                reports: widget.reports,
-                gameContext: _feedbackGame,
-                child: ColoredBox(
-                  color: GnColors.bg,
-                  child: SafeArea(
-                    bottom: false,
-                    // Navigator stays at the same tree position on resize. All pushed
-                    // pages live inside this shell, including face, sign-in and feedback.
-                    child: Row(textDirection: TextDirection.rtl, children: [
-                      Expanded(
-                          child: Column(
-                              verticalDirection: VerticalDirection.up,
-                              children: [
-                            Expanded(
-                                child: _history == null
-                                    ? child!
-                                    : Navigator(
-                                        key: _navigator,
-                                        observers: [_history!.observer],
-                                        onGenerateRoute: (_) =>
-                                            MaterialPageRoute<void>(
-                                                settings: const RouteSettings(
-                                                    name: '/'),
-                                                builder: (_) => _home()),
-                                      )),
-                            Visibility(
-                              visible: !desktop && !fullscreen,
-                              child: Material(
-                                color: GnColors.bg,
-                                child: Padding(
-                                  padding:
-                                      const EdgeInsets.fromLTRB(8, 4, 8, 4),
-                                  child: Row(children: [
+    navigatorKey: kIsWeb ? null : _navigator,
+    title: 'Splitscreen Club',
+    debugShowCheckedModeBanner: false,
+    theme: gameNightTheme(),
+    builder: (context, child) => ListenableBuilder(
+      listenable: widget.state,
+      builder: (context, _) {
+        final desktop = MediaQuery.sizeOf(context).width >= 900;
+        final fullscreen = widget.state.companionFullscreen;
+        return AnnotatedRegion<SystemUiOverlayStyle>(
+          value: gameNightSystemUi,
+          child: ReportScope(
+            reports: widget.reports,
+            gameContext: _feedbackGame,
+            child: ColoredBox(
+              color: GnColors.bg,
+              child: SafeArea(
+                bottom: false,
+                // Navigator stays at the same tree position on resize. All pushed
+                // pages live inside this shell, including face, sign-in and feedback.
+                child: Row(
+                  textDirection: TextDirection.rtl,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        verticalDirection: VerticalDirection.up,
+                        children: [
+                          Expanded(
+                            child: _history == null
+                                ? child!
+                                : Navigator(
+                                    key: _navigator,
+                                    observers: [_history!.observer],
+                                    onGenerateRoute: (_) =>
+                                        MaterialPageRoute<void>(
+                                          settings: const RouteSettings(
+                                            name: '/',
+                                          ),
+                                          builder: (_) => _home(),
+                                        ),
+                                  ),
+                          ),
+                          Visibility(
+                            visible: !desktop && !fullscreen,
+                            child: Material(
+                              color: GnColors.bg,
+                              child: Padding(
+                                padding: const EdgeInsets.fromLTRB(8, 4, 8, 4),
+                                child: Row(
+                                  children: [
                                     Expanded(
-                                        child: Align(
-                                      alignment: Alignment.centerLeft,
-                                      child: _BrandButton(
-                                        onTap: _about,
-                                        child: const Row(
+                                      child: Align(
+                                        alignment: Alignment.centerLeft,
+                                        child: _BrandButton(
+                                          onTap: _about,
+                                          child: const Row(
                                             mainAxisSize: MainAxisSize.min,
                                             children: [
                                               GameNightLogo(size: 28),
                                               SizedBox(width: 8),
                                               Flexible(
-                                                  child: FittedBox(
-                                                      fit: BoxFit.scaleDown,
-                                                      alignment:
-                                                          Alignment.centerLeft,
-                                                      child: GameNightWordmark(
-                                                          key: ValueKey(
-                                                              'app-brand'),
-                                                          size: 21))),
-                                            ]),
+                                                child: FittedBox(
+                                                  fit: BoxFit.scaleDown,
+                                                  alignment:
+                                                      Alignment.centerLeft,
+                                                  child: GameNightWordmark(
+                                                    key: ValueKey('app-brand'),
+                                                    size: 21,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
                                       ),
-                                    )),
+                                    ),
                                     if (widget.reports != null &&
                                         MediaQuery.sizeOf(context).width < 440)
                                       Semantics(
-                                          container: true,
-                                          label: 'Feedback',
-                                          button: true,
-                                          excludeSemantics: true,
-                                          onTap: _feedback,
-                                          child: IconButton(
-                                              onPressed: _feedback,
-                                              icon: const Icon(
-                                                  Icons.feedback_outlined))),
+                                        container: true,
+                                        label: 'Feedback',
+                                        button: true,
+                                        excludeSemantics: true,
+                                        onTap: _feedback,
+                                        child: IconButton(
+                                          onPressed: _feedback,
+                                          icon: const Icon(
+                                            Icons.feedback_outlined,
+                                          ),
+                                        ),
+                                      ),
                                     if (widget.reports != null &&
                                         MediaQuery.sizeOf(context).width >= 440)
                                       TextButton.icon(
-                                          onPressed: _feedback,
-                                          icon: const Icon(
-                                              Icons.feedback_outlined,
-                                              size: 20),
-                                          label: const Text('Feedback')),
-                                  ]),
+                                        onPressed: _feedback,
+                                        icon: const Icon(
+                                          Icons.feedback_outlined,
+                                          size: 20,
+                                        ),
+                                        label: const Text('Feedback'),
+                                      ),
+                                  ],
                                 ),
                               ),
                             ),
-                          ])),
-                      SizedBox(
-                          width: desktop && !fullscreen ? 248 : 0,
-                          child: desktop && !fullscreen ? _sidebar() : null),
-                    ]),
-                  ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    SizedBox(
+                      width: desktop && !fullscreen ? 248 : 0,
+                      child: desktop && !fullscreen ? _sidebar() : null,
+                    ),
+                  ],
                 ),
               ),
-            );
-          },
-        ),
-        home: kIsWeb ? null : _home(),
-      );
+            ),
+          ),
+        );
+      },
+    ),
+    home: kIsWeb ? null : _home(),
+  );
 }
 
 class HomeScreen extends StatefulWidget {
@@ -545,16 +628,17 @@ class HomeScreen extends StatefulWidget {
   final Stream<Uri>? links;
   final Uri? initialLink;
   final Future<void>? accountLoading;
-  const HomeScreen(
-      {super.key,
-      required this.state,
-      this.onTabChanged,
-      this.onMore,
-      this.history,
-      this.links,
-      this.initialLink,
-      this.accountLoading,
-      this.reports});
+  const HomeScreen({
+    super.key,
+    required this.state,
+    this.onTabChanged,
+    this.onMore,
+    this.history,
+    this.links,
+    this.initialLink,
+    this.accountLoading,
+    this.reports,
+  });
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -571,7 +655,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     _tab = widget.history?.tab ?? 0;
-    final requested = widget.initialLink?.queryParameters['game'] ??
+    final requested =
+        widget.initialLink?.queryParameters['game'] ??
         widget.state.prefs.getString('requested_game');
     if (requested != null &&
         RegExp(r'^[a-z0-9][a-z0-9-]{0,79}$').hasMatch(requested)) {
@@ -685,22 +770,25 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             : widget.state.session?.linked ?? false;
         final pages = [
           RoomScreen(
-              key: _roomKey,
-              state: widget.state,
-              initialSection: Uri.tryParse(widget.initialLink?.fragment ?? '')
-                          ?.queryParameters['section'] ==
-                      'playlist'
-                  ? 1
-                  : 0),
+            key: _roomKey,
+            state: widget.state,
+            initialSection:
+                Uri.tryParse(widget.initialLink?.fragment ?? '')
+                        ?.queryParameters['section'] ==
+                    'playlist'
+                ? 1
+                : 0,
+          ),
           GameScreen(
-              catalogOnly: true,
-              requestedGame: _tab == 1 ? _requestedGame : null,
-              onRequestedGameOpened: () {
-                _requestedGame = null;
-                widget.state.prefs.remove('requested_game');
-              },
-              state: widget.state,
-              onJoin: () => _selectTab(0)),
+            catalogOnly: true,
+            requestedGame: _tab == 1 ? _requestedGame : null,
+            onRequestedGameOpened: () {
+              _requestedGame = null;
+              widget.state.prefs.remove('requested_game');
+            },
+            state: widget.state,
+            onJoin: () => _selectTab(0),
+          ),
           PlayerScreen(state: widget.state),
         ];
         return PopScope(
@@ -712,20 +800,25 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           },
           child: Scaffold(
             body: SafeArea(
-              child: Column(children: [
-                UpdateBanner(),
-                Expanded(
+              child: Column(
+                children: [
+                  UpdateBanner(),
+                  Expanded(
                     child: ContentWidth(
-                        maxWidth: fullscreen ? double.infinity : 1440,
-                        child: IndexedStack(index: _tab, children: pages))),
-              ]),
+                      maxWidth: fullscreen ? double.infinity : 1440,
+                      child: IndexedStack(index: _tab, children: pages),
+                    ),
+                  ),
+                ],
+              ),
             ),
             bottomNavigationBar: fullscreen || wide
                 ? null
                 : DecoratedBox(
                     decoration: const BoxDecoration(
                       border: Border(
-                          top: BorderSide(color: GnColors.border, width: 1)),
+                        top: BorderSide(color: GnColors.border, width: 1),
+                      ),
                     ),
                     child: Padding(
                       padding: const EdgeInsets.only(top: 1),
@@ -753,13 +846,17 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                             label: 'Games',
                           ),
                           NavigationDestination(
-                              icon: PlayerFaceIcon(
-                                  face: widget.state.face,
-                                  skin: widget.state.skinColor),
-                              label: 'You'),
+                            icon: PlayerFaceIcon(
+                              face: widget.state.face,
+                              skin: widget.state.skinColor,
+                            ),
+                            label: 'You',
+                          ),
                           if (widget.onMore != null)
                             const NavigationDestination(
-                                icon: Icon(Icons.more_horiz), label: 'More'),
+                              icon: Icon(Icons.more_horiz),
+                              label: 'More',
+                            ),
                         ],
                       ),
                     ),
@@ -778,14 +875,17 @@ class _SidebarHeading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.fromLTRB(14, 24, 14, 8),
-        child: Text(text.toUpperCase(),
-            style: const TextStyle(
-                color: GnColors.muted,
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 1.2)),
-      );
+    padding: const EdgeInsets.fromLTRB(14, 24, 14, 8),
+    child: Text(
+      text.toUpperCase(),
+      style: const TextStyle(
+        color: GnColors.muted,
+        fontSize: 11,
+        fontWeight: FontWeight.w700,
+        letterSpacing: 1.2,
+      ),
+    ),
+  );
 }
 
 /// One sidebar button. Every item shares the same height, padding, icon
@@ -796,13 +896,14 @@ class _SidebarItem extends StatelessWidget {
   final VoidCallback onTap;
   final bool selected;
   final bool external;
-  const _SidebarItem(
-      {super.key,
-      required this.label,
-      required this.icon,
-      required this.onTap,
-      this.selected = false,
-      this.external = false});
+  const _SidebarItem({
+    super.key,
+    required this.label,
+    required this.icon,
+    required this.onTap,
+    this.selected = false,
+    this.external = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -815,11 +916,13 @@ class _SidebarItem extends StatelessWidget {
         child: Material(
           color: selected ? GnColors.button : Colors.transparent,
           shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-              side: BorderSide(
-                  color: selected
-                      ? GnColors.accent.withValues(alpha: .6)
-                      : Colors.transparent)),
+            borderRadius: BorderRadius.circular(12),
+            side: BorderSide(
+              color: selected
+                  ? GnColors.accent.withValues(alpha: .6)
+                  : Colors.transparent,
+            ),
+          ),
           clipBehavior: Clip.antiAlias,
           child: InkWell(
             onTap: onTap,
@@ -831,27 +934,37 @@ class _SidebarItem extends StatelessWidget {
               height: 46,
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 14),
-                child: Row(children: [
-                  IconTheme.merge(
-                    data: IconThemeData(
+                child: Row(
+                  children: [
+                    IconTheme.merge(
+                      data: IconThemeData(
                         size: 22,
-                        color: selected ? Colors.white : GnColors.muted),
-                    child: SizedBox.square(dimension: 24, child: icon),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                      child: Text(label,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                              color: foreground,
-                              fontSize: 15,
-                              fontWeight: selected
-                                  ? FontWeight.w700
-                                  : FontWeight.w500))),
-                  if (external)
-                    const Icon(Icons.open_in_new,
-                        size: 15, color: GnColors.muted),
-                ]),
+                        color: selected ? Colors.white : GnColors.muted,
+                      ),
+                      child: SizedBox.square(dimension: 24, child: icon),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Text(
+                        label,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: foreground,
+                          fontSize: 15,
+                          fontWeight: selected
+                              ? FontWeight.w700
+                              : FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                    if (external)
+                      const Icon(
+                        Icons.open_in_new,
+                        size: 15,
+                        color: GnColors.muted,
+                      ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -866,21 +979,22 @@ class _BrandButton extends StatelessWidget {
   final Widget child;
   final VoidCallback onTap;
   final EdgeInsets padding;
-  const _BrandButton(
-      {required this.child,
-      required this.onTap,
-      this.padding = const EdgeInsets.symmetric(horizontal: 8, vertical: 4)});
+  const _BrandButton({
+    required this.child,
+    required this.onTap,
+    this.padding = const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+  });
 
   @override
   Widget build(BuildContext context) => Semantics(
-        button: true,
-        label: 'About Splitscreen Club',
-        excludeSemantics: true,
-        child: InkWell(
-          key: const ValueKey('about-button'),
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(12),
-          child: Padding(padding: padding, child: child),
-        ),
-      );
+    button: true,
+    label: 'About Splitscreen Club',
+    excludeSemantics: true,
+    child: InkWell(
+      key: const ValueKey('about-button'),
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(padding: padding, child: child),
+    ),
+  );
 }

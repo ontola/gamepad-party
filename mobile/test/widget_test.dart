@@ -60,6 +60,7 @@ void main() {
     // Invite-only: hidden until an allowed account signs in.
     expect(find.descendant(of: sidebar, matching: find.text('Assistant')),
         findsNothing);
+    expect(find.byKey(const ValueKey('desktop-discord')), findsOneWidget);
     expect(find.byIcon(Icons.menu), findsNothing);
     expect(find.byType(NavigationBar), findsNothing);
     final nav = tester.state<NavigatorState>(find.byType(Navigator).first);

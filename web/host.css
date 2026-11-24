@@ -47,7 +47,7 @@
 .host-catalog-link{display:inline-flex;align-items:center;gap:22px;margin-top:8px;color:#c3baff;font-weight:650;text-decoration:none;min-height:44px}
 .host-catalog-link:hover{text-decoration:underline}
 .host-footer{border-top:1px solid #343b53;margin:10px 0 0;padding:26px 0 36px;display:flex;justify-content:space-between;gap:20px;color:#9ca4bd;font-size:13px}
-.host-footer p{margin:0}.host-footer a{color:#c3baff}
+.host-footer p{margin:0}.host-footer-links{display:flex;flex-wrap:wrap;gap:8px 20px}.host-footer a{color:#c3baff}
 .host-guide a:focus-visible{outline:2px solid #c3baff;outline-offset:5px}
 @media(max-width:700px){.host-guide{padding:0 20px}.host-intro{padding:34px 0 28px}.host-intro>p:not(.host-eyebrow){font-size:17px}.host-step{grid-template-columns:1fr;gap:22px;padding:28px 0}.host-copy{padding-left:48px}.host-footer{flex-direction:column;gap:12px}.host-visual{width:100%;box-sizing:border-box}.host-download{padding:16px}.host-needs{gap:8px 16px}}
 @media(max-width:380px){.host-guide{padding:0 16px}.host-download strong{font-size:14px}.host-download{gap:10px}.host-game-row img{width:72px;height:52px}.host-preparing{padding:16px}.host-copy h2{font-size:23px}}
