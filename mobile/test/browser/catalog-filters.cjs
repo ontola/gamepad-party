@@ -43,24 +43,24 @@ games[0].tags=['party','action'];games[1].tags=['co-op','party'];games[2].tags=[
   await page.getByRole('button',{name:'Filter',exact:true}).waitFor();
   await shot('catalog-phone');
   await page.getByRole('button',{name:'Filter',exact:true}).click();
-  // Flutter chips expose checkbox semantics.
+  // Flutter chips expose checkbox semantics. Store cards are cover only: the cover image carries the title.
   if(process.env.GAMENIGHT_DEBUG_SEMANTICS)console.log(await page.locator('body').ariaSnapshot());
   await page.getByRole('checkbox',{name:'Liked',exact:true}).click();await page.getByRole('checkbox',{name:'Not played',exact:true}).click();
   await page.getByRole('button',{name:'Show 1 game',exact:true}).waitFor();
   await shot('filters-phone');
   await page.getByRole('button',{name:'Show 1 game',exact:true}).click(); await page.waitForTimeout(500);if(process.env.GAMENIGHT_DEBUG_SEMANTICS)console.log('AFTER FILTER',await page.locator('body').ariaSnapshot());await shot('filtered-phone');
-  await page.getByRole('group',{name:new RegExp('^'+games[1].title+' ')}).waitFor();
-  assert.equal(await page.getByRole('group',{name:new RegExp('^'+games[0].title+' ')}).count(),0);
+  await page.getByRole('img',{name:games[1].title,exact:true}).first().waitFor();
+  assert.equal(await page.getByRole('img',{name:games[0].title,exact:true}).first().count(),0);
   await shot('filtered-phone');
-  await page.getByRole('group',{name:new RegExp('^'+games[1].title+' ')}).click();
+  await page.getByRole('img',{name:games[1].title,exact:true}).first().click();
   assert.equal(await page.getByText('Give feedback',{exact:true}).count(),0);
   await page.setViewportSize({width:1280,height:900});await page.getByText('Feedback',{exact:true}).click();await page.waitForTimeout(400);if(process.env.GAMENIGHT_DEBUG_SEMANTICS)console.log('FEEDBACK',await page.locator('body').ariaSnapshot());
   await page.getByText('Sent to the developer of Bubble Buddies.',{exact:true}).waitFor();
   await page.getByRole('button',{name:/^Back/}).click();
   await page.mouse.move(950,700);await page.mouse.wheel(0,600);await page.waitForTimeout(400);if(process.env.GAMENIGHT_DEBUG_SEMANTICS)console.log('TAGS',await page.locator('body').ariaSnapshot());await page.getByRole('checkbox',{name:'party',exact:true}).click();await page.setViewportSize({width:412,height:915});
   await page.getByRole('button',{name:'Filter',exact:true}).waitFor();
-  await page.getByRole('group',{name:new RegExp('^'+games[0].title+' ')}).waitFor();
-  await page.getByRole('group',{name:new RegExp('^'+games[1].title+' ')}).waitFor();
+  await page.getByRole('img',{name:games[0].title,exact:true}).first().waitFor();
+  await page.getByRole('img',{name:games[1].title,exact:true}).first().waitFor();
   await page.getByRole('tab',{name:/You/}).click();
   await page.getByRole('button',{name:'Download APK',exact:true}).waitFor();
   await shot('android-install-phone');
