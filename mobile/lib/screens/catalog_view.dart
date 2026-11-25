@@ -937,7 +937,7 @@ class _BarButton extends StatelessWidget {
               alignment: Alignment.center,
               decoration: BoxDecoration(
                 color: GnColors.accent,
-                borderRadius: BorderRadius.circular(9),
+                borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
                 '$count',

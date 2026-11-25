@@ -585,7 +585,7 @@ class _GameDetailPageState extends State<_GameDetailPage> {
         button: true,
         child: InkWell(
             key: const ValueKey('developer'),
-            borderRadius: BorderRadius.circular(6),
+            borderRadius: BorderRadius.circular(8),
             onTap: () => open(game.developer),
             child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 4),
@@ -654,7 +654,7 @@ class _Fact extends StatelessWidget {
   Widget build(BuildContext context) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
-            color: GnColors.field, borderRadius: BorderRadius.circular(20)),
+            color: GnColors.field, borderRadius: BorderRadius.circular(999)),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
           Icon(icon, size: 16, color: GnColors.muted),
           const SizedBox(width: 6),
@@ -680,11 +680,11 @@ class _SimilarTile extends StatelessWidget {
         width: 110,
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(12),
           child:
               Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             ClipRRect(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(12),
               child:
                   AspectRatio(aspectRatio: 3 / 4, child: GameCover(game: game)),
             ),
@@ -770,7 +770,7 @@ class _MediaGalleryState extends State<MediaGallery> {
                       color: i == _page
                           ? GnColors.accent
                           : GnColors.muted.withValues(alpha: 0.5),
-                      borderRadius: BorderRadius.circular(4),
+                      borderRadius: BorderRadius.circular(8),
                     ),
                   ),
                 ),

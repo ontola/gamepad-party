@@ -11,8 +11,23 @@ class GnColors {
   static const border = Color(0xFF343B53);
   static const text = Color(0xFFEEF0FC);
   static const muted = Color(0xFFA8ADC4);
-  static const accent = Color(0xFF7565EE);
+
+  /// Selection, focus and outlines: `violet` in the design guide
+  /// (warp-game-engine lobbies/game-room/DESIGN.md).
+  static const accent = Color(0xFF7C5CFF);
+
+  /// Filled buttons with white text: `violet-deep` (white on [accent] is
+  /// only 4.4 : 1).
   static const button = Color(0xFF5143AE);
+
+  /// Brand ".Club", links.
+  static const lilac = Color(0xFFA78BFA);
+
+  /// The club's voice: kickers, loading, warnings.
+  static const amber = Color(0xFFFFB454);
+
+  /// State: ready, joined, queued, "Up next".
+  static const green = Color(0xFF3DDC97);
   static const ok = Color(0xFF34D399);
   static const warn = Color(0xFFFBBF24);
   static const danger = Color(0xFFF87171);
@@ -42,7 +57,7 @@ ThemeData gameNightTheme() {
     surfaceContainerHighest: GnColors.field,
     outline: GnColors.border,
   );
-  final shape = RoundedRectangleBorder(borderRadius: BorderRadius.circular(10));
+  final shape = RoundedRectangleBorder(borderRadius: BorderRadius.circular(12));
   return ThemeData(
     // Outfit is the GameNight UI face, shared with the website and the Game
     // Room lobby. Static weights from web/fonts/Outfit-wght.woff2.
@@ -61,7 +76,7 @@ ThemeData gameNightTheme() {
       elevation: 0,
       margin: const EdgeInsets.symmetric(vertical: 8),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(18),
         side: const BorderSide(color: GnColors.border),
       ),
     ),
@@ -90,11 +105,11 @@ ThemeData gameNightTheme() {
       filled: true,
       fillColor: GnColors.field,
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(12),
         borderSide: const BorderSide(color: GnColors.border),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(12),
         borderSide: const BorderSide(color: GnColors.border),
       ),
     ),
@@ -110,6 +125,34 @@ ThemeData gameNightTheme() {
       indicatorColor: GnColors.button,
     ),
     snackBarTheme: const SnackBarThemeData(behavior: SnackBarBehavior.floating),
+    // Sheets and dialogs are cards: the card colour and edge, radius 18
+    // (Material's default sheet grey looked like another app).
+    bottomSheetTheme: const BottomSheetThemeData(
+      backgroundColor: GnColors.card,
+      surfaceTintColor: Colors.transparent,
+      modalBackgroundColor: GnColors.card,
+      dragHandleColor: GnColors.muted,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+        side: BorderSide(color: GnColors.border),
+      ),
+    ),
+    dialogTheme: const DialogThemeData(
+      backgroundColor: GnColors.card,
+      surfaceTintColor: Colors.transparent,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.all(Radius.circular(18)),
+        side: BorderSide(color: GnColors.border),
+      ),
+    ),
+    popupMenuTheme: const PopupMenuThemeData(
+      color: GnColors.card,
+      surfaceTintColor: Colors.transparent,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.all(Radius.circular(12)),
+        side: BorderSide(color: GnColors.border),
+      ),
+    ),
     pageTransitionsTheme: PageTransitionsTheme(builders: {
       for (final platform in TargetPlatform.values)
         platform: _WidthPageTransitionsBuilder(),
@@ -209,7 +252,8 @@ class GameNightWordmark extends StatelessWidget {
         child: Text.rich(
           const TextSpan(children: [
             TextSpan(
-                text: 'Splitscreen', style: TextStyle(color: Color(0xFFFFB454))),
+                text: 'Splitscreen',
+                style: TextStyle(color: Color(0xFFFFB454))),
             TextSpan(text: '.Club', style: TextStyle(color: Color(0xFFA78BFA))),
           ]),
           maxLines: 1,

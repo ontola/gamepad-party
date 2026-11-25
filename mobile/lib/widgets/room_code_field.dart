@@ -113,7 +113,7 @@ class _RoomCodeFieldState extends State<RoomCodeField>
                               key: ValueKey('room-code-slot-$i'),
                               decoration: BoxDecoration(
                                   color: GnColors.field,
-                                  borderRadius: BorderRadius.circular(10),
+                                  borderRadius: BorderRadius.circular(12),
                                   border: Border.all(
                                       color: widget.enabled &&
                                               _focus.hasFocus &&

@@ -452,12 +452,12 @@ class _ToolTile extends StatelessWidget {
           child: Material(
             color: active ? GnColors.button : GnColors.field,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(12),
               side:
                   BorderSide(color: active ? GnColors.accent : GnColors.border),
             ),
             child: InkWell(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(12),
               onTap: onTap,
               child: Opacity(
                 opacity: enabled ? 1 : .4,

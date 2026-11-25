@@ -270,7 +270,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
                       height: 72,
                       decoration: BoxDecoration(
                         color: GnColors.bg,
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(12),
                         border: Border.all(
                             color: active ? GnColors.accent : GnColors.border,
                             width: active ? 3 : 1),
@@ -307,7 +307,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
               width: 72,
               height: 72,
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: GnColors.border),
               ),
               child: const Icon(Icons.add, color: GnColors.muted),

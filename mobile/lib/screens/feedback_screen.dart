@@ -435,7 +435,7 @@ class _FeedbackScreenState extends State<FeedbackScreen>
       style: MenuStyle(
         backgroundColor: const WidgetStatePropertyAll(GnColors.card),
         shape: WidgetStatePropertyAll(RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(12),
             side: const BorderSide(color: GnColors.border))),
       ),
       menuChildren: [

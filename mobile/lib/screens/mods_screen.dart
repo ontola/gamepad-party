@@ -555,7 +555,7 @@ class _ChatBubble extends StatelessWidget {
           decoration: BoxDecoration(
             color:
                 mine ? GnColors.accent.withValues(alpha: 0.18) : GnColors.field,
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(12),
             border: failed ? Border.all(color: GnColors.warn) : null,
           ),
           child:
@@ -805,7 +805,7 @@ class _MakeGameScreenState extends State<MakeGameScreen> {
       children.add(Card(
         key: const ValueKey('make-game-sign-in'),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(18),
           side: const BorderSide(color: GnColors.accent, width: 1.5),
         ),
         child: Padding(

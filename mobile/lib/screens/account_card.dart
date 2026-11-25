@@ -138,8 +138,8 @@ class _AccountCardState extends State<AccountCard> {
     }
     return Card(
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: const BorderSide(color: GnColors.accent, width: 1.5),
+        borderRadius: BorderRadius.circular(18),
+        side: const BorderSide(color: GnColors.border),
       ),
       child: Padding(
         padding: const EdgeInsets.all(16),

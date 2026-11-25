@@ -442,7 +442,8 @@ class GameThumbnail extends StatelessWidget {
               HSLColor.fromAHSL(1, (title.hashCode % 360).toDouble(), 0.45, 0.4)
                   .toColor(),
           child: Center(
-            child: Text(title.isEmpty ? '?' : title.characters.first.toUpperCase(),
+            child: Text(
+                title.isEmpty ? '?' : title.characters.first.toUpperCase(),
                 style: TextStyle(
                     fontSize: size * 0.45,
                     fontWeight: FontWeight.w800,
@@ -853,7 +854,8 @@ class _NowAndNextState extends State<NowAndNext> {
       clipBehavior: Clip.antiAlias,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(4, 8, 4, 8),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        child:
+            Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           ListTile(
             key: const ValueKey('now-playing'),
             onTap: playing == null ? null : () => _open(view!, playing),
@@ -885,10 +887,10 @@ class _NowAndNextState extends State<NowAndNext> {
             padding: EdgeInsets.fromLTRB(16, 8, 16, 0),
             child: Text('UP NEXT',
                 style: TextStyle(
-                    color: GnColors.muted,
+                    color: GnColors.green,
                     fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 1)),
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.5)),
           ),
           if (view == null)
             const Padding(
@@ -899,7 +901,7 @@ class _NowAndNextState extends State<NowAndNext> {
                 padding: EdgeInsets.fromLTRB(16, 8, 16, 8),
                 child: Hint('No games queued yet.'))
           else
-            for (final i in shown) _upcomingRow(view, i),
+            for (final (n, i) in shown.indexed) _upcomingRow(view, i, n + 1),
           Padding(
             padding: const EdgeInsets.fromLTRB(8, 0, 8, 0),
             child: Row(children: [
@@ -918,7 +920,9 @@ class _NowAndNextState extends State<NowAndNext> {
     );
   }
 
-  Widget _upcomingRow(PlaylistView view, int i) {
+  /// One queued game, as on the TV and in the catalog: its number (the
+  /// same as the green badge on its cover), a small cover, the title.
+  Widget _upcomingRow(PlaylistView view, int i, int number) {
     final entry = view.entries[i];
     final status = entryStatus(view, i);
     final label = switch (status) {
@@ -931,7 +935,16 @@ class _NowAndNextState extends State<NowAndNext> {
       key: ValueKey('upcoming-${entry.game}-$i'),
       dense: true,
       onTap: () => _open(view, i),
-      leading: GameThumbnail(game: _catalog[entry.game], title: entry.title),
+      leading: Row(mainAxisSize: MainAxisSize.min, children: [
+        SizedBox(
+            width: 24,
+            child: Text(number.toString().padLeft(2, '0'),
+                style: const TextStyle(
+                    color: GnColors.muted,
+                    fontSize: 13,
+                    fontFeatures: [FontFeature.tabularFigures()]))),
+        GameThumbnail(game: _catalog[entry.game], title: entry.title),
+      ]),
       title: Text(entry.title,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,

@@ -231,8 +231,8 @@ class RoomScreenState extends State<RoomScreen> {
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
       decoration: BoxDecoration(
         color: GnColors.card,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: GnColors.accent),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: GnColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -315,7 +315,7 @@ class RoomScreenState extends State<RoomScreen> {
         padding: const EdgeInsets.fromLTRB(14, 8, 8, 8),
         decoration: BoxDecoration(
           color: GnColors.card,
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(12),
           border: Border.all(color: GnColors.border),
         ),
         child: Row(

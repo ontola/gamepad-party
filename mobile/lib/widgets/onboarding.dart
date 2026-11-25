@@ -192,8 +192,8 @@ class _MeetYourPlayerState extends State<MeetYourPlayer> {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [Color(0xFF1F4D3E), GnColors.card]),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: GnColors.ok, width: 2),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: GnColors.border),
       ),
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Semantics(
