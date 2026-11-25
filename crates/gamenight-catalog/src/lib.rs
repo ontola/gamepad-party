@@ -87,6 +87,10 @@ pub struct Players {
     /// on keys. Implies `keyboard`. Nice to have, not required.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub mouse: bool,
+    /// Players who can share one keyboard (2: a left half, WASD, and a
+    /// right half, the arrows). Implies `keyboard`. Absent: one.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub shared_keyboard: Option<u8>,
 }
 
 /// What a player needs in hand: a controller (default), a linked phone,

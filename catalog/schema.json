@@ -281,6 +281,16 @@
         "play_with": {
           "description": "What each player holds to play. `min`/`max` count only the players\nwho hold it, so a phone game with two phones on the couch fits two.",
           "$ref": "#/$defs/PlayWith"
+        },
+        "shared_keyboard": {
+          "description": "Players who can share one keyboard (2: a left half, WASD, and a\nright half, the arrows). Implies `keyboard`. Absent: one.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint8",
+          "maximum": 255,
+          "minimum": 0
         }
       },
       "additionalProperties": false,

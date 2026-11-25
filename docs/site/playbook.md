@@ -125,7 +125,9 @@ switch games often. The template does all of this; keep it as you build.
   catalog records which games work that way. Keys alone and keyboard plus
   mouse are not the same: add `"mouse": true` only when the mouse is part of
   play (aiming, looking around). A keyboard player in a game with neither is
-  told the game is made for controllers.
+  told the game is made for controllers. If two players can share one
+  keyboard (one on WASD, one on the arrows, a few buttons each), add
+  `"shared_keyboard": 2`: a second player joins the keyboard with G.
 - **Leave Back alone.** Back (Select) returns to the party; Splitscreen Club handles
   it and pauses your game. Never bind it to anything in the game.
 - **Use the players' colours, names and faces.** Each player picks them once
