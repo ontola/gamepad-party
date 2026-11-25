@@ -7,6 +7,14 @@ and keep credentials and private user information out of screenshots.
 
 This is the user's stated review preference from 30 September 2026.
 
+# UI design guide
+
+All Splitscreen Club UI (app, website, store, browser host, lobby) follows one
+guide: https://github.com/ontola/warp-game-engine/blob/main/lobbies/game-room/DESIGN.md
+(colour tokens, type, glyphs, panels, buttons, playlist, layout zones, motion,
+and a list of where the UI still differs). Read it before changing UI; when a
+rule changes, change it there, not here.
+
 # Integration documentation
 
 The website docs are generated from `docs/site/pages.json`, its Markdown sources
