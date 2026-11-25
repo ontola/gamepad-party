@@ -122,7 +122,10 @@ switch games often. The template does all of this; keep it as you build.
 - **Keyboard support is a plus.** Not every room has a controller for
   everyone, so let one player play on the keyboard when you can, and say so
   with `"keyboard": true` under `players` in `gamenight.json`, so the
-  catalog records which games work that way.
+  catalog records which games work that way. Keys alone and keyboard plus
+  mouse are not the same: add `"mouse": true` only when the mouse is part of
+  play (aiming, looking around). A keyboard player in a game with neither is
+  told the game is made for controllers.
 - **Leave Back alone.** Back (Select) returns to the party; Splitscreen Club handles
   it and pauses your game. Never bind it to anything in the game.
 - **Use the players' colours, names and faces.** Each player picks them once

@@ -82,6 +82,11 @@ pub struct Players {
     /// controllers than people. Nice to have, not required.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub keyboard: bool,
+    /// That keyboard player can also use the mouse (to aim, look or
+    /// click): the game is made for keyboard and mouse, not only playable
+    /// on keys. Implies `keyboard`. Nice to have, not required.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub mouse: bool,
 }
 
 /// What a player needs in hand: a controller (default), a linked phone,

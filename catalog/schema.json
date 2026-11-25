@@ -274,6 +274,10 @@
           "maximum": 255,
           "minimum": 0
         },
+        "mouse": {
+          "description": "That keyboard player can also use the mouse (to aim, look or\nclick): the game is made for keyboard and mouse, not only playable\non keys. Implies `keyboard`. Nice to have, not required.",
+          "type": "boolean"
+        },
         "play_with": {
           "description": "What each player holds to play. `min`/`max` count only the players\nwho hold it, so a phone game with two phones on the couch fits two.",
           "$ref": "#/$defs/PlayWith"
