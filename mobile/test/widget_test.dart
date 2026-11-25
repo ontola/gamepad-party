@@ -83,7 +83,7 @@ void main() {
     // Host a room is a page in the app, marked in the sidebar while open.
     await tester.tap(find.byKey(const ValueKey('desktop-host')));
     await tester.pumpAndSettle();
-    expect(find.text('Play right in your browser'), findsOneWidget);
+    expect(find.text('What runs the TV screen?'), findsOneWidget);
     expect(
         tester
             .widget<Semantics>(find
