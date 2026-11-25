@@ -7,7 +7,7 @@
 <meta name="description" content="Play couch multiplayer games from one lobby. Splitscreen Club prepares the next game in the background. Open protocol, open source.">
 <link rel="icon" type="image/svg+xml" sizes="any" href="/web/icon.svg"><link rel="icon" type="image/x-icon" sizes="16x16 32x32 48x48" href="/favicon.ico"><link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
 <link rel="stylesheet" href="/web/marketing.css"><link rel="stylesheet" href="/web/site.css">
-<script src="/web/shell.js" defer></script></head>
+<script src="/web/device.js"></script><script src="/web/shell.js" defer></script></head>
 <body>
 <div id="site-shell"></div>
 <div class="wrap">
@@ -16,6 +16,12 @@
     <h1>Less setup.<br><span class="glow">More playing together.</span></h1>
     <p class="sub">Splitscreen Club takes the friction out of couch multiplayer. Games load in the background,
       controllers stay linked to players, and your group is ready for the next round.</p>
+    <div class="cta cta-app" role="group" aria-label="Get the Splitscreen Club app">
+      <a class="btn primary btn-host" data-app="android" href="https://github.com/ontola/gamepad-party/releases/download/app-latest/gamenight.apk">Install the app</a>
+      <a class="btn primary btn-host" data-app="ios" href="/app/">Open the app</a>
+    </div>
+    <p class="app-note" data-app="android">Free Android app. Scan the QR on the TV to join, draw your player and pick the next game.</p>
+    <p class="app-note" data-app="ios">The iPhone app is in testing: ask for an invite on <a href="https://discord.gg/c8tyuajp4Q">Discord</a>. Until then it runs right here in Safari, no install needed.</p>
     <div class="cta cta-host">
       <a class="btn primary btn-host" href="https://splitscreen.club/play/">Host in your browser</a>
     </div>

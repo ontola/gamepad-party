@@ -68,6 +68,17 @@ nav .gh {
 .btn.primary:hover { filter: brightness(1.12); }
 .btn.btn-host { padding: 18px 40px; font-size: 20px; font-weight: 800; background: #ffb454; border-color: #ffd08f; color: #1b1206; box-shadow: 0 10px 36px #ffb45455; }
 .host-note { margin-top: 12px; font-size: 15px; opacity: .8; }
+/* Phones and tablets (device.js): installing the app leads, hosting follows. */
+.cta-app, .app-note { display: none; }
+html[data-phone] .cta-app { display: flex; }
+html[data-phone="android"] .app-note[data-app="android"], html[data-phone="ios"] .app-note[data-app="ios"] { display: block; }
+html[data-phone="android"] [data-app="ios"], html[data-phone="ios"] [data-app="android"] { display: none; }
+.app-note { margin-top: 12px; font-size: 15px; opacity: .8; }
+.app-note a { color: inherit; }
+html[data-phone] .cta.cta-host { margin-top: 26px; }
+html[data-phone] .cta-host .btn-host { padding: 13px 26px; font-size: 16px; font-weight: 700; background: var(--card); border-color: var(--line); color: inherit; box-shadow: none; }
+html[data-phone] .host-note { font-size: 14px; opacity: .72; }
+html[data-phone] .cta-download, html[data-phone] .dl-note { display: none; }
 .cta.cta-download { margin-top: 26px; }
 .dl-note { margin-top: 14px; font-size: 14px; opacity: .72; line-height: 1.7; }
 .dl-other { font-size: 13px; opacity: .8; }

@@ -6,6 +6,9 @@
   const browserHost='gpu' in navigator;
   const hostHref=document.body.dataset.local==='true'?'https://splitscreen.club/host':(browserHost?'/play/':'/host');
   const hostTitle=hostHref==='/play/'?'Host a room on this computer, right in your browser':'Host a room';
+  // On an Android phone or tablet the menu leads with installing the app.
+  const android=/Android/i.test(navigator.userAgent) && document.body.dataset.local!=='true';
+  const appApk='https://github.com/ontola/gamepad-party/releases/download/app-latest/gamenight.apk';
   let leaveDialog: HTMLDialogElement;
   let menuDialog: HTMLDialogElement;
   function openLeave() {
@@ -77,6 +80,7 @@
 <dialog class="site-menu-dialog" aria-labelledby="site-menu-title" bind:this={menuDialog} onclick={(event)=>{if(event.target===menuDialog)menuDialog.close();}}>
   <div class="site-menu-heading"><h2 id="site-menu-title">Menu</h2><button aria-label="Close menu" onclick={()=>menuDialog.close()}>×</button></div>
   <nav aria-label="More navigation">
+    {#if android}<a class="site-menu-app" href={appApk} onclick={()=>menuDialog.close()}>Install the app <span aria-hidden="true">↓</span></a>{/if}
     <a href="/docs" aria-current={$route==='/docs' || $route.startsWith('/docs/')?'page':undefined} onclick={()=>menuDialog.close()}>Docs <span aria-hidden="true">↗</span></a>
     <a href={document.body.dataset.local==='true'?'https://splitscreen.club/developers':'/developers'} aria-current={$route==='/developers' || $route.startsWith('/developers/')?'page':undefined} onclick={()=>menuDialog.close()}>Developer portal <span aria-hidden="true">→</span></a>
     <a href={hostHref} aria-current={$route==='/host'?'page':undefined} onclick={()=>menuDialog.close()}>Host a room <span aria-hidden="true">→</span></a>
