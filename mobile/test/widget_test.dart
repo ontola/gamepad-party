@@ -49,8 +49,8 @@ void main() {
     await tester.pumpAndSettle();
     final sidebar = find.byKey(const ValueKey('desktop-sidebar'));
     for (final label in [
-      'Developer portal',
-      'Documentation',
+      'Developers',
+      'Docs',
       'Host a room',
       'Feedback'
     ]) {
