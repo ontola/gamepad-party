@@ -296,7 +296,7 @@ void main() {
         browserGames: {id: '$id-warp'},
         browserBlocker: () => BrowserHostBlocker.phone);
     expect(find.byKey(const ValueKey('play-in-browser')), findsNothing);
-    expect(find.textContaining('Plays in the browser on a computer'),
+    expect(find.textContaining('Plays in the browser on a PC'),
         findsOneWidget);
     // The app itself never offers it, and games the host lacks neither.
     await _open(tester, browserGames: {id: '$id-warp'});

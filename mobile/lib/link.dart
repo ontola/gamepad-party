@@ -13,6 +13,10 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 const int defaultWebPort = 7913;
 const String hostedOrigin = 'https://gamenight.ontola.io';
 
+/// The website as people type it. It sends each device on to the browser
+/// host or the app download itself.
+const String siteAddress = 'splitscreen.club';
+
 /// Origins of the hosted site. splitscreen.club is the new name; links on the
 /// older addresses keep working during the move.
 const Set<String> hostedOrigins = {

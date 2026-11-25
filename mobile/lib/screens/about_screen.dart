@@ -226,8 +226,8 @@ class _Todos extends StatelessWidget {
         key: const ValueKey('todo-host'),
         done: state.hostedOwnRoom,
         title: 'Host a session',
-        hint: 'Open Splitscreen Club in the browser on the TV computer, or '
-            'install it there, and invite your friends.',
+        hint: 'Open splitscreen.club on the PC by the TV, or host on this '
+            'phone, and invite your friends.',
         action: onHost == null ? null : 'Host',
         onTap: () => onHost?.call(),
       ),

@@ -44,8 +44,11 @@ void main() {
     await tester.tap(find.text('Host a room'));
     await tester.pumpAndSettle();
     expect(find.byType(HostScreen), findsOneWidget);
-    expect(find.text('Play right in your browser'), findsOneWidget);
-    expect(find.byKey(const ValueKey('host-elsewhere')), findsOneWidget);
+    expect(find.text('What runs the TV screen?'), findsOneWidget);
+    expect(find.byKey(const ValueKey('host-this-phone')), findsOneWidget);
+    expect(find.text('splitscreen.club'), findsOneWidget);
+    expect(find.textContaining('gamenight'), findsNothing);
+    expect(find.textContaining('TV computer'), findsNothing);
     await tester.tap(find.byKey(const ValueKey('host-phone')));
     await tester.pumpAndSettle();
     expect(calls.single.method, 'host');
@@ -58,16 +61,17 @@ void main() {
       (tester) async {
     await _show(tester, null);
     expect(find.byKey(const ValueKey('host-here')), findsOneWidget);
-    expect(find.byKey(const ValueKey('host-elsewhere')), findsNothing);
+    expect(find.byKey(const ValueKey('host-address')), findsNothing);
     expect(find.byKey(const ValueKey('host-download')), findsOneWidget);
   });
 
   testWidgets('elsewhere it names the address and why', (tester) async {
     await _show(tester, BrowserHostBlocker.browser);
     expect(find.byKey(const ValueKey('host-here')), findsNothing);
-    expect(find.text('gamenight.ontola.io/play'), findsOneWidget);
+    expect(find.text('splitscreen.club'), findsOneWidget);
     expect(find.textContaining('has no WebGPU'), findsWidgets);
     await _show(tester, BrowserHostBlocker.phone);
-    expect(find.textContaining('A phone is too slow'), findsOneWidget);
+    expect(find.textContaining('too slow'), findsNothing);
+    expect(find.text('A PC by the TV'), findsOneWidget);
   });
 }

@@ -9,9 +9,8 @@ import '../screens/host_screen.dart';
 /// renders 3D at 540 lines.
 final Uri browserHost = Uri.parse('https://splitscreen.club/play/?render=540');
 
-/// "Host a room": a page in the app that shows the TV can just be a
-/// browser, with the browser host, hosting on this Android phone and the
-/// installer as ways to start.
+/// "Host a room": a page in the app with the ways to run the TV screen:
+/// this Android phone, or a PC by the TV (browser host or installer).
 Future<void> hostRoom(BuildContext context, CloudApi cloud) =>
     HostScreen.open(context, cloud);
 

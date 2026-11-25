@@ -14,9 +14,9 @@ import '../navigation/open_website.dart';
 import '../theme.dart';
 import 'mods_screen.dart' show GetTheApp;
 
-/// "Host a room": the TV screen can just be a browser. Starts the browser
-/// host right here when this browser can run it; otherwise says where it
-/// does run, with the installer as the other way.
+/// "Host a room": what runs the TV screen. This phone (the Android app's
+/// native host) or a PC by the TV, where splitscreen.club offers the
+/// browser host and the Windows and Mac app.
 class HostScreen extends StatelessWidget {
   final CloudApi cloud;
 
@@ -42,13 +42,7 @@ class HostScreen extends StatelessWidget {
         ),
       );
 
-  static const _steps = [
-    (
-      Icons.tv,
-      'Open it on the TV computer',
-      'Chrome, Edge, Firefox or Safari on the computer that is on the TV. '
-          'Nothing to install.',
-    ),
+  static const _then = [
     (
       Icons.sports_esports,
       'Grab a controller',
@@ -64,7 +58,6 @@ class HostScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final blocker = _blockerSet ? this.blocker : browserHostBlocker();
-    final play = Uri.parse('$apiOrigin/play/');
     return Scaffold(
       appBar: AppBar(title: const Text('Host a room')),
       body: ContentWidth(
@@ -73,16 +66,27 @@ class HostScreen extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
           children: [
             const Text(
-              'Play right in your browser',
+              'What runs the TV screen?',
               style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: 6),
             const Hint(
               'The TV shows the game, everyone plays on the couch. '
-              'All you need is a browser and a few controllers.',
+              'Pick what runs it.',
             ),
-            const SizedBox(height: 18),
-            for (final step in _steps)
+            const SizedBox(height: 16),
+            if (Apps.supported) ...[
+              const _ThisPhone(),
+              const SizedBox(height: 12),
+            ],
+            _OnAPc(cloud: cloud, blocker: blocker),
+            const SizedBox(height: 24),
+            const Text(
+              'Then',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 12),
+            for (final step in _then)
               Padding(
                 padding: const EdgeInsets.only(bottom: 14),
                 child: Row(
@@ -109,53 +113,6 @@ class HostScreen extends StatelessWidget {
                   ],
                 ),
               ),
-            const SizedBox(height: 6),
-            if (blocker == null)
-              FilledButton.icon(
-                key: const ValueKey('host-here'),
-                style: FilledButton.styleFrom(
-                  minimumSize: const Size.fromHeight(52),
-                ),
-                onPressed: () => launchUrl(play, webOnlyWindowName: '_self'),
-                icon: const Icon(Icons.play_arrow),
-                label: const Text('Start hosting in this browser'),
-              )
-            else
-              _OpenElsewhere(play: play, blocker: blocker),
-            if (Apps.supported) ...[
-              const SizedBox(height: 8),
-              OutlinedButton.icon(
-                key: const ValueKey('host-phone'),
-                style: OutlinedButton.styleFrom(
-                  minimumSize: const Size.fromHeight(48),
-                ),
-                onPressed: () => Apps.host(browserHost),
-                icon: const Icon(Icons.cast),
-                label: const Text('Host on this phone'),
-              ),
-              const SizedBox(height: 4),
-              const Hint('Cast or mirror this phone to the TV.'),
-            ],
-            const SizedBox(height: 24),
-            Section(
-              title: 'Or install it on the TV computer',
-              children: [
-                const Hint(
-                  'The app for Windows and Mac plays every game in the '
-                  'store, also the ones that do not run in a browser yet.',
-                ),
-                const SizedBox(height: 12),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: OutlinedButton.icon(
-                    key: const ValueKey('host-download'),
-                    onPressed: () => openWebsite(cloud, '/get'),
-                    icon: const Icon(Icons.download, size: 18),
-                    label: const Text('Download for Windows or Mac'),
-                  ),
-                ),
-              ],
-            ),
           ],
         ),
       ),
@@ -163,44 +120,141 @@ class HostScreen extends StatelessWidget {
   }
 }
 
-/// Where the browser host runs, when it can't run here.
-class _OpenElsewhere extends StatelessWidget {
-  final Uri play;
-  final BrowserHostBlocker blocker;
-  const _OpenElsewhere({required this.play, required this.blocker});
+/// A hosting option: an icon, a title and what it takes.
+class _Option extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final List<Widget> children;
+  const _Option({
+    super.key,
+    required this.icon,
+    required this.title,
+    required this.children,
+  });
+
+  @override
+  Widget build(BuildContext context) => Card(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  Icon(icon, color: GnColors.warn, size: 26),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              ...children,
+            ],
+          ),
+        ),
+      );
+}
+
+/// The Android app hosts on the phone itself (the native host).
+class _ThisPhone extends StatelessWidget {
+  const _ThisPhone();
+
+  @override
+  Widget build(BuildContext context) => _Option(
+        key: const ValueKey('host-this-phone'),
+        icon: Icons.phone_android,
+        title: 'This phone',
+        children: [
+          const Hint(
+            'This phone runs the games. Connect it to the TV with a cable '
+            'or screen mirroring, or just play on the phone.',
+          ),
+          const SizedBox(height: 12),
+          FilledButton.icon(
+            key: const ValueKey('host-phone'),
+            style: FilledButton.styleFrom(
+              minimumSize: const Size.fromHeight(48),
+            ),
+            onPressed: () => Apps.host(browserHost),
+            icon: const Icon(Icons.play_arrow),
+            label: const Text('Host on this phone'),
+          ),
+        ],
+      );
+}
+
+/// A PC by the TV: splitscreen.club offers the browser host and the
+/// Windows and Mac app. Starts it right here when this browser can run it.
+class _OnAPc extends StatelessWidget {
+  final CloudApi cloud;
+  final BrowserHostBlocker? blocker;
+  const _OnAPc({required this.cloud, required this.blocker});
 
   @override
   Widget build(BuildContext context) {
-    final address = '${play.host}${play.path}'.replaceFirst(RegExp(r'/$'), '');
-    return Card(
-      key: const ValueKey('host-elsewhere'),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'On the TV computer, go to',
-              style: TextStyle(color: GnColors.muted),
+    final here = blocker == null;
+    return _Option(
+      key: const ValueKey('host-pc'),
+      icon: Icons.computer,
+      title: here ? 'This PC' : 'A PC by the TV',
+      children: [
+        if (here) ...[
+          const Hint(
+            'Play right in this browser, nothing to install. The app for '
+            'Windows and Mac also plays the games that do not run in a '
+            'browser yet.',
+          ),
+          const SizedBox(height: 12),
+          FilledButton.icon(
+            key: const ValueKey('host-here'),
+            style: FilledButton.styleFrom(
+              minimumSize: const Size.fromHeight(48),
             ),
-            const SizedBox(height: 4),
-            SelectableText(
-              address,
-              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
+            onPressed: () => launchUrl(Uri.parse('$apiOrigin/play/'),
+                webOnlyWindowName: '_self'),
+            icon: const Icon(Icons.play_arrow),
+            label: const Text('Start hosting in this browser'),
+          ),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            key: const ValueKey('host-download'),
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size.fromHeight(44),
             ),
-            const SizedBox(height: 8),
-            Hint(switch (blocker) {
-              BrowserHostBlocker.browser =>
-                'This browser has no WebGPU. Use a recent Chrome, Edge, Firefox or Safari.',
-              _ => 'A phone is too slow to be the TV screen, so open it on a '
-                  'computer.',
-            }),
-            const SizedBox(height: 12),
-            OutlinedButton.icon(
+            onPressed: () => openWebsite(cloud, '/get'),
+            icon: const Icon(Icons.download, size: 18),
+            label: const Text('Download for Windows or Mac'),
+          ),
+        ] else ...[
+          const Hint('On the PC connected to the TV, go to'),
+          const SizedBox(height: 4),
+          const SelectableText(
+            siteAddress,
+            key: ValueKey('host-address'),
+            style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 6),
+          Hint(blocker == BrowserHostBlocker.browser
+              ? 'This browser has no WebGPU. Use a recent Chrome, Edge, '
+                  'Firefox or Safari, or download the app there.'
+              : 'Play in the browser, or download the app for Windows '
+                  'and Mac.'),
+          const SizedBox(height: 12),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: OutlinedButton.icon(
               key: const ValueKey('host-copy'),
               onPressed: () async {
                 try {
-                  await Clipboard.setData(ClipboardData(text: play.toString()));
+                  await Clipboard.setData(
+                      const ClipboardData(text: 'https://$siteAddress'));
                   if (context.mounted) toast(context, 'Link copied');
                 } catch (_) {
                   if (context.mounted) {
@@ -211,9 +265,9 @@ class _OpenElsewhere extends StatelessWidget {
               icon: const Icon(Icons.copy, size: 18),
               label: const Text('Copy link'),
             ),
-          ],
-        ),
-      ),
+          ),
+        ],
+      ],
     );
   }
 }
@@ -243,7 +297,7 @@ class GetAppScreen extends StatelessWidget {
               GetTheApp(
                 title: 'Splitscreen Club, a tap away',
                 text: 'On your phone it is your controller and your player, '
-                    'ready when you walk in. On the TV computer it hosts every '
+                    'ready when you walk in. On the PC by the TV it hosts every '
                     'game in the store and updates itself.',
               ),
             ],

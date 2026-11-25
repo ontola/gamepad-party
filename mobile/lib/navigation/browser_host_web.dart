@@ -9,7 +9,7 @@ export 'browser_host_blocker.dart';
 
 /// Why this browser can't run the browser host (/play/), or null when it
 /// can: a computer with WebGPU (Chrome, Edge, Safari, Firefox and Zen).
-/// Phones are too slow.
+/// Phones host from the Android app instead.
 BrowserHostBlocker? browserHostBlocker() {
   final navigator = web.window.navigator;
   final agent = navigator.userAgent;

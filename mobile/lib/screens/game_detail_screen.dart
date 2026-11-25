@@ -507,8 +507,8 @@ class _GameDetailPageState extends State<_GameDetailPage> {
     if (blocker == BrowserHostBlocker.app) return null;
     if (blocker != null) {
       return _Note(blocker == BrowserHostBlocker.phone
-          ? 'Plays in the browser on a computer: open splitscreen.club on '
-              'the TV computer.'
+          ? 'Plays in the browser on a PC: open splitscreen.club on the PC '
+              'by the TV.'
           : 'Plays in the browser in a recent Chrome, Edge, Firefox or Safari.');
     }
     final url =
