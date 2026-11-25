@@ -135,7 +135,15 @@ class AppState extends ChangeNotifier {
 
   /// The app came back to the foreground: forget failures from requests the
   /// OS cut while it slept, and check again right away.
+  /// Off screen: polls wait, so the room's status checks stay a sign of
+  /// life. The cloud lets a profile go once its seat and its phone were both
+  /// quiet for half an hour; a phone polling from a pocket kept it forever.
+  bool _background = false;
+
+  void backgrounded() => _background = true;
+
   void resumed() {
+    _background = false;
     _resumedAt = clock();
     _checkFailures = 0;
     _failingSince = null;
@@ -631,6 +639,7 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> _refreshAll() async {
+    if (_background) return;
     await refreshSession();
     if (inHostedRoom) await refreshHostedRoom();
   }

@@ -683,6 +683,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.hidden) {
+      widget.state.backgrounded();
+    }
     if (state == AppLifecycleState.resumed) {
       widget.state.resumed();
       unawaited(widget.reports?.flush());

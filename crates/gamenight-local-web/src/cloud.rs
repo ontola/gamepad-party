@@ -44,6 +44,26 @@ struct CachedPairing {
 mod pairing_tests {
     use super::*;
 
+    #[test]
+    fn seat_idle_counts_from_sleep_or_pause_and_wakes_on_input() {
+        use gamenight_protocol::{PlayerPresence, PresenceState::*};
+        let id = PlayerId(uuid::Uuid::new_v4());
+        let seats = [Seat { index: 2, player: id.0.to_string(), revision: 0 }];
+        let at = |state| [PlayerPresence { player_id: id, state }];
+        let mut quiet = HashMap::new();
+        let t0 = std::time::Instant::now();
+        let t = |s| t0 + Duration::from_secs(s);
+        assert_eq!(seat_idle(&at(Active), false, &seats, &mut quiet, t0)[&2], 0);
+        seat_idle(&at(Sleeping), false, &seats, &mut quiet, t(0));
+        assert_eq!(seat_idle(&at(Sleeping), false, &seats, &mut quiet, t(600))[&2], 675);
+        assert_eq!(seat_idle(&at(Active), false, &seats, &mut quiet, t(601))[&2], 0);
+        // A paused match does not age presence: it counts as quiet itself.
+        seat_idle(&at(Active), true, &seats, &mut quiet, t(700));
+        assert_eq!(seat_idle(&at(Active), true, &seats, &mut quiet, t(800))[&2], 175);
+        // No presence (a phone player): left out.
+        assert!(seat_idle(&[], false, &seats, &mut quiet, t(900)).is_empty());
+    }
+
     #[tokio::test]
     async fn cached_ticket_is_stable_but_expires_and_tracks_seat_identity() {
         let seat = Seat {
@@ -484,6 +504,9 @@ impl Bridge {
         // is the largest part of a poll: sent when it changed, and now and
         // then in case the cloud restarted.
         let mut sent_activity: Option<(Option<u64>, std::time::Instant)> = None;
+        // Since when each player has been quiet (asleep, or in a paused
+        // match): the poll's `idle`, after which the cloud lets a profile go.
+        let mut quiet: HashMap<PlayerId, std::time::Instant> = HashMap::new();
         loop {
             tokio::select! {
                 _ = tokio::time::sleep(Duration::from_secs(3)) => {},
@@ -525,7 +548,14 @@ impl Bridge {
             let mut discovery = discovery::snapshot(&party, &acknowledged);
             discovery["agent_receipt"] = receipt.clone().unwrap_or(serde_json::Value::Null);
             let newest = party.activity.last().map(|entry| entry.id);
-            let mut body = serde_json::json!({"seats":seats,"discovery":discovery});
+            let mut body = serde_json::json!({"seats":seats,"discovery":discovery,
+                "idle":seat_idle(
+                    &party.presence,
+                    party.active_session.as_ref().is_some_and(|s| s.phase == gamenight_protocol::SessionPhase::Paused),
+                    &seats,
+                    &mut quiet,
+                    std::time::Instant::now(),
+                )});
             if let Some(agent) = &store_agent {
                 body["atomic_agent"] = serde_json::json!(agent);
             }
@@ -839,6 +869,42 @@ fn retire_unreported(local: &mut crate::ServerState, updates: &[Update]) -> Vec<
         vacated.push(player);
     }
     vacated
+}
+
+/// Seconds each seat's player has been quiet, by seat index: asleep (no
+/// controller input for 75 s, see the core's presence) or in a paused match,
+/// counted from when that started plus the 75 s before sleep. Players the
+/// party has no presence for (phone players) are left out: they never time
+/// out on this side, their phone tells the cloud.
+fn seat_idle(
+    presence: &[gamenight_protocol::PlayerPresence],
+    paused: bool,
+    seats: &[Seat],
+    quiet: &mut HashMap<PlayerId, std::time::Instant>,
+    now: std::time::Instant,
+) -> BTreeMap<u8, u64> {
+    use gamenight_protocol::PresenceState;
+    quiet.retain(|id, _| presence.iter().any(|p| p.player_id == *id));
+    for p in presence {
+        if p.state == PresenceState::Sleeping || paused {
+            quiet.entry(p.player_id).or_insert(now);
+        } else {
+            quiet.remove(&p.player_id);
+        }
+    }
+    seats
+        .iter()
+        .filter_map(|seat| {
+            let player = presence
+                .iter()
+                .find(|p| p.player_id.0.to_string() == seat.player)?;
+            let since = quiet.get(&player.player_id);
+            Some((
+                seat.index,
+                since.map_or(0, |at| now.duration_since(*at).as_secs() + 75),
+            ))
+        })
+        .collect()
 }
 
 /// Controller players a profile left that nobody claimed since. Phone players

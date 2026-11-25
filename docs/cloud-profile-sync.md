@@ -30,7 +30,18 @@ an installation's main player, restored at the pickup door on later launches.
 This is a per-device startup preference, not an administrator account.
 
 Current alpha limits: connections expire after two minutes without a heartbeat
-and after 24 hours total. A cloud restart requires scanning a new QR, but not
+and after 24 hours total.
+
+Sign of life (2026-11-25): the poll may carry `idle`, seconds since each seat's
+last controller or keyboard input by seat index (the desktop bridge counts from
+presence `sleeping` or a paused match; the browser and Android hosts from the
+seat's own device). The cloud takes a profile off a seat once its `idle` reached
+30 minutes and the account's phone made no room status check in those 30
+minutes either; the host gives that player its own look back. The app only
+polls in the foreground, so a phone in a pocket is no sign of life. Hosts that
+send no `idle` keep profiles until they stop polling. After a cloud restart a
+host gets its profiles back only within 5 minutes of its last snapshot; later
+it keeps its room code (1 hour) with empty seats. A cloud restart requires scanning a new QR, but not
 creating another account. There is no automatic conflict merge: the editor retains
 local unsynced work and rejects stale cloud saves. Cloud gallery data is isolated
 per account on the same browser.
