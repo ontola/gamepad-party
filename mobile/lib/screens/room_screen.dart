@@ -4,6 +4,10 @@ import '../account.dart' show TableBug;
 import '../app_state.dart';
 import '../report_scope.dart';
 import '../link.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+import '../navigation/browser_host_stub.dart'
+    if (dart.library.js_interop) '../navigation/browser_host_web.dart';
 import '../navigation/host_room.dart';
 import '../theme.dart';
 import '../layout.dart';
@@ -130,6 +134,14 @@ class RoomScreenState extends State<RoomScreen> {
         () => _error = 'No room with that code. Check the code on the TV.',
       );
       _code.clear();
+      return;
+    }
+    // A computer that can host plays along as another couch: the room's
+    // game on this screen, with this computer's controllers. Its page has
+    // "Use this as a controller" for the other way (Joep, 25 November 2026).
+    if (state.host == null && canHostInThisBrowser()) {
+      _code.clear();
+      await playOnThisScreen(code);
       return;
     }
     await _askNameOnce();
@@ -541,6 +553,19 @@ class RoomScreenState extends State<RoomScreen> {
                 title: const Text('Remember me on this Splitscreen Club'),
               ),
           ],
+          // A computer here as a controller can play along on its own screen.
+          if (room?.code != null && canHostInThisBrowser()) ...[
+            const SizedBox(height: 12),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: FilledButton.icon(
+                key: const ValueKey('room-play-here'),
+                onPressed: () => playOnThisScreen(room!.code!),
+                icon: const Icon(Icons.tv, size: 18),
+                label: const Text('Play on this screen'),
+              ),
+            ),
+          ],
           // The way out sits with the room it leaves.
           const SizedBox(height: 12),
           Align(
@@ -939,3 +964,12 @@ class _Facts extends StatelessWidget {
     ],
   );
 }
+
+/// Open the browser host following room [code]'s games (/play/?follow=).
+/// Only a browser that can host gets here: its own site's /play/.
+Future<void> playOnThisScreen(String code) => launchUrl(
+  Uri.parse(
+    '${Uri.base.origin}/play/?follow=${Uri.encodeQueryComponent(code)}',
+  ),
+  webOnlyWindowName: '_self',
+);
