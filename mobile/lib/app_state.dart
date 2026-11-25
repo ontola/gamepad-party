@@ -362,7 +362,12 @@ class AppState extends ChangeNotifier {
   bool get choseName => signedIn || (prefs.getBool('chose_name') ?? false);
 
   /// Kept the random name when asked: do not ask again.
-  void keepName() => prefs.setBool('chose_name', true);
+  /// Notifies, so the "Set up your player" checklist ticks the name off
+  /// right away instead of on the next unrelated rebuild.
+  void keepName() {
+    prefs.setBool('chose_name', true);
+    notifyListeners();
+  }
 
   /// Saw the "This is you" banner on the room screen after first joining
   /// and closed it. Until then the room screen shows who you are on the TV.

@@ -185,4 +185,34 @@ void main() {
     state.dispose();
     await tester.pumpWidget(const SizedBox());
   });
+
+  testWidgets('saving the shown name ticks the name step off right away',
+      (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final state = AppState(await SharedPreferences.getInstance());
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(GameNightApp(state: state));
+    await tester.pump(const Duration(milliseconds: 400));
+    final step = find.byKey(const ValueKey('setup-name'));
+    await tester.scrollUntilVisible(step, 200,
+        scrollable: find.byType(Scrollable).first);
+    expect(state.choseName, isFalse);
+    await tester.tap(find.descendant(
+        of: step, matching: find.widgetWithText(OutlinedButton, 'Name')));
+    await tester.pumpAndSettle();
+    // Keep the random name the field shows as its hint.
+    await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+    await tester.pumpAndSettle();
+    expect(state.choseName, isTrue);
+    expect(
+        find.descendant(of: step, matching: find.byIcon(Icons.check_circle)),
+        findsOneWidget);
+    expect(
+        find.descendant(of: step, matching: find.byType(OutlinedButton)),
+        findsNothing);
+    state.dispose();
+    await tester.pumpWidget(const SizedBox());
+  });
 }

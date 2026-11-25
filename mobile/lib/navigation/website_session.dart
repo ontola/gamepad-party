@@ -34,6 +34,8 @@ Future<void> migrateWebsiteRoom(
       if (profile is Map) {
         if (profile['display_name'] is String) {
           await prefs.setString('player_name', profile['display_name']);
+          // The website already asked for this name.
+          await prefs.setBool('chose_name', true);
         }
         if (profile['skin_color'] is String &&
             RegExp(r'^#[0-9a-fA-F]{6}$').hasMatch(profile['skin_color'])) {
