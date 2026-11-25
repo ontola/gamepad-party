@@ -31,48 +31,48 @@ class FakeRoom {
 
   /// Neon Siege is queued, not loaded: its settings wait for it to start.
   Map<String, dynamic> get neonControls => {
-        'game': 'neon-siege',
-        'instance': '00000000-0000-0000-0000-000000000000',
-        'revision': neonRevision,
-        'waiting': true,
-        'settings': {
-          'rounds': {
-            'kind': 'number',
-            'label': 'Rounds',
-            'value': rounds,
-            'min': 1,
-            'max': 9
-          },
-        },
-      };
+    'game': 'neon-siege',
+    'instance': '00000000-0000-0000-0000-000000000000',
+    'revision': neonRevision,
+    'waiting': true,
+    'settings': {
+      'rounds': {
+        'kind': 'number',
+        'label': 'Rounds',
+        'value': rounds,
+        'min': 1,
+        'max': 9,
+      },
+    },
+  };
 
   Map<String, dynamic> get controls => {
-        'game': 'ballkickers',
-        'instance': 'session-1',
-        'revision': revision,
-        'can_undo': revision > 1,
-        'settings': {
-          'items': {
-            'kind': 'toggle',
-            'label': 'Items',
-            'description': 'Power-ups',
-            'value': items
-          },
-          'stock': {
-            'kind': 'number',
-            'label': 'Stock',
-            'value': stock,
-            'min': 1,
-            'max': 9
-          },
-          'arena': {
-            'kind': 'choice',
-            'label': 'Arena',
-            'value': 'park',
-            'options': ['park', 'beach'],
-          },
-        },
-      };
+    'game': 'ballkickers',
+    'instance': 'session-1',
+    'revision': revision,
+    'can_undo': revision > 1,
+    'settings': {
+      'items': {
+        'kind': 'toggle',
+        'label': 'Items',
+        'description': 'Power-ups',
+        'value': items,
+      },
+      'stock': {
+        'kind': 'number',
+        'label': 'Stock',
+        'value': stock,
+        'min': 1,
+        'max': 9,
+      },
+      'arena': {
+        'kind': 'choice',
+        'label': 'Arena',
+        'value': 'park',
+        'options': ['park', 'beach'],
+      },
+    },
+  };
 
   late final client = MockClient((request) async {
     final key = '${request.method} ${request.url.path}';
@@ -82,54 +82,60 @@ class FakeRoom {
     switch (key) {
       case 'GET /api/games':
         return http.Response(
-            jsonEncode({
-              'games': [
-                {
-                  'id': 'ballkickers',
-                  'title': 'Ballkickers',
-                  'selectable': true,
-                  'state': 'available'
-                },
-                {
-                  'id': 'stack-together',
-                  'title': 'Stack Together',
-                  'selectable': false,
-                  'state': 'unavailable'
-                },
-              ]
-            }),
-            200);
+          jsonEncode({
+            'games': [
+              {
+                'id': 'ballkickers',
+                'title': 'Ballkickers',
+                'selectable': true,
+                'state': 'available',
+              },
+              {
+                'id': 'stack-together',
+                'title': 'Stack Together',
+                'selectable': false,
+                'state': 'unavailable',
+              },
+            ],
+          }),
+          200,
+        );
       case 'POST /api/playlist/queue' || 'POST /api/playlist/next':
         return http.Response(
-            jsonEncode({
-              'playlist': {'entries': []}
-            }),
-            200);
+          jsonEncode({
+            'playlist': {'entries': []},
+          }),
+          200,
+        );
       case 'GET /api/playlist':
         return http.Response(
-            jsonEncode({
-              'playlist': {
-                'entries': [
-                  {'game': 'ballkickers', 'title': 'Ballkickers'},
-                  {'game': 'neon-siege', 'title': 'Neon Siege'},
-                  {'game': 'growing-guns', 'title': 'Growing Guns'},
-                ],
-                'current': 0,
-                'queued': 1,
-              },
-              'playing': 'ballkickers',
-              'next': 'neon-siege',
-            }),
-            200);
+          jsonEncode({
+            'playlist': {
+              'entries': [
+                {'game': 'ballkickers', 'title': 'Ballkickers'},
+                {'game': 'neon-siege', 'title': 'Neon Siege'},
+                {'game': 'growing-guns', 'title': 'Growing Guns'},
+              ],
+              'current': 0,
+              'queued': 1,
+            },
+            'playing': 'ballkickers',
+            'next': 'neon-siege',
+          }),
+          200,
+        );
       case 'GET /api/settings':
         final game = request.url.queryParameters['game'];
         return http.Response(
-            jsonEncode(game == null || game == 'ballkickers'
+          jsonEncode(
+            game == null || game == 'ballkickers'
                 ? controls
                 : game == 'neon-siege'
-                    ? neonControls
-                    : null),
-            200);
+                ? neonControls
+                : null,
+          ),
+          200,
+        );
       case 'POST /api/settings':
         final body = jsonDecode(request.body) as Map;
         final command = body['command'] as Map;
@@ -169,25 +175,35 @@ void main() {
   test('local controls speak as this phone\'s profile', () async {
     final room = FakeRoom();
     final controls = LocalRoomControls(
-        GameNightApi(Uri.parse('http://192.168.1.5:3000'), client: room.client),
-        'prof_me');
+      GameNightApi(Uri.parse('http://192.168.1.5:3000'), client: room.client),
+      'prof_me',
+    );
 
     final games = await controls.games();
-    expect(games.map((g) => (g.id, g.playable)),
-        [('ballkickers', true), ('stack-together', false)]);
+    expect(games.map((g) => (g.id, g.playable)), [
+      ('ballkickers', true),
+      ('stack-together', false),
+    ]);
     expect(room.calls.last, 'GET /api/games profile=prof_me');
 
     await controls.addToQueue('ballkickers');
-    expect(room.bodies['POST /api/playlist/queue'],
-        {'profile': 'prof_me', 'game': 'ballkickers'});
+    expect(room.bodies['POST /api/playlist/queue'], {
+      'profile': 'prof_me',
+      'game': 'ballkickers',
+    });
 
     await controls.playNext('ballkickers', start: true);
-    expect(room.bodies['POST /api/playlist/next'],
-        {'profile': 'prof_me', 'game': 'ballkickers', 'start': true});
+    expect(room.bodies['POST /api/playlist/next'], {
+      'profile': 'prof_me',
+      'game': 'ballkickers',
+      'start': true,
+    });
 
     expect(await controls.settings(game: 'growing-guns'), isNull);
     expect(
-        room.calls.last, 'GET /api/settings profile=prof_me&game=growing-guns');
+      room.calls.last,
+      'GET /api/settings profile=prof_me&game=growing-guns',
+    );
     expect((await controls.settings(game: 'ballkickers'))?.game, 'ballkickers');
 
     final settings = (await controls.settings())!;
@@ -196,8 +212,10 @@ void main() {
       ('stock', SettingKind.number),
       ('arena', SettingKind.choice),
     ]);
-    final after =
-        await controls.applySettings(settings, values: {'items': false});
+    final after = await controls.applySettings(
+      settings,
+      values: {'items': false},
+    );
     expect(room.bodies['POST /api/settings'], {
       'profile': 'prof_me',
       'game': 'ballkickers',
@@ -211,8 +229,10 @@ void main() {
     expect(after!.revision, 2);
     expect(after.settings.first.value, false);
     expect(after.canUndo, isTrue);
-    await expectLater(controls.applySettings(settings, values: {'stock': 4}),
-        throwsA(isA<ApiError>().having((e) => e.status, 'status', 409)));
+    await expectLater(
+      controls.applySettings(settings, values: {'stock': 4}),
+      throwsA(isA<ApiError>().having((e) => e.status, 'status', 409)),
+    );
 
     // Older hosts and phones that left the room: nothing to offer, no error.
     room.status = 404;
@@ -225,15 +245,16 @@ void main() {
   test('settings without values the app understands are left out', () {
     expect(GameSettings.fromJson(null), isNull);
     expect(
-        GameSettings.fromJson({
-          'game': 'g',
-          'instance': 'i',
-          'settings': {
-            'x': {'kind': 'slider', 'value': 1},
-            'y': {'kind': 'toggle', 'value': 'yes'},
-          },
-        }),
-        isNull);
+      GameSettings.fromJson({
+        'game': 'g',
+        'instance': 'i',
+        'settings': {
+          'x': {'kind': 'slider', 'value': 1},
+          'y': {'kind': 'toggle', 'value': 'yes'},
+        },
+      }),
+      isNull,
+    );
   });
 
   group('Game tab', () {
@@ -246,13 +267,20 @@ void main() {
       launcher = FakeLauncher();
       UrlLauncherPlatform.instance = launcher;
       Catalog.instance = Catalog(
-        client: MockClient((_) async => http.Response.bytes(
-            File('test/fixtures/catalog.json').readAsBytesSync(), 200)),
+        client: MockClient(
+          (_) async => http.Response.bytes(
+            File('test/fixtures/catalog.json').readAsBytesSync(),
+            200,
+          ),
+        ),
       );
-      SharedPreferences.setMockInitialValues(
-          {'host': 'http://192.168.1.5:3000'});
-      state = AppState(await SharedPreferences.getInstance(),
-          apiFactory: (base) => GameNightApi(base, client: room.client));
+      SharedPreferences.setMockInitialValues({
+        'host': 'http://192.168.1.5:3000',
+      });
+      state = AppState(
+        await SharedPreferences.getInstance(),
+        apiFactory: (base) => GameNightApi(base, client: room.client),
+      );
     });
 
     tearDown(() => state.dispose());
@@ -261,12 +289,18 @@ void main() {
       tester.view.physicalSize = const Size(1080, 4000);
       tester.view.devicePixelRatio = 2.5;
       addTearDown(tester.view.reset);
-      await tester.pumpWidget(MaterialApp(
-        theme: gameNightTheme(),
-        home: Scaffold(
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: gameNightTheme(),
+          home: Scaffold(
             body: GameScreen(
-                state: state, onJoin: () {}, catalogOnly: catalogOnly)),
-      ));
+              state: state,
+              onJoin: () {},
+              catalogOnly: catalogOnly,
+            ),
+          ),
+        ),
+      );
       for (var i = 0; i < 5; i++) {
         await tester.pump(const Duration(milliseconds: 50));
       }
@@ -278,43 +312,62 @@ void main() {
 
     testWidgets('outside a room it is a catalog to browse', (tester) async {
       await show(tester, catalogOnly: true);
-      expect(find.text('Ballkickers'), findsOneWidget);
-      expect(find.text('Growing Guns'), findsWidgets,
-          reason: 'no cover: title on a coloured tile');
-      expect(find.text('1–6 players'), findsOneWidget);
+      expect(find.byTooltip('Ballkickers'), findsOneWidget);
+      expect(
+        find.text('Growing Guns'),
+        findsWidgets,
+        reason: 'no cover: title on a coloured tile',
+      );
+      expect(
+        find.text('1–6 players'),
+        findsNothing,
+        reason: 'store cards are cover only',
+      );
       expect(find.text('Splitscreen Club Lobby'), findsNothing);
       expect(find.text('Add to queue'), findsNothing);
       expect(find.text('Pick up my character'), findsNothing);
       expect(room.calls.where((c) => c.contains('/api/games')), isEmpty);
 
-      await tester.tap(find.text('Ballkickers'));
+      await tester.tap(find.byTooltip('Ballkickers'));
       await tester.pumpAndSettle();
-      expect(launcher.opened, isEmpty,
-          reason: 'the game page opens in the app');
       expect(
-          find.text(
-              'Chaotic party football: charge shots, dash tackles and diving saves.'),
-          findsOneWidget);
+        launcher.opened,
+        isEmpty,
+        reason: 'the game page opens in the app',
+      );
+      expect(
+        find.text(
+          'Chaotic party football: charge shots, dash tackles and diving saves.',
+        ),
+        findsOneWidget,
+      );
       expect(find.text('2 min'), findsOneWidget);
-      expect(find.text('Join a room to put this game in the queue.'),
-          findsOneWidget);
+      expect(
+        find.text('Join a room to put this game in the queue.'),
+        findsOneWidget,
+      );
       await close(tester);
     });
 
     testWidgets(
-        'connected to a Splitscreen Club but not picked up yet, it says so',
-        (tester) async {
-      await show(tester);
-      expect(find.text('Join a room'), findsNothing);
-      expect(find.text('Pick up my character'), findsOneWidget);
-      await close(tester);
-    });
+      'connected to a Splitscreen Club but not picked up yet, it says so',
+      (tester) async {
+        await show(tester);
+        expect(find.text('Join a room'), findsNothing);
+        expect(find.text('Pick up my character'), findsOneWidget);
+        await close(tester);
+      },
+    );
 
-    testWidgets('in an online room there is no Join a room button',
-        (tester) async {
+    testWidgets('in an online room there is no Join a room button', (
+      tester,
+    ) async {
       state.inHostedRoom = true;
-      state.hostedRoom =
-          HostedRoom({'status': 'connected', 'players': 2, 'discovery': {}});
+      state.hostedRoom = HostedRoom({
+        'status': 'connected',
+        'players': 2,
+        'discovery': {},
+      });
       await show(tester);
       expect(find.text('Join a room'), findsNothing);
       expect(find.text('Phone screens open here.'), findsOneWidget);
@@ -323,118 +376,155 @@ void main() {
       state.notifyListeners();
       await tester.pump();
       expect(find.text('Join a room'), findsNothing);
-      expect(find.textContaining('Walk your character to your door'),
-          findsOneWidget);
-      await close(tester);
-    });
-
-    testWidgets('demo listings stay off the list unless the host can play them',
-        (tester) async {
-      final catalog = [
-        for (final g
-            in jsonDecode(File('test/fixtures/catalog.json').readAsStringSync())
-                as List)
-          if (g is Map && g['id'] is String)
-            {
-              ...g,
-              if (g['id'] != 'growing-guns') 'listing': 'demo',
-            },
-      ];
-      Catalog.instance = Catalog(
-          client: MockClient((_) async =>
-              http.Response.bytes(utf8.encode(jsonEncode(catalog)), 200)));
-      await show(tester, catalogOnly: true);
-      expect(find.text('Ballkickers'), findsNothing,
-          reason: 'not in a room: demos are off the store');
-      expect(find.text('Growing Guns'), findsWidgets);
-
-      state.session = const SessionInfo(linked: true, playerId: 'p1');
-      await show(tester, catalogOnly: true);
-      expect(find.text('Ballkickers'), findsOneWidget,
-          reason: 'the host has it, so it can be queued');
-      expect(find.text('Stack Together'), findsNothing);
-      expect(find.text('Add to queue'), findsOneWidget);
-      expect(find.text('Not on this Splitscreen Club'), findsOneWidget,
-          reason: 'only the listed Growing Guns');
+      expect(
+        find.textContaining('Walk your character to your door'),
+        findsOneWidget,
+      );
       await close(tester);
     });
 
     testWidgets(
-        'in a room, games the host has can be queued and settings changed',
-        (tester) async {
+      'demo listings stay off the list unless the host can play them',
+      (tester) async {
+        final catalog = [
+          for (final g in jsonDecode(
+            File('test/fixtures/catalog.json').readAsStringSync(),
+          ) as List)
+            if (g is Map && g['id'] is String)
+              {...g, if (g['id'] != 'growing-guns') 'listing': 'demo'},
+        ];
+        Catalog.instance = Catalog(
+          client: MockClient(
+            (_) async =>
+                http.Response.bytes(utf8.encode(jsonEncode(catalog)), 200),
+          ),
+        );
+        await show(tester, catalogOnly: true);
+        expect(
+          find.byTooltip('Ballkickers'),
+          findsNothing,
+          reason: 'not in a room: demos are off the store',
+        );
+        expect(find.text('Growing Guns'), findsWidgets);
+
+        state.session = const SessionInfo(linked: true, playerId: 'p1');
+        await show(tester, catalogOnly: true);
+        expect(
+          find.byTooltip('Ballkickers'),
+          findsOneWidget,
+          reason: 'the host has it, so it can be queued',
+        );
+        expect(find.text('Stack Together'), findsNothing);
+        expect(find.text('Add to queue'), findsOneWidget);
+        expect(
+          find.text('Not on this Splitscreen Club'),
+          findsOneWidget,
+          reason: 'only the listed Growing Guns',
+        );
+        await close(tester);
+      },
+    );
+
+    testWidgets(
+      'in a room, games the host has can be queued and settings changed',
+      (tester) async {
+        state.session = const SessionInfo(
+          linked: true,
+          playerId: 'p1',
+          currentTitle: 'Ballkickers',
+        );
+        await show(tester);
+
+        // The game on the TV and the queue are one card, each game with a
+        // gear for its settings; never a long list on the page itself.
+        expect(find.text('On the TV now'), findsOneWidget);
+        expect(find.text('UP NEXT'), findsOneWidget);
+        expect(find.text('Neon Siege'), findsOneWidget);
+        expect(find.text('Ballkickers settings'), findsNothing);
+        await tester.tap(
+          find.byKey(const ValueKey('settings-button-ballkickers')),
+        );
+        await tester.pumpAndSettle();
+        expect(find.text('Ballkickers settings'), findsOneWidget);
+        await tester.tapAt(const Offset(10, 10));
+        await tester.pumpAndSettle();
+        await show(tester, catalogOnly: true);
+        expect(
+          find.text('Add to queue'),
+          findsOneWidget,
+          reason: 'only for games the host has',
+        );
+        expect(find.text('Not on this Splitscreen Club'), findsNWidgets(2));
+
+        await tester.tap(find.text('Add to queue'));
+        await tester.pump();
+        await tester.pump();
+        expect(room.bodies['POST /api/playlist/queue'], {
+          'profile': state.profileId,
+          'game': 'ballkickers',
+        });
+        expect(find.text('Ballkickers is in the queue'), findsOneWidget);
+
+        await show(tester);
+        await tester.tap(
+          find.byKey(const ValueKey('settings-button-ballkickers')),
+        );
+        await tester.pumpAndSettle();
+        await tester.tap(find.byType(Switch));
+        await tester.pump();
+        await tester.pump();
+        expect(
+          (room.bodies['POST /api/settings']['command'] as Map)['values'],
+          {'items': false},
+        );
+        expect(tester.widget<Switch>(find.byType(Switch)).value, isFalse);
+
+        await tester.tap(find.byTooltip('More Stock'));
+        await tester.pump();
+        await tester.pump();
+        expect(room.stock, 4);
+        expect(find.text('4'), findsOneWidget);
+        expect(find.text('Undo'), findsOneWidget);
+        await close(tester);
+      },
+    );
+
+    testWidgets('a queued game can be set up before it has loaded', (
+      tester,
+    ) async {
       state.session = const SessionInfo(
-          linked: true, playerId: 'p1', currentTitle: 'Ballkickers');
+        linked: true,
+        playerId: 'p1',
+        currentTitle: 'Ballkickers',
+      );
       await show(tester);
-
-      // The game on the TV and the queue are one card, each game with a
-      // gear for its settings; never a long list on the page itself.
-      expect(find.text('On the TV now'), findsOneWidget);
-      expect(find.text('UP NEXT'), findsOneWidget);
-      expect(find.text('Neon Siege'), findsOneWidget);
-      expect(find.text('Ballkickers settings'), findsNothing);
-      await tester
-          .tap(find.byKey(const ValueKey('settings-button-ballkickers')));
-      await tester.pumpAndSettle();
-      expect(find.text('Ballkickers settings'), findsOneWidget);
-      await tester.tapAt(const Offset(10, 10));
-      await tester.pumpAndSettle();
-      await show(tester, catalogOnly: true);
-      expect(find.text('Add to queue'), findsOneWidget,
-          reason: 'only for games the host has');
-      expect(find.text('Not on this Splitscreen Club'), findsNWidgets(2));
-
-      await tester.tap(find.text('Add to queue'));
-      await tester.pump();
-      await tester.pump();
-      expect(room.bodies['POST /api/playlist/queue'],
-          {'profile': state.profileId, 'game': 'ballkickers'});
-      expect(find.text('Ballkickers is in the queue'), findsOneWidget);
-
-      await show(tester);
-      await tester
-          .tap(find.byKey(const ValueKey('settings-button-ballkickers')));
-      await tester.pumpAndSettle();
-      await tester.tap(find.byType(Switch));
-      await tester.pump();
-      await tester.pump();
-      expect((room.bodies['POST /api/settings']['command'] as Map)['values'],
-          {'items': false});
-      expect(tester.widget<Switch>(find.byType(Switch)).value, isFalse);
-
-      await tester.tap(find.byTooltip('More Stock'));
-      await tester.pump();
-      await tester.pump();
-      expect(room.stock, 4);
-      expect(find.text('4'), findsOneWidget);
-      expect(find.text('Undo'), findsOneWidget);
-      await close(tester);
-    });
-
-    testWidgets('a queued game can be set up before it has loaded',
-        (tester) async {
-      state.session = const SessionInfo(
-          linked: true, playerId: 'p1', currentTitle: 'Ballkickers');
-      await show(tester);
-      await tester
-          .tap(find.byKey(const ValueKey('settings-button-neon-siege')));
+      await tester.tap(
+        find.byKey(const ValueKey('settings-button-neon-siege')),
+      );
       await tester.pumpAndSettle();
       expect(find.text('Neon Siege settings'), findsOneWidget);
-      expect(find.textContaining('They take effect when Neon Siege starts.'),
-          findsOneWidget);
+      expect(
+        find.textContaining('They take effect when Neon Siege starts.'),
+        findsOneWidget,
+      );
       await tester.tap(find.byTooltip('More Rounds'));
       await tester.pump();
       await tester.pump();
       expect(room.bodies['POST /api/settings']['game'], 'neon-siege');
-      expect((room.bodies['POST /api/settings']['command'] as Map)['instance'],
-          '00000000-0000-0000-0000-000000000000');
+      expect(
+        (room.bodies['POST /api/settings']['command'] as Map)['instance'],
+        '00000000-0000-0000-0000-000000000000',
+      );
       expect(room.rounds, 4);
       await tester.tapAt(const Offset(10, 10));
       await tester.pumpAndSettle();
 
       // A game without settings (it never loaded here) has no gear, and
       // every game shows a picture instead of a status icon.
-      expect(find.byKey(const ValueKey('settings-button-growing-guns')),
-          findsNothing);
+      expect(
+        find.byKey(const ValueKey('settings-button-growing-guns')),
+        findsNothing,
+      );
       expect(find.byType(GameThumbnail), findsNWidgets(3));
       await close(tester);
     });
@@ -447,90 +537,117 @@ void main() {
     setUp(() {
       room = FakeRoom();
       controls = LocalRoomControls(
-          GameNightApi(Uri.parse('http://192.168.1.5:3000'),
-              client: room.client),
-          'prof_me');
+        GameNightApi(Uri.parse('http://192.168.1.5:3000'), client: room.client),
+        'prof_me',
+      );
       Catalog.instance = Catalog(
-        client: MockClient((_) async => http.Response.bytes(
-            File('test/fixtures/catalog.json').readAsBytesSync(), 200)),
+        client: MockClient(
+          (_) async => http.Response.bytes(
+            File('test/fixtures/catalog.json').readAsBytesSync(),
+            200,
+          ),
+        ),
       );
     });
 
     Future<List<String>> show(
-        WidgetTester tester, String game, EntryStatus status) async {
+      WidgetTester tester,
+      String game,
+      EntryStatus status,
+    ) async {
       final actions = <String>[];
       tester.view.physicalSize = const Size(1080, 4000);
       tester.view.devicePixelRatio = 2.5;
       addTearDown(tester.view.reset);
-      await tester.pumpWidget(MaterialApp(
-        theme: gameNightTheme(),
-        home: Scaffold(
-          body: PlaylistGameSheet(
-            entry: PlaylistEntry({
-              'game': game,
-              'title': game == 'ballkickers' ? 'Ballkickers' : 'Growing Guns'
-            }),
-            status: status,
-            controls: controls,
-            playingTitle: status == EntryStatus.playing ? null : 'Ballkickers',
-            onStart: () => actions.add('start'),
-            onQueue: () => actions.add('queue'),
-            onRemove: () => actions.add('remove'),
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: gameNightTheme(),
+          home: Scaffold(
+            body: PlaylistGameSheet(
+              entry: PlaylistEntry({
+                'game': game,
+                'title': game == 'ballkickers' ? 'Ballkickers' : 'Growing Guns',
+              }),
+              status: status,
+              controls: controls,
+              playingTitle: status == EntryStatus.playing
+                  ? null
+                  : 'Ballkickers',
+              onStart: () => actions.add('start'),
+              onQueue: () => actions.add('queue'),
+              onRemove: () => actions.add('remove'),
+            ),
           ),
         ),
-      ));
+      );
       for (var i = 0; i < 5; i++) {
         await tester.pump(const Duration(milliseconds: 50));
       }
       return actions;
     }
 
-    testWidgets('the game on screen shows its settings and can be changed',
-        (tester) async {
+    testWidgets('the game on screen shows its settings and can be changed', (
+      tester,
+    ) async {
       await show(tester, 'ballkickers', EntryStatus.playing);
       expect(find.text('Playing now'), findsOneWidget);
       expect(find.text('Ballkickers settings'), findsOneWidget);
       expect(
-          tester
-              .widget<FilledButton>(find.ancestor(
-                  of: find.text('Playing'),
-                  matching: find.byWidgetPredicate((w) => w is FilledButton)))
-              .onPressed,
-          isNull);
+        tester
+            .widget<FilledButton>(
+              find.ancestor(
+                of: find.text('Playing'),
+                matching: find.byWidgetPredicate((w) => w is FilledButton),
+              ),
+            )
+            .onPressed,
+        isNull,
+      );
       await tester.tap(find.byType(Switch));
       await tester.pump();
       await tester.pump();
-      expect((room.bodies['POST /api/settings']['command'] as Map)['values'],
-          {'items': false});
+      expect((room.bodies['POST /api/settings']['command'] as Map)['values'], {
+        'items': false,
+      });
       await tester.pumpWidget(const SizedBox());
     });
 
-    testWidgets('an autoplay pick plays after a warning and opens in the store',
-        (tester) async {
-      final actions = await show(tester, 'growing-guns', EntryStatus.autoplay);
-      expect(find.text('Autoplay pick'), findsOneWidget);
-      expect(
-          find.textContaining('once it has loaded one time'), findsOneWidget);
+    testWidgets(
+      'an autoplay pick plays after a warning and opens in the store',
+      (tester) async {
+        final actions = await show(
+          tester,
+          'growing-guns',
+          EntryStatus.autoplay,
+        );
+        expect(find.text('Autoplay pick'), findsOneWidget);
+        expect(
+          find.textContaining('once it has loaded one time'),
+          findsOneWidget,
+        );
 
-      await tester.tap(find.text('Play now'));
-      await tester.pumpAndSettle();
-      expect(
+        await tester.tap(find.text('Play now'));
+        await tester.pumpAndSettle();
+        expect(
           find.text(
-              'This ends Ballkickers for everyone as soon as Growing Guns has loaded.'),
-          findsOneWidget);
-      await tester.tap(find.widgetWithText(FilledButton, 'Play now').last);
-      await tester.pumpAndSettle();
-      expect(actions, ['start']);
+            'This ends Ballkickers for everyone as soon as Growing Guns has loaded.',
+          ),
+          findsOneWidget,
+        );
+        await tester.tap(find.widgetWithText(FilledButton, 'Play now').last);
+        await tester.pumpAndSettle();
+        expect(actions, ['start']);
 
-      await tester.tap(find.text('Queue'));
-      expect(actions, ['start', 'queue']);
+        await tester.tap(find.text('Queue'));
+        expect(actions, ['start', 'queue']);
 
-      await tester.tap(find.text('View in the store'));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 300));
-      await tester.pump(const Duration(milliseconds: 300));
-      expect(find.widgetWithText(AppBar, 'Growing Guns'), findsOneWidget);
-      await tester.pumpWidget(const SizedBox());
-    });
+        await tester.tap(find.text('View in the store'));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 300));
+        await tester.pump(const Duration(milliseconds: 300));
+        expect(find.widgetWithText(AppBar, 'Growing Guns'), findsOneWidget);
+        await tester.pumpWidget(const SizedBox());
+      },
+    );
   });
 }
