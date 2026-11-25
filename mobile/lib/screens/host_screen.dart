@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../account.dart';
@@ -24,14 +25,19 @@ class HostScreen extends StatelessWidget {
   final BrowserHostBlocker? blocker;
   final bool _blockerSet;
 
+  /// The OS share sheet; tests replace it.
+  final Future<ShareResult> Function(ShareParams)? share;
+
   const HostScreen({super.key, required this.cloud})
       : blocker = null,
-        _blockerSet = false;
+        _blockerSet = false,
+        share = null;
 
   const HostScreen.testing({
     super.key,
     required this.cloud,
     required this.blocker,
+    this.share,
   }) : _blockerSet = true;
 
   static Future<void> open(BuildContext context, CloudApi cloud) =>
@@ -79,7 +85,7 @@ class HostScreen extends StatelessWidget {
               const _ThisPhone(),
               const SizedBox(height: 12),
             ],
-            _OnAPc(cloud: cloud, blocker: blocker),
+            _OnAPc(cloud: cloud, blocker: blocker, share: share),
             const SizedBox(height: 24),
             const Text(
               'Then',
@@ -195,7 +201,8 @@ class _ThisPhone extends StatelessWidget {
 class _OnAPc extends StatelessWidget {
   final CloudApi cloud;
   final BrowserHostBlocker? blocker;
-  const _OnAPc({required this.cloud, required this.blocker});
+  final Future<ShareResult> Function(ShareParams)? share;
+  const _OnAPc({required this.cloud, required this.blocker, this.share});
 
   @override
   Widget build(BuildContext context) {
@@ -247,28 +254,65 @@ class _OnAPc extends StatelessWidget {
               : 'Play in the browser, or download the app for Windows '
                   'and Mac.'),
           const SizedBox(height: 12),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: OutlinedButton.icon(
-              key: const ValueKey('host-copy'),
-              onPressed: () async {
-                try {
-                  await Clipboard.setData(
-                      const ClipboardData(text: 'https://$siteAddress'));
-                  if (context.mounted) toast(context, 'Link copied');
-                } catch (_) {
-                  if (context.mounted) {
-                    toast(context, 'Select the address to copy it.');
-                  }
-                }
-              },
-              icon: const Icon(Icons.copy, size: 18),
-              label: const Text('Copy link'),
-            ),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              Builder(
+                builder: (anchor) => FilledButton.icon(
+                  key: const ValueKey('host-share'),
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size(0, 44),
+                  ),
+                  onPressed: () => _share(anchor),
+                  icon: const Icon(Icons.share, size: 18),
+                  label: const Text('Share'),
+                ),
+              ),
+              OutlinedButton.icon(
+                key: const ValueKey('host-copy'),
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(0, 44),
+                ),
+                onPressed: () => _copy(context),
+                icon: const Icon(Icons.copy, size: 18),
+                label: const Text('Copy link'),
+              ),
+            ],
           ),
         ],
       ],
     );
+  }
+
+  static final _site = Uri.parse('https://$siteAddress');
+
+  /// The OS share sheet, to send the link to the PC (mail, chat, notes).
+  /// Falls back to copying where there is no share target.
+  Future<void> _share(BuildContext anchor) async {
+    final box = anchor.findRenderObject() as RenderBox?;
+    try {
+      final result = await (share ?? SharePlus.instance.share)(ShareParams(
+        uri: _site,
+        title: 'Splitscreen Club',
+        subject: 'Splitscreen Club',
+        sharePositionOrigin:
+            box == null ? null : box.localToGlobal(Offset.zero) & box.size,
+      ));
+      if (result.status != ShareResultStatus.unavailable) return;
+    } catch (_) {
+      // No share sheet here: copy instead.
+    }
+    if (anchor.mounted) await _copy(anchor);
+  }
+
+  Future<void> _copy(BuildContext context) async {
+    try {
+      await Clipboard.setData(ClipboardData(text: _site.toString()));
+      if (context.mounted) toast(context, 'Link copied');
+    } catch (_) {
+      if (context.mounted) toast(context, 'Select the address to copy it.');
+    }
   }
 }
 

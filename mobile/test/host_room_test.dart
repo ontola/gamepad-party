@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:gamenight/account.dart';
 import 'package:gamenight/navigation/browser_host_stub.dart';
 import 'package:gamenight/navigation/host_room.dart';
@@ -73,5 +74,22 @@ void main() {
     await _show(tester, BrowserHostBlocker.phone);
     expect(find.textContaining('too slow'), findsNothing);
     expect(find.text('A PC by the TV'), findsOneWidget);
+  });
+
+  testWidgets('Share sends splitscreen.club to the OS share sheet',
+      (tester) async {
+    final shared = <ShareParams>[];
+    await tester.pumpWidget(MaterialApp(
+        theme: gameNightTheme(),
+        home: HostScreen.testing(
+            cloud: CloudApi(),
+            blocker: BrowserHostBlocker.app,
+            share: (params) async {
+              shared.add(params);
+              return const ShareResult('ok', ShareResultStatus.success);
+            })));
+    await tester.tap(find.byKey(const ValueKey('host-share')));
+    await tester.pumpAndSettle();
+    expect(shared.single.uri, Uri.parse('https://splitscreen.club'));
   });
 }
