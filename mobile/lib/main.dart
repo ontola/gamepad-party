@@ -193,8 +193,9 @@ class _GameNightAppState extends State<GameNightApp> {
         key: _homeKey,
         onMore: _menu,
         onTabChanged: (tab) {
-          if (mounted && _selectedTab != tab)
+          if (mounted && _selectedTab != tab) {
             setState(() => _selectedTab = tab);
+          }
         },
         state: widget.state,
         links: widget.links,
