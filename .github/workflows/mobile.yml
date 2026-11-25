@@ -180,9 +180,18 @@ jobs:
             || gh release create app-latest --title "Splitscreen Club for Android" --notes "$notes" --latest
           gh release edit app-latest --notes "$notes"
           echo "{\"build\":${{ github.run_number }},\"commit\":\"$GITHUB_SHA\"}" > version.json
-          # The APK first: an app that sees the new version.json must find its APK.
-          gh release upload app-latest gamenight.apk Splitscreen-Club.apk --clobber
+          # The numbered APK first, under a new name: --clobber deletes an
+          # asset before it uploads the new one, so gamenight.apk 404s for
+          # a minute (Joep: "download failed 404" from the in-app update).
+          # Apps from build 180 on download gamenight-<build>.apk.
+          numbered="gamenight-${{ github.run_number }}.apk"
+          cp gamenight.apk "$numbered"
+          gh release upload app-latest "$numbered" --clobber
           gh release upload app-latest version.json --clobber
+          gh release upload app-latest gamenight.apk Splitscreen-Club.apk --clobber
+          # Keep the three newest numbered APKs.
+          gh release view app-latest --json assets -q '.assets[].name' | grep -E '^gamenight-[0-9]+\.apk$' \
+            | sort -t- -k2 -n | head -n -3 | xargs -r -n1 gh release delete-asset app-latest -y
 
   # Separate Play build: Google Play updates it, never our APK installer.
   play:

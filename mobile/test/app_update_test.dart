@@ -52,7 +52,7 @@ void main() {
     await tester.pump();
     expect(installs, [
       {
-        'url': AppUpdate.apk.toString(),
+        'url': AppUpdate.apkFor(12).toString(),
         'package': 'io.ontola.gamenight',
         'reopen': true
       }

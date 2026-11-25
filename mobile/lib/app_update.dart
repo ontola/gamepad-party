@@ -22,6 +22,20 @@ class AppUpdate {
   static final feed = _release.resolve('version.json');
   static final apk = _release.resolve('gamenight.apk');
 
+  /// Build [build]'s own APK. It never disappears while a newer build is
+  /// published, as gamenight.apk does for a minute (CI replaces it).
+  static Uri apkFor(int build) => _release.resolve('gamenight-$build.apk');
+
+  /// Fetch build [build] ahead: its own APK, else the stable link.
+  static Future<String?> download(int build) async {
+    final name = 'gamenight-$build.apk';
+    try {
+      return await Apps.download(apkFor(build), name);
+    } catch (_) {
+      return Apps.download(apk, name);
+    }
+  }
+
   /// The build number of a newer published APK, or null when this one is
   /// current, unknown, or the check failed.
   static Future<int?> newer({int build = appBuild, http.Client? client}) async {
@@ -64,7 +78,7 @@ class UpdateBanner extends StatefulWidget {
   })  : check = check ??
             (() => Apps.supported ? AppUpdate.newer() : Future.value(null)),
         download = download ??
-            ((build) => Apps.download(AppUpdate.apk, 'gamenight-$build.apk')),
+            AppUpdate.download,
         silent = silent ?? Apps.silentSelfUpdate,
         install = install ??
             ((apk, {reopen = false}) =>
@@ -146,7 +160,7 @@ class _UpdateBannerState extends State<UpdateBanner>
     if (!_silent && !await Apps.canInstall()) return Apps.allowInstalls();
     setState(() => _installing = true);
     try {
-      await widget.install(_apk ?? AppUpdate.apk, reopen: reopen);
+      await widget.install(_apk ?? (_latest == null ? AppUpdate.apk : AppUpdate.apkFor(_latest!)), reopen: reopen);
     } on PlatformException catch (e) {
       if (!mounted) return;
       setState(() => _installing = false);
