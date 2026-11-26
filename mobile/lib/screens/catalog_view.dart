@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
 import '../api.dart';
@@ -13,6 +14,9 @@ import '../room_controls.dart';
 import '../theme.dart';
 import 'game_detail_screen.dart';
 import '../navigation/open_website.dart';
+import '../apps.dart';
+import '../navigation/browser_host_stub.dart'
+    if (dart.library.js_interop) '../navigation/browser_host_web.dart';
 
 /// The store catalog as a grid of covers. A tap opens the game's page with
 /// its videos and screenshots. In a room, games its host can play get an "Add to queue" button.
@@ -66,6 +70,14 @@ class _CatalogSectionState extends State<CatalogSection> {
   bool _personalLoading = false;
 
   bool get _inRoom => widget.controls != null;
+
+  /// Whether this device runs browser-library games itself: the Android
+  /// app's native host, or a browser with WebGPU on a PC.
+  late final bool _hostsHere = switch (browserHostBlocker()) {
+    null => true,
+    BrowserHostBlocker.app => Apps.supported,
+    _ => false,
+  };
 
   @override
   void initState() {
@@ -330,9 +342,9 @@ class _CatalogSectionState extends State<CatalogSection> {
   }
 
   void _clearFilters() => setState(() {
-    _search.clear();
-    _filter = CatalogFilter(developer: widget.developer);
-  });
+        _search.clear();
+        _filter = CatalogFilter(developer: widget.developer);
+      });
 
   Set<String> get _wanted => {...?widget.state?.wantToPlay};
 
@@ -342,159 +354,157 @@ class _CatalogSectionState extends State<CatalogSection> {
   /// Filter. Quick filters that do not fit live in the Filter sheet, and
   /// the Filter button counts the active filters the row does not show.
   Widget _filterBar(bool ready) => LayoutBuilder(
-    builder: (context, box) {
-      final wide = box.maxWidth >= 560;
-      final search = SizedBox(
-        height: 44,
-        child: TextField(
-          key: const ValueKey('catalog-search'),
-          controller: _search,
-          enabled: ready,
-          textInputAction: TextInputAction.search,
-          onChanged: (v) => _setFilter(_filter.copyWith(query: v)),
-          decoration: InputDecoration(
-            hintText: 'Search games',
-            prefixIcon: const Icon(Icons.search, size: 20),
-            suffixIcon: _filter.query.isEmpty
-                ? null
-                : IconButton(
-                    tooltip: 'Clear search',
-                    icon: const Icon(Icons.close, size: 18),
-                    onPressed: () {
-                      _search.clear();
-                      _setFilter(_filter.copyWith(query: ''));
-                    },
-                  ),
-            contentPadding: EdgeInsets.zero,
-          ),
-        ),
-      );
-      final n = _filter.players;
-      // In order of priority: the first ones get the room first.
-      final quick = <({String label, bool active, Widget button})>[
-        if (_wanted.isNotEmpty || _filter.wanted)
-          (
-            label: 'Want to play',
-            active: _filter.wanted,
-            button: _BarButton(
-              key: const ValueKey('want-to-play'),
-              icon: Icons.bookmark_border,
-              label: 'Want to play',
-              selected: _filter.wanted,
-              onPressed: ready
-                  ? () => _setFilter(
-                      _filter.copyWith(
-                        wanted: !_filter.wanted,
-                        wantedGames: _wanted,
+        builder: (context, box) {
+          final wide = box.maxWidth >= 560;
+          final search = SizedBox(
+            height: 44,
+            child: TextField(
+              key: const ValueKey('catalog-search'),
+              controller: _search,
+              enabled: ready,
+              textInputAction: TextInputAction.search,
+              onChanged: (v) => _setFilter(_filter.copyWith(query: v)),
+              decoration: InputDecoration(
+                hintText: 'Search games',
+                prefixIcon: const Icon(Icons.search, size: 20),
+                suffixIcon: _filter.query.isEmpty
+                    ? null
+                    : IconButton(
+                        tooltip: 'Clear search',
+                        icon: const Icon(Icons.close, size: 18),
+                        onPressed: () {
+                          _search.clear();
+                          _setFilter(_filter.copyWith(query: ''));
+                        },
                       ),
-                    )
-                  : null,
-            ),
-          ),
-        if (_mine.isNotEmpty)
-          (
-            label: 'My games',
-            active: _filter.mine,
-            button: _BarButton(
-              key: const ValueKey('my-games'),
-              icon: Icons.code,
-              label: 'My games',
-              selected: _filter.mine,
-              onPressed: ready
-                  ? () => _setFilter(
-                      _filter.copyWith(
-                        mine: !_filter.mine,
-                        mineGames: _developing,
-                      ),
-                    )
-                  : null,
-            ),
-          ),
-        (
-          label: n == null ? 'Players' : '$n players',
-          active: n != null,
-          button: _playersButton(ready),
-        ),
-        (
-          label: 'Liked',
-          active: _filter.liked,
-          button: _personalButton(
-            'Liked',
-            Icons.thumb_up_outlined,
-            _filter.liked,
-            (v) => _filter.copyWith(liked: v),
-          ),
-        ),
-        (
-          label: 'Not played',
-          active: _filter.unplayed,
-          button: _personalButton(
-            'Not played',
-            Icons.history,
-            _filter.unplayed,
-            (v) => _filter.copyWith(unplayed: v),
-          ),
-        ),
-      ];
-      // Search keeps at least this much; Sort and Filter always fit.
-      final searchMin = wide ? 260.0 : 120.0;
-      final sortLabel = wide ? _sortLabel : null;
-      var room =
-          box.maxWidth -
-          searchMin -
-          _BarButton.widthOf(context, sortLabel) -
-          _BarButton.widthOf(context, wide ? 'Filter 9' : null) -
-          16;
-      final shown = <({String label, bool active, Widget button})>[];
-      if (wide) {
-        for (final item in quick) {
-          final width = _BarButton.widthOf(context, item.label) + 8;
-          if (width > room) break;
-          room -= width;
-          shown.add(item);
-        }
-      }
-      final hidden =
-          _filter.tags.length +
-          (_filter.played ? 1 : 0) +
-          (_filter.room && _inRoom ? 1 : 0) +
-          (_filter.price != null ? 1 : 0) +
-          (_filter.platform != null ? 1 : 0) +
-          (_filter.developer != null ? 1 : 0) +
-          quick.where((q) => q.active && !shown.contains(q)).length;
-      return SizedBox(
-        height: 44,
-        child: Row(
-          children: [
-            Expanded(
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 400),
-                  child: search,
-                ),
+                contentPadding: EdgeInsets.zero,
               ),
             ),
-            for (final item in shown) ...[
-              const SizedBox(width: 8),
-              item.button,
-            ],
-            const SizedBox(width: 8),
-            _sortButton(ready, sortLabel),
-            const SizedBox(width: 8),
-            _BarButton(
-              icon: Icons.tune,
-              label: wide ? 'Filter' : null,
-              tooltip: 'Filter',
-              count: hidden,
-              selected: hidden > 0,
-              onPressed: ready ? _showFilters : null,
+          );
+          final n = _filter.players;
+          // In order of priority: the first ones get the room first.
+          final quick = <({String label, bool active, Widget button})>[
+            if (_wanted.isNotEmpty || _filter.wanted)
+              (
+                label: 'Want to play',
+                active: _filter.wanted,
+                button: _BarButton(
+                  key: const ValueKey('want-to-play'),
+                  icon: Icons.bookmark_border,
+                  label: 'Want to play',
+                  selected: _filter.wanted,
+                  onPressed: ready
+                      ? () => _setFilter(
+                            _filter.copyWith(
+                              wanted: !_filter.wanted,
+                              wantedGames: _wanted,
+                            ),
+                          )
+                      : null,
+                ),
+              ),
+            if (_mine.isNotEmpty)
+              (
+                label: 'My games',
+                active: _filter.mine,
+                button: _BarButton(
+                  key: const ValueKey('my-games'),
+                  icon: Icons.code,
+                  label: 'My games',
+                  selected: _filter.mine,
+                  onPressed: ready
+                      ? () => _setFilter(
+                            _filter.copyWith(
+                              mine: !_filter.mine,
+                              mineGames: _developing,
+                            ),
+                          )
+                      : null,
+                ),
+              ),
+            (
+              label: n == null ? 'Players' : '$n players',
+              active: n != null,
+              button: _playersButton(ready),
             ),
-          ],
-        ),
+            (
+              label: 'Liked',
+              active: _filter.liked,
+              button: _personalButton(
+                'Liked',
+                Icons.thumb_up_outlined,
+                _filter.liked,
+                (v) => _filter.copyWith(liked: v),
+              ),
+            ),
+            (
+              label: 'Not played',
+              active: _filter.unplayed,
+              button: _personalButton(
+                'Not played',
+                Icons.history,
+                _filter.unplayed,
+                (v) => _filter.copyWith(unplayed: v),
+              ),
+            ),
+          ];
+          // Search keeps at least this much; Sort and Filter always fit.
+          final searchMin = wide ? 260.0 : 120.0;
+          final sortLabel = wide ? _sortLabel : null;
+          var room = box.maxWidth -
+              searchMin -
+              _BarButton.widthOf(context, sortLabel) -
+              _BarButton.widthOf(context, wide ? 'Filter 9' : null) -
+              16;
+          final shown = <({String label, bool active, Widget button})>[];
+          if (wide) {
+            for (final item in quick) {
+              final width = _BarButton.widthOf(context, item.label) + 8;
+              if (width > room) break;
+              room -= width;
+              shown.add(item);
+            }
+          }
+          final hidden = _filter.tags.length +
+              (_filter.played ? 1 : 0) +
+              (_filter.room && _inRoom ? 1 : 0) +
+              (_filter.price != null ? 1 : 0) +
+              (_filter.platform != null ? 1 : 0) +
+              (_filter.developer != null ? 1 : 0) +
+              quick.where((q) => q.active && !shown.contains(q)).length;
+          return SizedBox(
+            height: 44,
+            child: Row(
+              children: [
+                Expanded(
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 400),
+                      child: search,
+                    ),
+                  ),
+                ),
+                for (final item in shown) ...[
+                  const SizedBox(width: 8),
+                  item.button,
+                ],
+                const SizedBox(width: 8),
+                _sortButton(ready, sortLabel),
+                const SizedBox(width: 8),
+                _BarButton(
+                  icon: Icons.tune,
+                  label: wide ? 'Filter' : null,
+                  tooltip: 'Filter',
+                  count: hidden,
+                  selected: hidden > 0,
+                  onPressed: ready ? _showFilters : null,
+                ),
+              ],
+            ),
+          );
+        },
       );
-    },
-  );
 
   final _sortMenu = GlobalKey<PopupMenuButtonState<CatalogSort>>(
     debugLabel: 'catalog-sort',
@@ -522,9 +532,8 @@ class _CatalogSectionState extends State<CatalogSection> {
         label: label,
         name: 'Sort',
         selected: _sort != CatalogSort.store,
-        onPressed: ready
-            ? () => _sortMenu.currentState?.showButtonMenu()
-            : null,
+        onPressed:
+            ready ? () => _sortMenu.currentState?.showButtonMenu() : null,
       ),
     );
   }
@@ -551,12 +560,11 @@ class _CatalogSectionState extends State<CatalogSection> {
         label: n == null
             ? 'Players'
             : n == 1
-            ? '1 player'
-            : '$n players',
+                ? '1 player'
+                : '$n players',
         selected: n != null,
-        onPressed: ready
-            ? () => _playersMenu.currentState?.showButtonMenu()
-            : null,
+        onPressed:
+            ready ? () => _playersMenu.currentState?.showButtonMenu() : null,
       ),
     );
   }
@@ -568,29 +576,30 @@ class _CatalogSectionState extends State<CatalogSection> {
     IconData icon,
     bool selected,
     CatalogFilter Function(bool) apply,
-  ) => _BarButton(
-    icon: icon,
-    label: label,
-    selected: selected,
-    onPressed: _games == null || _personalLoading
-        ? null
-        : () async {
-            if (selected) return _setFilter(apply(false));
-            if (widget.cloud?.signedIn != true) {
-              await widget.onSignIn?.call();
-              if (!mounted || widget.cloud?.signedIn != true) return;
-            }
-            final personal = await _loadPersonal();
-            if (personal == null || !mounted) return;
-            _setFilter(
-              apply(true).copyWith(
-                likedGames: personal.liked,
-                playedGames: personal.played,
-              ),
-            );
-            _filterAccount = widget.cloud?.token;
-          },
-  );
+  ) =>
+      _BarButton(
+        icon: icon,
+        label: label,
+        selected: selected,
+        onPressed: _games == null || _personalLoading
+            ? null
+            : () async {
+                if (selected) return _setFilter(apply(false));
+                if (widget.cloud?.signedIn != true) {
+                  await widget.onSignIn?.call();
+                  if (!mounted || widget.cloud?.signedIn != true) return;
+                }
+                final personal = await _loadPersonal();
+                if (personal == null || !mounted) return;
+                _setFilter(
+                  apply(true).copyWith(
+                    likedGames: personal.liked,
+                    playedGames: personal.played,
+                  ),
+                );
+                _filterAccount = widget.cloud?.token;
+              },
+      );
 
   Future<({Set<String> liked, Set<String> played})?> _loadPersonal() async {
     final cloud = widget.cloud!, identity = cloud.token;
@@ -629,14 +638,14 @@ class _CatalogSectionState extends State<CatalogSection> {
     // host can play them or they are yours.
     return _sorted(
       [
-            for (final game in store)
-              if (game.listed ||
-                  mine.contains(game.id) ||
-                  (_inRoom && (_host[game.id]?.playable ?? false)))
-                game,
-            for (final game in _mine)
-              if (!listed.contains(game.id)) game,
-          ]
+        for (final game in store)
+          if (game.listed ||
+              mine.contains(game.id) ||
+              (_inRoom && (_host[game.id]?.playable ?? false)))
+            game,
+        for (final game in _mine)
+          if (!listed.contains(game.id)) game,
+      ]
           .where(
             _filter
                 .copyWith(
@@ -676,9 +685,9 @@ class _CatalogSectionState extends State<CatalogSection> {
 
   /// Games the room's host can start now.
   Set<String> get _playable => {
-    for (final g in _host.values)
-      if (g.playable) g.id,
-  };
+        for (final g in _host.values)
+          if (g.playable) g.id,
+      };
 
   /// The chosen order; in the Featured order, games the room's host can
   /// play come first.
@@ -709,10 +718,10 @@ class _CatalogSectionState extends State<CatalogSection> {
         final columns = box.maxWidth >= 1200
             ? 6
             : box.maxWidth >= 960
-            ? 5
-            : box.maxWidth >= 720
-            ? 4
-            : (box.maxWidth >= 480 ? 3 : 2);
+                ? 5
+                : box.maxWidth >= 720
+                    ? 4
+                    : (box.maxWidth >= 480 ? 3 : 2);
         final width = (box.maxWidth - gap * (columns - 1)) / columns;
         // Until the host says which games it has, cards are for browsing only.
         final queueable = _inRoom && _host.isNotEmpty;
@@ -736,6 +745,7 @@ class _CatalogSectionState extends State<CatalogSection> {
               onOpen: () => _open(game),
               inRoom: queueable,
               playable: host?.playable ?? false,
+              playsHere: _hostsHere && _browser.containsKey(game.id),
               adding: _adding.contains(game.id),
               onAdd: () => _add(game),
             );
@@ -753,6 +763,9 @@ class GameCard extends StatelessWidget {
   final VoidCallback onOpen;
   final bool inRoom;
   final bool playable;
+
+  /// This device can run the game itself: a small purple play badge.
+  final bool playsHere;
   final bool adding;
   final VoidCallback? onAdd;
 
@@ -762,6 +775,7 @@ class GameCard extends StatelessWidget {
     required this.onOpen,
     this.inRoom = false,
     this.playable = false,
+    this.playsHere = false,
     this.adding = false,
     this.onAdd,
   });
@@ -787,10 +801,19 @@ class GameCard extends StatelessWidget {
         ),
       ),
     );
+    final badged = playsHere
+        ? Stack(
+            fit: StackFit.expand,
+            children: [
+              cover,
+              const Positioned(top: 8, right: 8, child: PlaysHereBadge()),
+            ],
+          )
+        : cover;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        AspectRatio(aspectRatio: 3 / 4, child: cover),
+        AspectRatio(aspectRatio: 3 / 4, child: badged),
         if (inRoom) ...[
           const SizedBox(height: 8),
           SizedBox(
@@ -821,6 +844,45 @@ class GameCard extends StatelessWidget {
           ),
         ],
       ],
+    );
+  }
+}
+
+/// Purple play badge on a cover: this phone, tablet or browser can run the
+/// game itself.
+class PlaysHereBadge extends StatelessWidget {
+  const PlaysHereBadge({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final label = kIsWeb
+        ? 'Plays in this browser'
+        : MediaQuery.sizeOf(context).shortestSide >= 600
+            ? 'Plays on this tablet'
+            : 'Plays on this phone';
+    return Tooltip(
+      message: label,
+      child: Semantics(
+        label: label,
+        child: Container(
+          key: const ValueKey('plays-here'),
+          width: 28,
+          height: 28,
+          decoration: BoxDecoration(
+            color: GnColors.accent,
+            shape: BoxShape.circle,
+            boxShadow: const [
+              BoxShadow(color: Color(0x80000000), blurRadius: 6),
+            ],
+            border: Border.all(color: const Color(0x33FFFFFF)),
+          ),
+          child: const Icon(
+            Icons.play_arrow_rounded,
+            size: 20,
+            color: Colors.white,
+          ),
+        ),
+      ),
     );
   }
 }
