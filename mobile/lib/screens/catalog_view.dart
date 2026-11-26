@@ -61,7 +61,18 @@ class _CatalogSectionState extends State<CatalogSection> {
   List<CatalogGame> _mine = const [];
   Set<String> get _developing => {for (final game in _mine) game.id};
   String? _developingAccount;
-  late CatalogFilter _filter = CatalogFilter(developer: widget.developer);
+  late CatalogFilter _filter = CatalogFilter(
+    developer: widget.developer,
+    platform: _defaultPlatform,
+  );
+
+  /// The Android app opens on games this device plays itself (Joep,
+  /// 2026-11-26); one tap on the chip, or Clear filters, shows them all. In
+  /// a room the phone is a controller and the room's host decides.
+  late final String? _defaultPlatform =
+      !kIsWeb && _hostsHere && !_inRoom && widget.developer == null
+          ? hereFilter
+          : null;
   CatalogSort _sort = CatalogSort.store;
   Map<String, ({int up, int down})> _ratings = const {};
   Map<String, String> _browser = const {};
@@ -104,6 +115,7 @@ class _CatalogSectionState extends State<CatalogSection> {
         query: _filter.query,
         players: _filter.players,
         developer: _filter.developer,
+        platform: _filter.platform,
       );
     }
     _openRequestedGame();
@@ -675,6 +687,7 @@ class _CatalogSectionState extends State<CatalogSection> {
         onSignIn: widget.onSignIn,
         wantedGames: _wanted,
         playableGames: _inRoom && _host.isNotEmpty ? _playable : null,
+        hostsHere: _hostsHere && !kIsWeb,
       ),
     );
     if (mounted && filter != null) {

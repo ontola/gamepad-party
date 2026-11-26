@@ -124,8 +124,12 @@ void main() {
 
   testWidgets('games you develop get Manage game, others do not',
       (tester) async {
+    // No browser library: tests run as Android, where the catalog opens on
+    // This device; with no list that hides nothing.
     Catalog.instance = Catalog(
-        client: MockClient((_) async => http.Response(jsonEncode(games), 200)));
+        client: MockClient((r) async => http.Response(
+            r.url.path.endsWith('library.json') ? '[]' : jsonEncode(games),
+            200)));
     final cloud = CloudApi(
         token: 'test',
         client: MockClient((r) async => r.url.path == '/v1/developer/games'
@@ -269,6 +273,19 @@ void main() {
     await tapChip(tester, 'co-op');
     await tester.pumpAndSettle();
     expect(find.text('Show 1 game'), findsOneWidget);
+  });
+
+  test('This device keeps the games this device runs itself', () {
+    final list = parseCatalog(games);
+    ids(CatalogFilter f) => [
+          for (final g in list)
+            if (f.matches(g)) g.id
+        ];
+    const here = CatalogFilter(platform: hereFilter, browserGames: {'b'});
+    expect(ids(here), ['b']);
+    // Until the browser library loads, nothing is hidden.
+    expect(ids(const CatalogFilter(platform: hereFilter)), ['a', 'b', 'c']);
+    expect(here.sheetCount, 1);
   });
 
   test('search matches every word; player count fits min and max', () {

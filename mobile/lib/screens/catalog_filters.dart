@@ -84,6 +84,10 @@ class CatalogFilter {
       tags.every(game.tags.contains) &&
       (price == null || (game.price ?? 'free') == price) &&
       (platform == null ||
+          // This device runs it itself (the Android app's native host): the
+          // browser library, all games until that list has loaded.
+          (platform == hereFilter &&
+              (browserGames.isEmpty || browserGames.contains(game.id))) ||
           game.platforms.contains(platform) ||
           (platform == 'browser' && browserGames.contains(game.id))) &&
       _fits(game) &&
@@ -219,6 +223,11 @@ List<CatalogGame> sortCatalog(List<CatalogGame> games, CatalogSort sort,
   return [for (final e in indexed) e.$2];
 }
 
+/// The app's own platform choice "This device": games this phone or
+/// tablet runs itself (the purple play badge). Not in the website's shared
+/// filters: a browser has Browser for that.
+const hereFilter = 'here';
+
 class CatalogFilters extends StatefulWidget {
   final CatalogFilter filter;
   final List<CatalogGame> games;
@@ -230,8 +239,12 @@ class CatalogFilters extends StatefulWidget {
 
   /// In a room: the games its host can start, for "Available in this room".
   final Set<String>? playableGames;
+
+  /// This device runs games itself: Platform offers "This device".
+  final bool hostsHere;
   const CatalogFilters(
       {super.key,
+      this.hostsHere = false,
       required this.filter,
       required this.games,
       this.cloud,
@@ -450,7 +463,10 @@ class _CatalogFiltersState extends State<CatalogFilters> {
               const SizedBox(height: 24),
               const Text('Platform', style: _heading),
               const SizedBox(height: 12),
-              _choices(platformOptions, _platform, (v) => _platform = v),
+              _choices({
+                if (widget.hostsHere) hereFilter: 'This device',
+                ...platformOptions,
+              }, _platform, (v) => _platform = v),
               const SizedBox(height: 24),
               const Text('Tags', style: _heading),
               const SizedBox(height: 4),
