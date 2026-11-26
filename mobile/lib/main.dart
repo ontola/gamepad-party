@@ -647,6 +647,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       widget.state.prefs.setString('requested_game', requested);
     }
     widget.history?.addListener(_historyChanged);
+    widget.state.showRoomTab = () => _selectTab(0);
     WidgetsBinding.instance.addObserver(this);
     widget.state.addListener(_followGame);
     _links = widget.links?.listen(_onLink);

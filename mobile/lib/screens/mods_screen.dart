@@ -12,7 +12,8 @@ import '../link.dart';
 import '../room_controls.dart';
 import '../storage/phone_store.dart';
 import '../theme.dart';
-import 'assistant_screen.dart';
+import 'host_screen.dart';
+import '../api.dart' show ApiError;
 import '../widgets/email_sign_in.dart';
 
 /// The games a mod can be made of: Warp games in Luau, which a host copies
@@ -35,6 +36,42 @@ const gameTemplates = {
     about: 'Almost nothing yet: say what it should become.'
   ),
 };
+
+/// The template that fits what the player described: a shooter or a
+/// platformer when their words say so, otherwise the plain starter.
+String startFor(String idea) {
+  final words = idea.toLowerCase();
+  bool any(List<String> keys) => keys.any(words.contains);
+  if (any([
+    'shoot',
+    'gun',
+    'fps',
+    'deathmatch',
+    'first-person',
+    'first person',
+    'schiet'
+  ])) {
+    return 'warp-template-fps';
+  }
+  if (any(['platform', 'jump', 'climb', 'coins', 'munten', 'spring'])) {
+    return 'warp-template-platformer';
+  }
+  return 'warp-template-blank';
+}
+
+/// A first name for a game: the start of what the player described.
+String titleFor(String idea) {
+  final words = idea
+      .replaceAll(RegExp(r'[^\p{L}\p{N} ]', unicode: true), ' ')
+      .split(' ')
+      .where((w) => w.isNotEmpty)
+      .take(4)
+      .toList();
+  if (words.isEmpty) return 'My game';
+  final title = words.join(' ');
+  final cut = title.length > 40 ? title.substring(0, 40).trim() : title;
+  return cut[0].toUpperCase() + cut.substring(1);
+}
 
 /// Whether this mod is a game of the player's own, made from a template.
 bool isOwnGame(GameMod mod) => gameTemplates.containsKey(mod.base);
@@ -266,14 +303,17 @@ class _NewModDialogState extends State<_NewModDialog> {
       );
 }
 
-/// One mod: play it, ask for a change while it runs, see what changed,
-/// rename or delete it.
+/// One game of the player's own (or a mod): a chat with the Assistant that
+/// builds it, its progress live, and a big Play button. Works with or
+/// without a room: when the game runs in the player's room, the Assistant
+/// changes it live there (and can look at it); otherwise it builds it in
+/// the player's account, ready for the next room.
 class ModScreen extends StatefulWidget {
   final AppState state;
   final GameMod mod;
 
-  /// For a game just made: what the player wants it to become, the first
-  /// request for the Assistant.
+  /// For a game just made: what the player wants it to become, sent as the
+  /// first message right away.
   final String? idea;
   const ModScreen(
       {super.key, required this.state, required this.mod, this.idea});
@@ -295,18 +335,32 @@ class _ModScreenState extends State<ModScreen> {
   _Room? _roomNow;
   Timer? _timer;
   bool _starting = false;
-  late String? _idea = widget.idea;
+  final _draft = TextEditingController();
+  final _scroll = ScrollController();
+
+  /// What the Assistant is doing now: null when idle.
+  String? _working;
+  List<String> _steps = const [];
+  String? _error;
+  Assistant? _live;
 
   @override
   void initState() {
     super.initState();
-    unawaited(_refresh());
+    unawaited(_refresh().then((_) => _resume()));
     _timer = Timer.periodic(const Duration(seconds: 3), (_) => _refresh());
+    final idea = widget.idea?.trim() ?? '';
+    if (idea.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _send(idea));
+    }
   }
 
   @override
   void dispose() {
     _timer?.cancel();
+    _live?.dispose();
+    _draft.dispose();
+    _scroll.dispose();
     super.dispose();
   }
 
@@ -323,12 +377,192 @@ class _ModScreenState extends State<ModScreen> {
       debugPrint('Could not read the chat: $error');
     }
     if (!mounted) return;
+    final grew = chat != null && chat.length != _chat.length;
     setState(() {
       if (mod != null) _mod = mod;
       if (chat != null) _chat = chat;
       _roomNow = room;
     });
+    if (grew) _toEnd();
   }
+
+  void _toEnd() => WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _scroll.hasClients) {
+          _scroll.animateTo(_scroll.position.maxScrollExtent,
+              duration: const Duration(milliseconds: 220),
+              curve: Curves.easeOut);
+        }
+      });
+
+  bool get _inRoom => _roomNow != null;
+  bool get _playing => _roomNow?.playing == _mod.game;
+  bool get _onShelf => _roomNow?.shelf.contains(_mod.game) ?? false;
+
+  /// A build the cloud is still doing (say the app was closed meanwhile).
+  Future<void> _resume() async {
+    try {
+      final now = await widget.state.cloud
+          .request('GET', '/v1/me/games/${_mod.id}/build');
+      if (now is Map && now['state'] == 'working' && mounted) {
+        setState(() => _working = 'Working on your game…');
+        await _follow(now['id'] as String);
+      }
+    } catch (_) {/* Nothing running, or offline: the chat is enough. */}
+  }
+
+  Future<void> _send(String text) async {
+    text = text.trim();
+    if (text.isEmpty || _working != null) return;
+    _draft.clear();
+    setState(() {
+      _error = null;
+      _steps = const [];
+      _working =
+          _playing ? 'Changing it live in your room…' : 'Working on your game…';
+    });
+    _toEnd();
+    try {
+      if (_playing) {
+        await _sendLive(text);
+      } else {
+        await _sendBuild(text);
+      }
+    } catch (error) {
+      if (mounted) setState(() => _error = '$error');
+    } finally {
+      if (mounted) setState(() => _working = null);
+      await _refresh();
+    }
+  }
+
+  /// The game runs in the player's room: the host changes it with the
+  /// game's own live tools, and the chat follows the Assistant's requests.
+  Future<void> _sendLive(String text) async {
+    final live = _live ??= Assistant(widget.state.cloud);
+    await live.refresh();
+    live.setDraft(text);
+    await live.send();
+    if (live.error case final error?) throw error;
+    while (mounted && live.waiting) {
+      await Future<void>.delayed(const Duration(seconds: 2));
+      await live.refresh();
+    }
+  }
+
+  /// No room (or the game is not running there): the cloud builds it in
+  /// the player's account. The question goes in the chat now, the answer
+  /// when it is done.
+  Future<void> _sendBuild(String text) async {
+    final store = PhoneStore.instance;
+    if (store == null) throw 'Your games are not on this phone yet.';
+    await store.addChat(_mod.id, 'user', text);
+    await _refresh();
+    final id = assistantId();
+    // A game just made reaches the account on the next sync.
+    for (var attempt = 0;; attempt++) {
+      try {
+        await widget.state.cloud
+            .request('POST', '/v1/me/games/${_mod.id}/build', body: {
+          'request_id': id,
+          'text': text
+        }, errors: {
+          409: 'The Assistant is still working on your last request.',
+          503: 'The Assistant is not available right now.',
+        });
+        break;
+      } on ApiError catch (error) {
+        if (error.status != 404 || attempt >= 4) {
+          await store.addChat(_mod.id, 'assistant', error.message, ok: false);
+          rethrow;
+        }
+        await store.syncNow();
+        await Future<void>.delayed(const Duration(seconds: 2));
+      }
+    }
+    await _follow(id);
+  }
+
+  Future<void> _follow(String id) async {
+    final store = PhoneStore.instance;
+    while (mounted) {
+      await Future<void>.delayed(const Duration(seconds: 2));
+      final now = await widget.state.cloud
+          .request('GET', '/v1/me/games/${_mod.id}/build');
+      if (now is! Map || now['id'] != id) return;
+      final steps = [
+        for (final s in now['steps'] as List? ?? []) '${(s as Map)['text']}'
+      ];
+      if (mounted) setState(() => _steps = steps);
+      if (now['state'] != 'working') {
+        final ok = now['state'] == 'complete';
+        await store?.addChat(
+            _mod.id,
+            'assistant',
+            now['result']?.toString() ??
+                (ok ? 'Done.' : 'That did not work. Try again.'),
+            ok: ok);
+        unawaited(store?.syncNow());
+        return;
+      }
+    }
+  }
+
+  Future<void> _play() async {
+    if (!_inRoom) return _whereToPlay();
+    final controls = roomControlsFor(widget.state);
+    if (controls == null) return;
+    setState(() => _starting = true);
+    try {
+      await controls.playNext(_mod.game, start: true);
+      await _refresh();
+    } catch (error) {
+      if (mounted) toast(context, '$error');
+    } finally {
+      if (mounted) setState(() => _starting = false);
+    }
+  }
+
+  /// Not in a room: host one (this phone, a computer or a TV) or join one.
+  Future<void> _whereToPlay() => showModalBottomSheet<void>(
+      context: context,
+      builder: (sheet) => SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const Text('Play your game',
+                        style: TextStyle(
+                            fontSize: 20, fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 6),
+                    const Hint(
+                        'Your game plays in a room, on a TV or computer, with '
+                        'controllers or phones. It is on the shelf of every '
+                        'room you join.'),
+                    const SizedBox(height: 16),
+                    FilledButton.icon(
+                        key: const ValueKey('play-host'),
+                        onPressed: () {
+                          Navigator.pop(sheet);
+                          unawaited(
+                              HostScreen.open(context, widget.state.cloud));
+                        },
+                        icon: const Icon(Icons.tv),
+                        label: const Text('Host a room')),
+                    const SizedBox(height: 8),
+                    OutlinedButton.icon(
+                        key: const ValueKey('play-join'),
+                        onPressed: () {
+                          Navigator.pop(sheet);
+                          Navigator.of(context).popUntil((r) => r.isFirst);
+                          widget.state.showRoomTab?.call();
+                        },
+                        icon: const Icon(Icons.qr_code_scanner),
+                        label: const Text('Join a room')),
+                  ]),
+            ),
+          ));
 
   /// Put the game back as the answer `index` left it. A note goes in the
   /// chat first, so the version from before going back can be found too.
@@ -373,37 +607,12 @@ class _ModScreenState extends State<ModScreen> {
     }
   }
 
-  bool get _playing => _roomNow?.playing == _mod.game;
-
-  Future<void> _play() async {
-    final controls = roomControlsFor(widget.state);
-    if (controls == null) return;
-    setState(() => _starting = true);
-    try {
-      await controls.playNext(_mod.game, start: true);
-    } catch (error) {
-      if (mounted) toast(context, '$error');
-    } finally {
-      if (mounted) setState(() => _starting = false);
-    }
-  }
-
-  /// Changing a mod is what the Assistant does: ask it while the mod runs.
-  Future<void> _assistant() async {
-    await Navigator.of(context).push(MaterialPageRoute<void>(
-        settings: const RouteSettings(name: 'assistant'),
-        builder: (_) =>
-            AssistantScreen(state: widget.state, initialDraft: _idea)));
-    _idea = null;
-    await _refresh();
-  }
-
   Future<void> _rename() async {
     final name = TextEditingController(text: _mod.title);
     final title = await showDialog<String>(
         context: context,
         builder: (context) => AlertDialog(
-              title: const Text('Rename mod'),
+              title: const Text('Rename'),
               content:
                   TextField(controller: name, autofocus: true, maxLength: 80),
               actions: [
@@ -452,80 +661,153 @@ class _ModScreenState extends State<ModScreen> {
     }
   }
 
+  Widget _playBar() {
+    if (_playing) {
+      return const Row(children: [
+        Icon(Icons.circle, size: 12, color: GnColors.ok),
+        SizedBox(width: 8),
+        Expanded(
+            child: Text('Playing on the TV now. Changes show up live.',
+                style: TextStyle(color: GnColors.ok))),
+      ]);
+    }
+    final waiting = _inRoom && !_onShelf;
+    return SizedBox(
+      height: 56,
+      child: FilledButton.icon(
+          key: const ValueKey('play-mod'),
+          style: FilledButton.styleFrom(
+              textStyle:
+                  const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+          onPressed: _starting || waiting ? null : _play,
+          icon: _starting
+              ? const SizedBox.square(
+                  dimension: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2))
+              : const Icon(Icons.play_arrow, size: 28),
+          label: Text(waiting
+              ? 'Reaching the TV in a moment…'
+              : _inRoom
+                  ? 'Play on the TV'
+                  : 'Play')),
+    );
+  }
+
+  Widget _workingBubble() => Align(
+        alignment: Alignment.centerLeft,
+        child: Container(
+          key: const ValueKey('assistant-working'),
+          margin: const EdgeInsets.symmetric(vertical: 4),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+              color: GnColors.field, borderRadius: BorderRadius.circular(12)),
+          child:
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(mainAxisSize: MainAxisSize.min, children: [
+              const SizedBox.square(
+                  dimension: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2)),
+              const SizedBox(width: 10),
+              Flexible(child: Text(_working ?? '')),
+            ]),
+            for (final step
+                in _steps.skip(_steps.length > 4 ? _steps.length - 4 : 0))
+              Padding(
+                padding: const EdgeInsets.only(top: 6, left: 26),
+                child: Text(step,
+                    style:
+                        const TextStyle(color: GnColors.muted, fontSize: 13)),
+              ),
+          ]),
+        ),
+      );
+
   @override
   Widget build(BuildContext context) {
-    final room = _roomNow;
-    final onShelf = room?.shelf.contains(_mod.game) ?? false;
+    final empty = _chat.isEmpty && _working == null;
     return Scaffold(
       appBar: AppBar(title: Text(_mod.title), actions: [
-        IconButton(
-            tooltip: 'Rename',
-            icon: const Icon(Icons.edit_outlined),
-            onPressed: _rename),
-        IconButton(
-            tooltip: 'Delete',
-            icon: const Icon(Icons.delete_outline),
-            onPressed: _delete),
+        PopupMenuButton<String>(
+            onSelected: (v) => v == 'rename' ? _rename() : _delete(),
+            itemBuilder: (_) => const [
+                  PopupMenuItem(value: 'rename', child: Text('Rename')),
+                  PopupMenuItem(value: 'delete', child: Text('Delete')),
+                ]),
       ]),
-      body: ContentWidth(
-        child: ListView(padding: const EdgeInsets.all(16), children: [
-          Text('${_origin(_mod)} · ${_status(_mod, room)}',
-              style: const TextStyle(color: GnColors.muted)),
-          const SizedBox(height: 12),
-          if (!_playing && onShelf)
-            FilledButton.icon(
-                key: const ValueKey('play-mod'),
-                onPressed: _starting ? null : _play,
-                icon: const Icon(Icons.play_arrow),
-                label: const Text('Play now')),
-          const SizedBox(height: 20),
-          Hint(isOwnGame(_mod)
-              ? (_playing
-                  ? 'Tell the Assistant what your game should be or what should change: it writes the code while you play, and keeps it in your account.'
-                  : 'Play your game, then tell the Assistant what it should become.')
-              : (_playing
-                  ? 'Tell the Assistant what should change: it changes the code while you play, and keeps it in your mod.'
-                  : 'Play your mod, then tell the Assistant what should change.')),
-          const SizedBox(height: 8),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: OutlinedButton.icon(
-                key: const ValueKey('mod-assistant'),
-                onPressed: _assistant,
-                icon: const Icon(Icons.auto_awesome_outlined),
-                label: const Text('Assistant')),
-          ),
-          if (_chat.isNotEmpty) ...[
-            const SizedBox(height: 24),
-            const Text('Chat',
-                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
-            const SizedBox(height: 8),
-            for (final (i, entry) in _chat.indexed)
-              _ChatBubble(
-                  entry: entry,
-                  onRestore: !entry.mine &&
-                          entry.ok == true &&
-                          versionAfter(_chat, i) != null &&
-                          !_restoring
-                      ? () => _restore(i)
-                      : null),
-          ] else if (_mod.changes.isNotEmpty) ...[
-            const SizedBox(height: 24),
-            const Text('Changes',
-                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
-            for (final change in _mod.changes.reversed)
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: Icon(
-                    change.ok
-                        ? Icons.check_circle_outline
-                        : Icons.error_outline,
-                    color: change.ok ? GnColors.ok : GnColors.warn),
-                title: Text(change.asked),
-                subtitle: Text(change.answer),
-              ),
-          ],
-        ]),
+      body: SafeArea(
+        child: ContentWidth(
+          maxWidth: 850,
+          child: Column(children: [
+            Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                child: _playBar()),
+            Expanded(
+              child: ListView(
+                  controller: _scroll,
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                  children: [
+                    if (empty) ...[
+                      const SizedBox(height: 24),
+                      Text(
+                          isOwnGame(_mod)
+                              ? 'What should your game be?'
+                              : 'What should change?',
+                          style: const TextStyle(
+                              fontSize: 24, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 8),
+                      Hint(_inRoom
+                          ? 'The Assistant builds it while you play it on the TV.'
+                          : 'The Assistant builds it in your account. Play it in any room.'),
+                    ],
+                    for (final (i, entry) in _chat.indexed)
+                      _ChatBubble(
+                          entry: entry,
+                          onRestore: !entry.mine &&
+                                  entry.ok == true &&
+                                  versionAfter(_chat, i) != null &&
+                                  !_restoring &&
+                                  _working == null
+                              ? () => _restore(i)
+                              : null),
+                    if (_working != null) _workingBubble(),
+                    if (_error case final error?)
+                      Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: Text(error,
+                              style: const TextStyle(color: GnColors.warn))),
+                  ]),
+            ),
+            Container(
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+              decoration: const BoxDecoration(
+                  border: Border(top: BorderSide(color: GnColors.border))),
+              child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                Expanded(
+                  child: TextField(
+                      key: const ValueKey('game-chat-draft'),
+                      controller: _draft,
+                      minLines: 1,
+                      maxLines: 5,
+                      maxLength: 2000,
+                      textCapitalization: TextCapitalization.sentences,
+                      decoration: InputDecoration(
+                          counterText: '',
+                          hintText: _chat.isEmpty
+                              ? 'Describe your game…'
+                              : 'Ask for a change…'),
+                      onSubmitted: _send),
+                ),
+                const SizedBox(width: 8),
+                IconButton.filled(
+                    key: const ValueKey('game-chat-send'),
+                    tooltip: 'Send',
+                    onPressed:
+                        _working != null ? null : () => _send(_draft.text),
+                    icon: const Icon(Icons.arrow_upward)),
+              ]),
+            ),
+          ]),
+        ),
       ),
     );
   }
@@ -683,8 +965,6 @@ class _MakeGameScreenState extends State<MakeGameScreen> {
   Timer? _timer;
 
   PhoneStore? get _store => PhoneStore.instance;
-  bool get _ready =>
-      _store != null && _store!.signedIn && widget.state.assistantAvailable;
 
   @override
   void initState() {
@@ -698,6 +978,7 @@ class _MakeGameScreenState extends State<MakeGameScreen> {
   void dispose() {
     widget.state.removeListener(_onState);
     _timer?.cancel();
+    _idea.dispose();
     super.dispose();
   }
 
@@ -760,25 +1041,83 @@ class _MakeGameScreenState extends State<MakeGameScreen> {
     }
   }
 
-  Future<void> _new() async {
-    final made = await showDialog<({String base, String name, String idea})>(
-        context: context, builder: (_) => const _NewGameDialog());
+  final _idea = TextEditingController();
+  String? _start;
+  bool _making = false;
+
+  /// A new game from what the player wrote: the starting point they picked,
+  /// or one that fits their words, named after them. The game's chat opens
+  /// and sends their words as the first request.
+  Future<void> _make() async {
+    final idea = _idea.text.trim();
     final store = _store;
-    if (made == null || store == null) return;
+    if (idea.isEmpty || store == null || _making) return;
+    setState(() => _making = true);
     try {
-      final id = await store.newMod(made.base, made.name);
+      final id = await store.newMod(_start ?? startFor(idea), titleFor(idea));
+      await store.syncNow();
       await _refresh();
       if (!mounted) return;
       final game = _games?.where((m) => m.id == id).firstOrNull;
       if (game != null) {
-        await ModScreen.open(context, widget.state, game,
-            idea: made.idea.isEmpty ? null : made.idea);
+        _idea.clear();
+        await ModScreen.open(context, widget.state, game, idea: idea);
       }
       await _refresh();
     } catch (error) {
       if (mounted) toast(context, '$error');
+    } finally {
+      if (mounted) setState(() => _making = false);
     }
   }
+
+  Widget _composer() => Card(
+        key: const ValueKey('make-game-chat'),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
+          child:
+              Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            TextField(
+              key: const ValueKey('game-idea'),
+              controller: _idea,
+              minLines: 2,
+              maxLines: 6,
+              maxLength: 2000,
+              textCapitalization: TextCapitalization.sentences,
+              decoration: const InputDecoration(
+                  border: InputBorder.none,
+                  counterText: '',
+                  hintText: 'Describe the game you want to make…'),
+              onChanged: (_) => setState(() {}),
+            ),
+            Row(children: [
+              Expanded(
+                child: Wrap(spacing: 6, runSpacing: 6, children: [
+                  for (final e in gameTemplates.entries)
+                    ChoiceChip(
+                      key: ValueKey('template-${e.key}'),
+                      label: Text(e.value.title),
+                      tooltip: e.value.about,
+                      selected: _start == e.key,
+                      onSelected: (on) =>
+                          setState(() => _start = on ? e.key : null),
+                    ),
+                ]),
+              ),
+              IconButton.filled(
+                  key: const ValueKey('make-game'),
+                  tooltip: 'Make it',
+                  onPressed:
+                      _making || _idea.text.trim().isEmpty ? null : _make,
+                  icon: _making
+                      ? const SizedBox.square(
+                          dimension: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2))
+                      : const Icon(Icons.arrow_upward)),
+            ]),
+          ]),
+        ),
+      );
 
   Future<void> _signedIn() async {
     if (mounted) setState(() {});
@@ -790,15 +1129,11 @@ class _MakeGameScreenState extends State<MakeGameScreen> {
   Widget build(BuildContext context) {
     final store = _store;
     final children = <Widget>[
-      const Text('Make your own game',
-          style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700)),
+      const Text('What game do you want to make?',
+          style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700)),
       const SizedBox(height: 8),
-      const Hint(
-          'Pick a starting point and say what your game should be. Play it on '
-          'the TV while the Assistant writes the code, and ask for changes as '
-          'you go.'),
-      const SizedBox(height: 12),
-      const _HowItWorks(),
+      const Hint('Describe it and the Assistant builds it. Play it in any '
+          'room, and keep asking for changes. It is kept in your account.'),
       const SizedBox(height: 16),
     ];
     if (!widget.state.signedIn) {
@@ -846,6 +1181,19 @@ class _MakeGameScreenState extends State<MakeGameScreen> {
           'Making games is not open for your account yet. We are letting '
           'people in step by step.'));
     } else {
+      children.add(_composer());
+      children.add(const SizedBox(height: 8));
+      children.add(Wrap(spacing: 8, runSpacing: 8, children: [
+        for (final idea in const [
+          'Penguins push each other off an ice floe',
+          'A racing game with jumps for 4 players',
+          'Co-op: defend a castle against waves of slimes',
+        ])
+          ActionChip(
+              label: Text(idea),
+              onPressed: () => setState(() => _idea.text = idea)),
+      ]));
+      children.add(const SizedBox(height: 24));
       if (_error != null) {
         children
             .add(Text(_error!, style: const TextStyle(color: GnColors.warn)));
@@ -876,13 +1224,6 @@ class _MakeGameScreenState extends State<MakeGameScreen> {
     }
     return Scaffold(
       appBar: AppBar(title: const Text('Make a game')),
-      floatingActionButton: _ready
-          ? FloatingActionButton.extended(
-              key: const ValueKey('new-game'),
-              onPressed: _new,
-              icon: const Icon(Icons.add),
-              label: const Text('New game'))
-          : null,
       body: ContentWidth(
         child: RefreshIndicator(
           onRefresh: () => _refresh(sync: true),
@@ -895,132 +1236,77 @@ class _MakeGameScreenState extends State<MakeGameScreen> {
   }
 }
 
-/// The short version of what making a game takes.
-class _HowItWorks extends StatelessWidget {
-  const _HowItWorks();
-
-  @override
-  Widget build(BuildContext context) {
-    Widget row(IconData icon, String text) => Padding(
-          padding: const EdgeInsets.symmetric(vertical: 4),
-          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Icon(icon, size: 20, color: GnColors.muted),
-            const SizedBox(width: 10),
-            Expanded(child: Text(text)),
-          ]),
-        );
-    return Card(
-      key: const ValueKey('make-game-how'),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          row(Icons.person_outline,
-              'You need an account. Your games are kept in it.'),
-          row(
-              Icons.toll_outlined,
-              'The Assistant uses AI tokens for every change, and they run '
-              'out. Ask for a few big changes rather than many small ones.'),
-          row(
-              Icons.tv,
-              'Join a room on a computer with Splitscreen Club. Your game '
-              'shows up on its shelf, and you play it there while it is made.'),
-          row(
-              Icons.ios_share,
-              'When you are done, your game is saved. Play it wherever you '
-              'sit, and share it with others.'),
-        ]),
-      ),
-    );
-  }
-}
-
-class _NewGameDialog extends StatefulWidget {
-  const _NewGameDialog();
-  @override
-  State<_NewGameDialog> createState() => _NewGameDialogState();
-}
-
-class _NewGameDialogState extends State<_NewGameDialog> {
-  String _base = gameTemplates.keys.first;
-  final _name = TextEditingController(text: 'My game');
-  final _idea = TextEditingController();
-
-  @override
-  void dispose() {
-    _name.dispose();
-    _idea.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => AlertDialog(
-        title: const Text('New game'),
-        content: SingleChildScrollView(
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            for (final e in gameTemplates.entries)
-              RadioListTile<String>(
-                key: ValueKey('template-${e.key}'),
-                contentPadding: EdgeInsets.zero,
-                value: e.key,
-                // ignore: deprecated_member_use
-                groupValue: _base,
-                // ignore: deprecated_member_use
-                onChanged: (v) => setState(() => _base = v ?? _base),
-                title: Text(e.value.title),
-                subtitle: Text(e.value.about),
-              ),
-            const SizedBox(height: 8),
-            TextField(
-              key: const ValueKey('game-name'),
-              controller: _name,
-              maxLength: 80,
-              decoration: const InputDecoration(labelText: 'Name'),
-            ),
-            TextField(
-              key: const ValueKey('game-idea'),
-              controller: _idea,
-              minLines: 2,
-              maxLines: 5,
-              decoration: const InputDecoration(
-                  labelText: 'What should it be? (optional)',
-                  hintText: 'Four penguins push each other off an ice floe'),
-            ),
-          ]),
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel')),
-          FilledButton(
-              key: const ValueKey('make-game'),
-              onPressed: () {
-                final name = _name.text.trim();
-                if (name.isNotEmpty) {
-                  Navigator.pop(context,
-                      (base: _base, name: name, idea: _idea.text.trim()));
-                }
-              },
-              child: const Text('Make')),
-        ],
-      );
-}
-
-/// The way into Make a game, at the top of the games catalog.
-class MakeGameCard extends StatelessWidget {
+/// The top of the games catalog for a player who may make games: their own
+/// games first, then the way to make a new one.
+class MakeGameCard extends StatefulWidget {
   final AppState state;
   const MakeGameCard({super.key, required this.state});
 
   @override
-  Widget build(BuildContext context) => Card(
-        key: const ValueKey('make-a-game'),
-        child: ListTile(
-          leading: const Icon(Icons.auto_awesome, color: GnColors.accent),
-          title: const Text('Make a game',
-              style: TextStyle(fontWeight: FontWeight.w700)),
-          subtitle: const Text(
-              'Describe a game, play it while the Assistant builds it.'),
-          trailing: const Icon(Icons.chevron_right),
-          onTap: () => MakeGameScreen.open(context, state),
+  State<MakeGameCard> createState() => _MakeGameCardState();
+}
+
+class _MakeGameCardState extends State<MakeGameCard> {
+  List<GameMod> _games = const [];
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_load());
+  }
+
+  Future<void> _load() async {
+    final store = PhoneStore.instance;
+    if (store == null || !store.signedIn) return;
+    try {
+      final games = [
+        for (final m in await store.mods())
+          if (isOwnGame(m)) m
+      ];
+      if (mounted) setState(() => _games = games);
+    } catch (_) {/* No games shown; making one still works. */}
+  }
+
+  @override
+  Widget build(BuildContext context) =>
+      Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        if (_games.isNotEmpty) ...[
+          const Padding(
+            padding: EdgeInsets.only(bottom: 6),
+            child: Text('Your games',
+                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+          ),
+          for (final game in _games)
+            Card(
+              child: ListTile(
+                key: ValueKey('own-game-${game.id}'),
+                leading:
+                    const Icon(Icons.videogame_asset, color: GnColors.accent),
+                title: Text(game.title,
+                    style: const TextStyle(fontWeight: FontWeight.w700)),
+                subtitle: const Text('Made by you'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () async {
+                  await ModScreen.open(context, widget.state, game);
+                  await _load();
+                },
+              ),
+            ),
+        ],
+        Card(
+          key: const ValueKey('make-a-game'),
+          child: ListTile(
+            leading: const Icon(Icons.auto_awesome, color: GnColors.accent),
+            title: const Text('Make a game',
+                style: TextStyle(fontWeight: FontWeight.w700)),
+            subtitle:
+                const Text('Describe a game and the Assistant builds it.'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () async {
+              await MakeGameScreen.open(context, widget.state);
+              await _load();
+            },
+          ),
         ),
-      );
+      ]);
 }

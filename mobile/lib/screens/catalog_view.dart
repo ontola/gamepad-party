@@ -299,7 +299,9 @@ class _CatalogSectionState extends State<CatalogSection> {
             ),
           )
         else ...[
-          if (widget.state != null)
+          // Only for accounts that may make games (the Assistant is
+          // invite-only for now).
+          if (widget.state?.assistantAvailable ?? false)
             Padding(
               padding: const EdgeInsets.only(bottom: 12),
               child: MakeGameCard(state: widget.state!),

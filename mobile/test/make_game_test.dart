@@ -22,7 +22,17 @@ void main() {
         isTrue);
   });
 
-  testWidgets('Make a game in the catalog explains what it takes',
+  test('a new game starts from what the player describes', () {
+    expect(startFor('A deathmatch with laser guns'), 'warp-template-fps');
+    expect(startFor('Penguins jump between ice floes'),
+        'warp-template-platformer');
+    expect(startFor('A racing game for 4'), 'warp-template-blank');
+    expect(titleFor('penguins push each other off an ice floe!'),
+        'Penguins push each other');
+    expect(titleFor('   '), 'My game');
+  });
+
+  testWidgets('Make a game in the catalog starts with what to make',
       (tester) async {
     SharedPreferences.setMockInitialValues({});
     final state = AppState(await SharedPreferences.getInstance());
@@ -34,10 +44,7 @@ void main() {
                 child: MakeGameCard(state: state)))));
     await tester.tap(find.byKey(const ValueKey('make-a-game')));
     await tester.pumpAndSettle();
-    expect(find.text('Make your own game'), findsOneWidget);
-    expect(find.textContaining('You need an account'), findsOneWidget);
-    expect(find.textContaining('they run out'), findsOneWidget);
-    expect(find.textContaining('share it with others'), findsOneWidget);
+    expect(find.text('What game do you want to make?'), findsOneWidget);
     // Signed out, the email field to sign in is right on the page.
     expect(find.byKey(const ValueKey('make-game-sign-in')), findsOneWidget);
     expect(find.byKey(const ValueKey('sign-in-email')), findsOneWidget);
@@ -50,6 +57,23 @@ void main() {
                 matching: find.byType(Scrollable))
             .first);
     expect(find.byKey(const ValueKey('get-the-app')), findsOneWidget);
-    expect(find.byKey(const ValueKey('new-game')), findsNothing);
+    expect(find.byKey(const ValueKey('game-idea')), findsNothing);
+  });
+
+  testWidgets('a game is a chat with a big Play button, also without a room',
+      (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final state = AppState(await SharedPreferences.getInstance());
+    await tester.pumpWidget(MaterialApp(
+        theme: gameNightTheme(),
+        home: ModScreen(state: state, mod: _mod('warp-template-blank'))));
+    await tester.pump();
+    expect(find.text('What should your game be?'), findsOneWidget);
+    expect(find.byKey(const ValueKey('game-chat-draft')), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('play-mod')));
+    await tester.pumpAndSettle();
+    // Not in a room: host one or join one.
+    expect(find.byKey(const ValueKey('play-host')), findsOneWidget);
+    expect(find.byKey(const ValueKey('play-join')), findsOneWidget);
   });
 }

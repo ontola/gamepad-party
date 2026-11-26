@@ -685,6 +685,10 @@ class AppState extends ChangeNotifier {
 
   bool get signedIn => cloud.signedIn;
 
+  /// Shows the Room tab (to join a room) from any page; the home screen
+  /// sets it.
+  VoidCallback? showRoomTab;
+
   /// Whether to show the Assistant: only for invited accounts.
   bool get assistantAvailable => signedIn && account?.assistant == true;
   bool get isGuest => cloud.guestToken != null;
