@@ -110,6 +110,8 @@ pub(super) fn spawn(shared: Arc<Mutex<Shared>>) {
             let mut known = Vec::new();
             let mut filter = FrameFilter::default();
             let mut playing = HashMap::new();
+            #[cfg(windows)]
+            let mut keyboard = crate::keyboard::Sampler::new();
             loop {
                 while pads.next_event().is_some() {}
                 while let Ok(request) = rumble_rx.try_recv() {
@@ -168,6 +170,14 @@ pub(super) fn spawn(shared: Arc<Mutex<Shared>>) {
                         }
                     })
                     .collect();
+                // The host PC's keyboard, while one of the host's windows is
+                // in front (Windows only).
+                #[cfg(windows)]
+                let controllers = {
+                    let mut controllers = controllers;
+                    controllers.extend(keyboard.sample());
+                    controllers
+                };
                 let ids: Vec<_> = controllers.iter().map(|c| c.controller.clone()).collect();
                 if ids != known {
                     info!(controllers = ?ids, "runtime controller devices changed");
@@ -252,6 +262,18 @@ const Y_BUTTON: u32 = 1 << 3;
 /// A: the press that joins an unseated controller (Joep: only A joins;
 /// any other button or stick just jiggles that controller on the table).
 const JOIN_BUTTONS: u32 = 1;
+/// Start (bit 7): Enter on the keyboard, which joins it like A (as the
+/// browser host does).
+const START: u32 = 1 << 7;
+
+/// The presses that join `controller`: A, and on the keyboard also Enter.
+fn join_buttons(controller: &str) -> u32 {
+    if crate::keyboard::is_keyboard(controller) {
+        JOIN_BUTTONS | START
+    } else {
+        JOIN_BUTTONS
+    }
+}
 
 #[derive(Default)]
 struct InputRouter {
@@ -608,7 +630,7 @@ impl InputRouter {
             // press and bounce a just-resumed game into the lobby again.
             controller.buttons &= !(BACK | chords);
             if lobby_active
-                && pressed & JOIN_BUTTONS != 0
+                && pressed & join_buttons(&controller.controller) != 0
                 && snapshot
                     .seats
                     .iter()
@@ -661,7 +683,7 @@ impl InputRouter {
             // it takes players live (`participation` with `instant_join`),
             // else from the next game. Games show the hint themselves.
             if !lobby_active
-                && pressed & JOIN_BUTTONS != 0
+                && pressed & join_buttons(&controller.controller) != 0
                 && seated_player(&snapshot, &controller.controller).is_none()
             {
                 s.dispatch(
@@ -675,11 +697,12 @@ impl InputRouter {
                     consumed_join.insert(controller.controller.clone());
                 }
             }
-            if held & 1 == 0 {
+            let join = join_buttons(&controller.controller);
+            if held & join == 0 {
                 consumed_join.remove(&controller.controller);
             }
             if consumed_join.contains(&controller.controller) {
-                controller.buttons &= !1;
+                controller.buttons &= !join;
             }
             if (held != 0 || controller.axes.iter().any(|a| a.unsigned_abs() > 8000))
                 && activity
@@ -751,6 +774,32 @@ mod tests {
             );
         }
         worker.join().unwrap();
+    }
+
+    #[tokio::test]
+    async fn enter_joins_the_keyboard_but_start_never_joins_a_pad() {
+        let mut s = Shared::new(Vec::new(), "127.0.0.1:0".into(), None);
+        let mut router = InputRouter::default();
+        router.route(&mut s, frame(START));
+        assert!(
+            s.night.snapshot().players.is_empty(),
+            "Start on a pad is no join"
+        );
+        let keys = |buttons| {
+            vec![ControllerState {
+                controller: crate::keyboard::TOKEN.into(),
+                axes: [0; 6],
+                buttons,
+            }]
+        };
+        router.route(&mut s, keys(0));
+        router.route(&mut s, keys(START));
+        let party = s.night.snapshot();
+        assert_eq!(party.players.len(), 1);
+        assert_eq!(
+            party.seats[0].controller.as_deref(),
+            Some(crate::keyboard::TOKEN)
+        );
     }
 
     #[tokio::test]

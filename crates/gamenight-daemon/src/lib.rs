@@ -7,6 +7,7 @@
 
 mod activity;
 mod focus;
+mod keyboard;
 mod lobby_input;
 #[cfg(target_os = "macos")]
 mod macos;
