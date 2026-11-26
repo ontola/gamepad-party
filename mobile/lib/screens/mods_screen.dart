@@ -10,6 +10,7 @@ import '../app_update.dart';
 import '../layout.dart';
 import '../link.dart';
 import '../room_controls.dart';
+import '../storage/own_games.dart';
 import '../storage/phone_store.dart';
 import '../theme.dart';
 import 'host_screen.dart';
@@ -134,7 +135,7 @@ class _ModsScreenState extends State<ModsScreen> {
   String? _error;
   Timer? _timer;
 
-  PhoneStore? get _store => PhoneStore.instance;
+  OwnGames? get _store => OwnGames.instance;
 
   @override
   void initState() {
@@ -365,7 +366,7 @@ class _ModScreenState extends State<ModScreen> {
   }
 
   Future<void> _refresh() async {
-    final store = PhoneStore.instance;
+    final store = OwnGames.instance;
     if (store == null) return;
     final mods = await store.mods();
     final room = await _room(widget.state);
@@ -453,7 +454,7 @@ class _ModScreenState extends State<ModScreen> {
   /// the player's account. The question goes in the chat now, the answer
   /// when it is done.
   Future<void> _sendBuild(String text) async {
-    final store = PhoneStore.instance;
+    final store = OwnGames.instance;
     if (store == null) throw 'Your games are not on this phone yet.';
     await store.addChat(_mod.id, 'user', text);
     await _refresh();
@@ -483,7 +484,7 @@ class _ModScreenState extends State<ModScreen> {
   }
 
   Future<void> _follow(String id) async {
-    final store = PhoneStore.instance;
+    final store = OwnGames.instance;
     while (mounted) {
       await Future<void>.delayed(const Duration(seconds: 2));
       final now = await widget.state.cloud
@@ -545,8 +546,9 @@ class _ModScreenState extends State<ModScreen> {
                         key: const ValueKey('play-host'),
                         onPressed: () {
                           Navigator.pop(sheet);
-                          unawaited(
-                              HostScreen.open(context, widget.state.cloud));
+                          unawaited(HostScreen.open(context, widget.state.cloud,
+                              project: () =>
+                                  playToken(widget.state.cloud, _mod.id)));
                         },
                         icon: const Icon(Icons.tv),
                         label: const Text('Host a room')),
@@ -568,7 +570,7 @@ class _ModScreenState extends State<ModScreen> {
   /// chat first, so the version from before going back can be found too.
   Future<void> _restore(int index) async {
     final at = versionAfter(_chat, index);
-    final store = PhoneStore.instance;
+    final store = OwnGames.instance;
     if (at == null || store == null) return;
     final sure = await showDialog<bool>(
         context: context,
@@ -627,7 +629,7 @@ class _ModScreenState extends State<ModScreen> {
     name.dispose();
     if (title == null || title.isEmpty || title == _mod.title) return;
     try {
-      await PhoneStore.instance?.renameMod(_mod.id, title);
+      await OwnGames.instance?.renameMod(_mod.id, title);
       await _refresh();
     } catch (error) {
       if (mounted) toast(context, '$error');
@@ -654,14 +656,24 @@ class _ModScreenState extends State<ModScreen> {
             ));
     if (sure != true) return;
     try {
-      await PhoneStore.instance?.removeMod(_mod.id);
+      await OwnGames.instance?.removeMod(_mod.id);
       if (mounted) Navigator.pop(context);
     } catch (error) {
       if (mounted) toast(context, '$error');
     }
   }
 
+  /// A new game is playable once the Assistant made its first version (a
+  /// mod is a copy of a game that plays already).
+  bool get _playable =>
+      !isOwnGame(_mod) || _playing || _chat.any((e) => !e.mine && e.ok == true);
+
   Widget _playBar() {
+    if (!_playable) {
+      return _working == null
+          ? const SizedBox.shrink()
+          : const Hint('Play shows up here once the first version is ready.');
+    }
     if (_playing) {
       return const Row(children: [
         Icon(Icons.circle, size: 12, color: GnColors.ok),
@@ -764,6 +776,7 @@ class _ModScreenState extends State<ModScreen> {
                           entry: entry,
                           onRestore: !entry.mine &&
                                   entry.ok == true &&
+                                  (OwnGames.instance?.canRestore ?? false) &&
                                   versionAfter(_chat, i) != null &&
                                   !_restoring &&
                                   _working == null
@@ -964,7 +977,7 @@ class _MakeGameScreenState extends State<MakeGameScreen> {
   String? _error;
   Timer? _timer;
 
-  PhoneStore? get _store => PhoneStore.instance;
+  OwnGames? get _store => OwnGames.instance;
 
   @override
   void initState() {
@@ -1256,7 +1269,7 @@ class _MakeGameCardState extends State<MakeGameCard> {
   }
 
   Future<void> _load() async {
-    final store = PhoneStore.instance;
+    final store = OwnGames.instance;
     if (store == null || !store.signedIn) return;
     try {
       final games = [

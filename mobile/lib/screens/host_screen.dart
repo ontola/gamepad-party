@@ -28,7 +28,11 @@ class HostScreen extends StatelessWidget {
   /// The OS share sheet; tests replace it.
   final Future<ShareResult> Function(ShareParams)? share;
 
-  const HostScreen({super.key, required this.cloud})
+  /// Hosting to play the player's own game: a play link's token for it
+  /// (the host fetches the game with it and starts it).
+  final Future<String> Function()? project;
+
+  const HostScreen({super.key, required this.cloud, this.project})
       : blocker = null,
         _blockerSet = false,
         share = null;
@@ -38,13 +42,15 @@ class HostScreen extends StatelessWidget {
     required this.cloud,
     required this.blocker,
     this.share,
+    this.project,
   }) : _blockerSet = true;
 
-  static Future<void> open(BuildContext context, CloudApi cloud) =>
+  static Future<void> open(BuildContext context, CloudApi cloud,
+          {Future<String> Function()? project}) =>
       Navigator.of(context).push(
         MaterialPageRoute<void>(
           settings: const RouteSettings(name: 'host'),
-          builder: (_) => HostScreen(cloud: cloud),
+          builder: (_) => HostScreen(cloud: cloud, project: project),
         ),
       );
 
@@ -82,10 +88,11 @@ class HostScreen extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             if (Apps.supported) ...[
-              const _ThisPhone(),
+              _ThisPhone(project: project),
               const SizedBox(height: 12),
             ],
-            _OnAPc(cloud: cloud, blocker: blocker, share: share),
+            _OnAPc(
+                cloud: cloud, blocker: blocker, share: share, project: project),
             const SizedBox(height: 24),
             const Text(
               'Then',
@@ -168,9 +175,32 @@ class _Option extends StatelessWidget {
       );
 }
 
+/// `base` with the player's own game to start (`project=TOKEN`), when
+/// there is one.
+Future<Uri> _withProject(Uri base, Future<String> Function()? project) async {
+  if (project == null) return base;
+  return base.replace(queryParameters: {
+    ...base.queryParameters,
+    'project': await project(),
+  });
+}
+
+/// Opens `url` once the play link is made, or says why it could not be.
+Future<void> _go(BuildContext context, Uri base,
+    Future<String> Function()? project, Future<void> Function(Uri) open) async {
+  try {
+    await open(await _withProject(base, project));
+  } catch (error) {
+    if (context.mounted) {
+      toast(context, 'Could not get your game ready: $error');
+    }
+  }
+}
+
 /// The Android app hosts on the phone itself (the native host).
 class _ThisPhone extends StatelessWidget {
-  const _ThisPhone();
+  final Future<String> Function()? project;
+  const _ThisPhone({this.project});
 
   @override
   Widget build(BuildContext context) => _Option(
@@ -188,7 +218,7 @@ class _ThisPhone extends StatelessWidget {
             style: FilledButton.styleFrom(
               minimumSize: const Size.fromHeight(48),
             ),
-            onPressed: () => Apps.host(browserHost),
+            onPressed: () => _go(context, browserHost, project, Apps.host),
             icon: const Icon(Icons.play_arrow),
             label: const Text('Host on this phone'),
           ),
@@ -202,7 +232,9 @@ class _OnAPc extends StatelessWidget {
   final CloudApi cloud;
   final BrowserHostBlocker? blocker;
   final Future<ShareResult> Function(ShareParams)? share;
-  const _OnAPc({required this.cloud, required this.blocker, this.share});
+  final Future<String> Function()? project;
+  const _OnAPc(
+      {required this.cloud, required this.blocker, this.share, this.project});
 
   @override
   Widget build(BuildContext context) {
@@ -224,8 +256,8 @@ class _OnAPc extends StatelessWidget {
             style: FilledButton.styleFrom(
               minimumSize: const Size.fromHeight(48),
             ),
-            onPressed: () => launchUrl(Uri.parse('$apiOrigin/play/'),
-                webOnlyWindowName: '_self'),
+            onPressed: () => _go(context, Uri.parse('$apiOrigin/play/'),
+                project, (url) => launchUrl(url, webOnlyWindowName: '_self')),
             icon: const Icon(Icons.play_arrow),
             label: const Text('Start hosting in this browser'),
           ),
@@ -287,13 +319,19 @@ class _OnAPc extends StatelessWidget {
 
   static final _site = Uri.parse('https://$siteAddress');
 
+  /// The link to send: the site, or the browser host with this game.
+  Future<Uri> _link() => project == null
+      ? Future.value(_site)
+      : _withProject(Uri.parse('https://$siteAddress/play/'), project);
+
   /// The OS share sheet, to send the link to the PC (mail, chat, notes).
   /// Falls back to copying where there is no share target.
   Future<void> _share(BuildContext anchor) async {
     final box = anchor.findRenderObject() as RenderBox?;
     try {
+      final link = await _link();
       final result = await (share ?? SharePlus.instance.share)(ShareParams(
-        uri: _site,
+        uri: link,
         title: 'Splitscreen Club',
         subject: 'Splitscreen Club',
         sharePositionOrigin:
@@ -308,7 +346,7 @@ class _OnAPc extends StatelessWidget {
 
   Future<void> _copy(BuildContext context) async {
     try {
-      await Clipboard.setData(ClipboardData(text: _site.toString()));
+      await Clipboard.setData(ClipboardData(text: (await _link()).toString()));
       if (context.mounted) toast(context, 'Link copied');
     } catch (_) {
       if (context.mounted) toast(context, 'Select the address to copy it.');

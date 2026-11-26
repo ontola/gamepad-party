@@ -29,6 +29,7 @@ import 'screens/game_screen.dart';
 import 'screens/host_screen.dart';
 import 'screens/player_screen.dart';
 import 'screens/room_screen.dart';
+import 'storage/own_games.dart';
 import 'storage/phone_store.dart';
 import 'theme.dart';
 
@@ -48,6 +49,7 @@ Future<void> main() async {
   await PhoneStore.start(prefs);
   final push = await FirebasePushDevice.create();
   final state = AppState(prefs, pushDevice: push);
+  OwnGames.useCloud(state.cloud);
   final reports = ReportService(
     prefs,
     requestHeaders: state.cloud.browserMutationHeaders,

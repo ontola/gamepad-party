@@ -60,7 +60,7 @@ void main() {
     expect(find.byKey(const ValueKey('game-idea')), findsNothing);
   });
 
-  testWidgets('a game is a chat with a big Play button, also without a room',
+  testWidgets('a game is a chat with Play once it plays, also without a room',
       (tester) async {
     SharedPreferences.setMockInitialValues({});
     final state = AppState(await SharedPreferences.getInstance());
@@ -70,6 +70,16 @@ void main() {
     await tester.pump();
     expect(find.text('What should your game be?'), findsOneWidget);
     expect(find.byKey(const ValueKey('game-chat-draft')), findsOneWidget);
+    // Nothing made yet: no Play until the first version is ready.
+    expect(find.byKey(const ValueKey('play-mod')), findsNothing);
+    // A mod is a copy of a game that plays already.
+    await tester.pumpWidget(MaterialApp(
+        theme: gameNightTheme(),
+        home: ModScreen(
+            key: const ValueKey('a-mod'),
+            state: state,
+            mod: _mod('neon-siege-warp'))));
+    await tester.pump();
     await tester.tap(find.byKey(const ValueKey('play-mod')));
     await tester.pumpAndSettle();
     // Not in a room: host one or join one.

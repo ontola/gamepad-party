@@ -11,6 +11,7 @@ import '../account.dart';
 import '../diagnostics.dart';
 import '../src/rust/api/store.dart' as atomic;
 import '../src/rust/frb_generated.dart';
+import 'own_games.dart';
 
 /// The phone's own Atomic Data store (Rust `gamenight-store`, the same one
 /// the GameNight host uses), holding this phone's player's settings and
@@ -25,8 +26,11 @@ import '../src/rust/frb_generated.dart';
 /// store is where they are kept for good. At startup its values replace the
 /// preferences copy (or, the first time, the preferences move in), and every
 /// save goes to both.
-class PhoneStore {
+class PhoneStore implements OwnGames {
   PhoneStore._(this._store);
+
+  @override
+  bool get canRestore => true;
   final atomic.PhoneStore _store;
 
   static PhoneStore? instance;
@@ -86,6 +90,7 @@ class PhoneStore {
   /// After signing in: register this phone's agent with the account and
   /// keep the player's records in the account's drive from now on.
   /// Returns why it failed, or null.
+  @override
   Future<String?> connect(CloudApi cloud) async {
     if (!cloud.signedIn) return 'Not signed in';
     try {
@@ -122,6 +127,7 @@ class PhoneStore {
   }
 
   /// Sync with the account's drive now. True when something came in.
+  @override
   Future<bool> syncNow() async {
     final account = _account;
     if (account == null) return false;
@@ -165,9 +171,11 @@ class PhoneStore {
 
   /// Whether this phone keeps the signed-in player's records (mods need
   /// that: a host gets them from the account's drive).
+  @override
   bool get signedIn => _account != null;
 
   /// The signed-in player's mods, newest name order.
+  @override
   Future<List<GameMod>> mods() async => [
         for (final m in jsonDecode(await _store.mods()) as List)
           GameMod.fromJson(m as Map)
@@ -175,17 +183,20 @@ class PhoneStore {
 
   /// A new mod of the game `base`; a host where the player sits and that
   /// has the game makes it. Returns its id.
+  @override
   Future<String> newMod(String base, String title) async {
     final id = await _store.newMod(base: base, title: title);
     unawaited(syncNow());
     return id;
   }
 
+  @override
   Future<void> renameMod(String id, String title) async {
     await _store.renameMod(id: id, title: title);
     unawaited(syncNow());
   }
 
+  @override
   Future<void> removeMod(String id) async {
     await _store.removeMod(id: id);
     unawaited(syncNow());
@@ -226,11 +237,13 @@ class PhoneStore {
 
   /// The chat about the mod `id`, oldest first. Kept in the account's drive
   /// with the game, so it shows on every phone the player signs in on.
+  @override
   Future<List<ChatEntry>> chat(String id) async => [
         for (final e in jsonDecode(await _store.chat(id: id)) as List)
           ChatEntry.fromJson(e as Map)
       ];
 
+  @override
   Future<void> addChat(String id, String role, String text, {bool? ok}) async {
     await _store.addChat(id: id, role: role, text: text, ok: ok);
     _syncSoon();
@@ -239,6 +252,7 @@ class PhoneStore {
   /// Put the mod `id` back as it was at `at`, as a new change (so that can
   /// be undone too). The host where it runs picks it up when it syncs.
   /// Returns how many files changed.
+  @override
   Future<int> restoreMod(String id, DateTime at) async {
     final changed = await _store.restoreMod(
         id: id, at: PlatformInt64Util.from(at.millisecondsSinceEpoch));
