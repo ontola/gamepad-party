@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:video_player/video_player.dart';
 
 import '../account.dart';
+import '../apps.dart';
 import '../app_state.dart';
 import '../catalog.dart';
 import '../widgets/game_rating.dart';
@@ -15,6 +16,7 @@ import '../room_controls.dart';
 import '../theme.dart';
 import '../layout.dart';
 import '../link.dart';
+import '../navigation/host_room.dart' show browserHost;
 import '../navigation/browser_host_stub.dart'
     if (dart.library.js_interop) '../navigation/browser_host_web.dart';
 import 'catalog_view.dart' show GameCover;
@@ -85,7 +87,7 @@ class _GameDetailScreenState extends State<GameDetailScreen> {
   @override
   void initState() {
     super.initState();
-    if (widget.browserGames == null && kIsWeb) {
+    if (widget.browserGames == null && (kIsWeb || Apps.supported)) {
       Catalog.instance.browserLibrary().then((ids) {
         if (mounted && ids.isNotEmpty) setState(() => _browser = ids);
       });
@@ -504,7 +506,7 @@ class _GameDetailPageState extends State<_GameDetailPage> {
     final id = widget.browserId;
     if (id == null) return null;
     final blocker = widget.browserBlocker;
-    if (blocker == BrowserHostBlocker.app) return null;
+    if (blocker == BrowserHostBlocker.app) return _playOnThisDevice(id);
     if (blocker != null) {
       return _Note(blocker == BrowserHostBlocker.phone
           ? 'Plays in the browser on a PC: open splitscreen.club on the PC '
@@ -527,6 +529,36 @@ class _GameDetailPageState extends State<_GameDetailPage> {
             label: label)
         : FilledButton.icon(
             key: const ValueKey('play-in-browser'),
+            style:
+                FilledButton.styleFrom(minimumSize: const Size.fromHeight(50)),
+            onPressed: open,
+            icon: icon,
+            label: label);
+  }
+
+  /// The Android app: this phone or tablet runs the game itself (the
+  /// native host), starting straight in it. Other apps have no host.
+  Widget? _playOnThisDevice(String id) {
+    if (!Apps.supported) return null;
+    final tablet = MediaQuery.sizeOf(context).shortestSide >= 600;
+    final url = browserHost.replace(queryParameters: {
+      ...browserHost.queryParameters,
+      'game': id,
+    });
+    final inRoom = widget.host != null && widget.onAdd != null;
+    const icon = Icon(Icons.play_arrow);
+    final label = Text(tablet ? 'Play on this tablet' : 'Play on this phone');
+    void open() => Apps.host(url);
+    return inRoom
+        ? OutlinedButton.icon(
+            key: const ValueKey('play-on-device'),
+            style: OutlinedButton.styleFrom(
+                minimumSize: const Size.fromHeight(48)),
+            onPressed: open,
+            icon: icon,
+            label: label)
+        : FilledButton.icon(
+            key: const ValueKey('play-on-device'),
             style:
                 FilledButton.styleFrom(minimumSize: const Size.fromHeight(50)),
             onPressed: open,

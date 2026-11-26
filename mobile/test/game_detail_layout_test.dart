@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:ui' as ui;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
@@ -303,5 +304,28 @@ void main() {
     expect(find.textContaining('Plays in the browser'), findsNothing);
     await _open(tester, browserGames: const {}, browserBlocker: () => null);
     expect(find.byKey(const ValueKey('play-in-browser')), findsNothing);
+  });
+
+  testWidgets('The Android app plays a game on this phone with the native host',
+      (tester) async {
+    final id = _games.first.id;
+    final hosted = <String>[];
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        const MethodChannel('gamenight/apps'), (call) async {
+      if (call.method == 'host') hosted.add(call.arguments['url'] as String);
+      return null;
+    });
+    debugDefaultTargetPlatformOverride = TargetPlatform.android;
+    try {
+      await _open(tester,
+          browserGames: {id: '$id-warp'},
+          browserBlocker: () => BrowserHostBlocker.app);
+      expect(find.text('Play on this phone'), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('play-on-device')));
+      expect(hosted.single, contains('game=$id-warp'));
+      expect(hosted.single, contains('render=540'));
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+    }
   });
 }
