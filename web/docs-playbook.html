@@ -138,7 +138,12 @@ does. During play there are still no control hints.</li>
 <li><strong>Keyboard support is a plus.</strong> Not every room has a controller for
 everyone, so let one player play on the keyboard when you can, and say so
 with <code>&quot;keyboard&quot;: true</code> under <code>players</code> in <code>gamenight.json</code>, so the
-catalog records which games work that way.</li>
+catalog records which games work that way. Keys alone and keyboard plus
+mouse are not the same: add <code>&quot;mouse&quot;: true</code> only when the mouse is part of
+play (aiming, looking around). A keyboard player in a game with neither is
+told the game is made for controllers. If two players can share one
+keyboard (one on WASD, one on the arrows, a few buttons each), add
+<code>&quot;shared_keyboard&quot;: 2</code>: a second player joins the keyboard with G.</li>
 <li><strong>Leave Back alone.</strong> Back (Select) returns to the party; Splitscreen Club handles
 it and pauses your game. Never bind it to anything in the game.</li>
 <li><strong>Use the players' colours, names and faces.</strong> Each player picks them once
@@ -234,7 +239,7 @@ such as one with the CI run id.</li>
 first seconds of play don't stutter.</li>
 </ul>
 
-<footer class="docs-source"><a href="https://github.com/ontola/gamepad-party/blob/main/docs/site/playbook.md">Edit this page</a><span data-source-fingerprint="2a315b54113eb3c02e80738d67d3690f87641f7f7604b8eaeb9b1f4d343fb451">Built from repository sources</span></footer>
+<footer class="docs-source"><a href="https://github.com/ontola/gamepad-party/blob/main/docs/site/playbook.md">Edit this page</a><span data-source-fingerprint="60f6ee1b6b092945e61c5a771f2ba42da54e2f9585d6a91f4dd6f66f45021436">Built from repository sources</span></footer>
 <nav class="docs-pager" aria-label="Adjacent documentation pages"><a href="/docs/share"><small>Previous</small>Share your game</a><a href="/docs/engines"><small>Next</small>Engine support</a></nav></article>
 <aside class="docs-toc" aria-label="On this page"><strong>On this page</strong><a href="#start-from-the-template">Start from the template</a><a href="#the-loop">The loop</a><a href="#make-it-deterministic-from-day-one">Make it deterministic from day one</a><a href="#see-the-game-without-a-person">See the game without a person</a><a href="#make-3d-models">Make 3D models</a><a href="#design-for-the-couch">Design for the couch</a><a href="#the-store-clip">The store clip</a><a href="#release-and-store-page">Release and store page</a><a href="#pitfalls-we-hit">Pitfalls we hit</a></aside>
 <p class="docs-copy-status" role="status" aria-live="polite"></p></main></body></html>
