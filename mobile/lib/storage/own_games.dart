@@ -105,3 +105,10 @@ Future<String> playToken(CloudApi cloud, String id) async {
       'POST', '/v1/me/games/${Uri.encodeComponent(id)}/link');
   return (link as Map)['token'] as String;
 }
+
+/// A link that tells a host page whose room it is (12 hours): the
+/// signed-in player's own profile hosts it, so their phone sees the room.
+Future<String> hostToken(CloudApi cloud) async {
+  final link = await cloud.request('POST', '/v1/me/host-link');
+  return (link as Map)['token'] as String;
+}
