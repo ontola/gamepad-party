@@ -219,6 +219,7 @@ class CloudApi {
         path == '/v1/rooms/companion' ||
         path == '/v1/rooms/next' ||
         path == '/v1/rooms/phone-seat' ||
+        path.startsWith('/v1/rooms/bug-report') ||
         path.startsWith('/v1/rooms/guest/');
     final usesGuest = guestToken != null && guestPath;
     final cookieMutation = browserCookies &&
@@ -306,7 +307,8 @@ class CloudApi {
       throw const ApiError(
           'Too many attempts. Wait a minute and try again.', 429);
     }
-    throw ApiError('Splitscreen Club online answered $status. Try again.', status);
+    throw ApiError(
+        'Splitscreen Club online answered $status. Try again.', status);
   }
 
   static String? cookie(http.Response response, String name) {

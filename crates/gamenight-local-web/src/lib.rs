@@ -409,6 +409,7 @@ async fn player_links(State(state): State<SharedState>) -> Json<serde_json::Valu
     Json(
         serde_json::json!({"linked":state.bindings.values().collect::<Vec<_>>(),
         "revisions":state.link_revisions,"room":room,"cloud":state.cloud.is_some(),
+        "bug":cloud::bug_panel(),
         "pairing_urls":state.cloud.as_ref().map(|b|b.pairing_urls()).unwrap_or_default()}),
     )
 }

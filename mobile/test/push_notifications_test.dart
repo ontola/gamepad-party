@@ -240,7 +240,7 @@ void main() {
       device.taps.add('TEST42');
       await tester.pumpAndSettle();
       expect(find.textContaining('Connected as').hitTestable(), findsWidgets);
-      device.messages.add('TEST42');
+      device.messages.add("You're in room TEST42");
       await tester.pumpAndSettle();
       expect(find.text("You're in room TEST42"), findsOneWidget);
       final directory = Platform.environment['PUSH_PREVIEW_DIR'];

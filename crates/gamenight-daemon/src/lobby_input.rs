@@ -448,7 +448,8 @@ const BUG_REPORT_INTERVAL: Duration = Duration::from_secs(10);
 impl Shared {
     /// Back+Y: report a bug. Screenshot what is on screen (Windows), send it
     /// to the cloud room with the game in front, then open the room so the
-    /// game waits. The phones at the table are asked what went wrong.
+    /// game waits. The phones at the table are asked what went wrong; the
+    /// room shows a QR code for everyone else (`/api/player-links` `bug`).
     pub(crate) fn report_bug(&mut self, controller: &str) {
         if self
             .bug_reported
@@ -486,8 +487,10 @@ impl Shared {
         let mut change = gamenight_core::activity::Change::new(
             gamenight_protocol::ActivityKind::Game,
             match &title {
-                Some(title) => format!("Bug reported in {title}. Say what happened on your phone."),
-                None => "Bug reported. Say what happened on your phone.".into(),
+                // What to do next is the room's bug panel (the cloud's
+                // describe link): a guest may have no phone linked.
+                Some(title) => format!("Bug reported in {title}."),
+                None => "Bug reported.".into(),
             },
         );
         change.game = game.clone();

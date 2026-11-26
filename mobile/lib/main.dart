@@ -136,11 +136,11 @@ class _GameNightAppState extends State<GameNightApp> {
     final push = widget.pushDevice;
     if (push != null) {
       _pushOpened = push.opened.listen((_) => unawaited(_openPushRoom()));
-      _pushForeground = push.foreground.listen((room) {
+      _pushForeground = push.foreground.listen((text) {
         final context = _navigator.currentState?.overlay?.context;
         if (context != null && context.mounted) {
           ScaffoldMessenger.of(context)
-              .showSnackBar(SnackBar(content: Text("You're in room $room")));
+              .showSnackBar(SnackBar(content: Text(text)));
         }
       });
       WidgetsBinding.instance.addPostFrameCallback((_) async {

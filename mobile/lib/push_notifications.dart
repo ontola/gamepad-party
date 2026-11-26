@@ -11,6 +11,8 @@ abstract class PushDevice {
   String get platform;
   Stream<String> get tokens;
   Stream<String> get opened;
+
+  /// Text to show for a push that arrives while the app is open.
   Stream<String> get foreground;
   Future<String?> initialRoom();
   Future<String?> requestToken();
@@ -55,10 +57,22 @@ class FirebasePushDevice implements PushDevice {
       .map(_room)
       .where((room) => room != null)
       .cast<String>();
+
+  /// What to say when a push arrives with the app open: its own text (a
+  /// bug reported at the table), else the room it is about.
+  static String? _foregroundText(RemoteMessage message) {
+    final room = _room(message);
+    if (room == null) return null;
+    final body = message.notification?.body;
+    return message.data['kind'] == 'bug_report' && body != null
+        ? body
+        : "You're in room $room";
+  }
+
   @override
   Stream<String> get foreground => FirebaseMessaging.onMessage
-      .map(_room)
-      .where((room) => room != null)
+      .map(_foregroundText)
+      .where((text) => text != null)
       .cast<String>();
   @override
   Future<String?> initialRoom() async {

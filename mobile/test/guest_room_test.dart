@@ -17,6 +17,7 @@ class GuestCloud {
   bool expired = false;
   bool phone = true;
   bool upgraded = false;
+  bool bug = false;
   final calls = <String>[];
   final bodies = <String, dynamic>{};
   Map<String, dynamic> get room => {
@@ -38,6 +39,13 @@ class GuestCloud {
               'available': true
             }
         ],
+        if (bug)
+          'bug_report': {
+            'id': 'bug-1',
+            'game': 'pocket-aces',
+            'title': 'Pocket Aces',
+            'link': '/b/abcdefghjk'
+          },
         'discovery': {
           'current': 'pocket-aces',
           'games': [],
@@ -83,6 +91,11 @@ class GuestCloud {
                       }
                     : {}),
                 200);
+          case 'POST /v1/rooms/bug-report':
+            expect(r.headers['X-GameNight-Room-Token'], guest);
+            expect(r.headers.containsKey('Authorization'), isFalse);
+            bug = false;
+            return http.Response('', 204);
           case 'POST /v1/rooms/guest/leave':
             expect(r.headers['X-GameNight-Room-Token'], guest);
             return http.Response('', 204);
@@ -127,6 +140,18 @@ void main() {
         cloud: CloudApi(client: server.client()));
   });
   tearDown(() => state.dispose());
+
+  test('a seated guest is asked about a bug reported at the table', () async {
+    await state.joinHostedRoom('ABC234');
+    await state.chooseGuestSeat(state.hostedRoom!.seats[1]);
+    server.bug = true;
+    await state.refreshHostedRoom();
+    expect(state.pendingBug?.title, 'Pocket Aces');
+    await state.answerBug('bug-1', 'The cards froze');
+    expect(server.bodies['POST /v1/rooms/bug-report'],
+        {'id': 'bug-1', 'text': 'The cards froze'});
+    expect(state.pendingBug, isNull);
+  });
 
   test('room code joins as guest and seat choice opens private phone game',
       () async {

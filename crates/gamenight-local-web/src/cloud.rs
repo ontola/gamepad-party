@@ -48,18 +48,36 @@ mod pairing_tests {
     fn seat_idle_counts_from_sleep_or_pause_and_wakes_on_input() {
         use gamenight_protocol::{PlayerPresence, PresenceState::*};
         let id = PlayerId(uuid::Uuid::new_v4());
-        let seats = [Seat { index: 2, player: id.0.to_string(), revision: 0 }];
-        let at = |state| [PlayerPresence { player_id: id, state }];
+        let seats = [Seat {
+            index: 2,
+            player: id.0.to_string(),
+            revision: 0,
+        }];
+        let at = |state| {
+            [PlayerPresence {
+                player_id: id,
+                state,
+            }]
+        };
         let mut quiet = HashMap::new();
         let t0 = std::time::Instant::now();
         let t = |s| t0 + Duration::from_secs(s);
         assert_eq!(seat_idle(&at(Active), false, &seats, &mut quiet, t0)[&2], 0);
         seat_idle(&at(Sleeping), false, &seats, &mut quiet, t(0));
-        assert_eq!(seat_idle(&at(Sleeping), false, &seats, &mut quiet, t(600))[&2], 675);
-        assert_eq!(seat_idle(&at(Active), false, &seats, &mut quiet, t(601))[&2], 0);
+        assert_eq!(
+            seat_idle(&at(Sleeping), false, &seats, &mut quiet, t(600))[&2],
+            675
+        );
+        assert_eq!(
+            seat_idle(&at(Active), false, &seats, &mut quiet, t(601))[&2],
+            0
+        );
         // A paused match does not age presence: it counts as quiet itself.
         seat_idle(&at(Active), true, &seats, &mut quiet, t(700));
-        assert_eq!(seat_idle(&at(Active), true, &seats, &mut quiet, t(800))[&2], 175);
+        assert_eq!(
+            seat_idle(&at(Active), true, &seats, &mut quiet, t(800))[&2],
+            175
+        );
         // No presence (a phone player): left out.
         assert!(seat_idle(&[], false, &seats, &mut quiet, t(900)).is_empty());
     }
@@ -255,6 +273,56 @@ pub fn report_bug(report: serde_json::Value) {
     BUG_REPORTED.notify_one();
 }
 
+/// The room's bug panel for the last report the cloud took (its describe
+/// link's QR code, what to do), and when: the native room shows it from
+/// `/api/player-links` (`bug`), so a table without a linked phone is never
+/// told to use one (Joep, 26 November 2026).
+static BUG_PANEL: Mutex<Option<(serde_json::Value, std::time::Instant)>> = Mutex::new(None);
+/// The cloud keeps a describe link this long.
+const BUG_PANEL_TTL: Duration = Duration::from_secs(30 * 60);
+
+/// The bug panel for `/api/player-links`, while its link works.
+pub(crate) fn bug_panel() -> Option<serde_json::Value> {
+    let panel = BUG_PANEL.lock().ok()?;
+    panel
+        .as_ref()
+        .filter(|(_, at)| at.elapsed() < BUG_PANEL_TTL)
+        .map(|(p, _)| p.clone())
+}
+
+/// The panel for the cloud's answer to `report`: `asked` phones in the app,
+/// and the describe link (`/b/<code>`) as a QR code.
+fn bug_panel_for(
+    origin: &str,
+    report: &serde_json::Value,
+    reply: &serde_json::Value,
+) -> Option<serde_json::Value> {
+    let path = reply["link"].as_str().filter(|p| p.starts_with("/b/"))?;
+    let url = format!("{}{path}", origin.trim_end_matches('/'));
+    let svg = qrcode::QrCode::new(url.as_bytes())
+        .ok()?
+        .render::<qrcode::render::svg::Color>()
+        .quiet_zone(true)
+        .min_dimensions(256, 256)
+        .build();
+    let short = url
+        .split_once("://")
+        .map_or(url.as_str(), |(_, rest)| rest)
+        .to_string();
+    let line = if reply["asked"].as_u64().unwrap_or(0) > 0 {
+        "Say it in the Splitscreen Club app, or scan the code with any phone"
+    } else {
+        "Scan the code with any phone to say what happened · no account needed"
+    };
+    let title = match report["title"].as_str() {
+        Some(title) => format!("What went wrong in {title}?"),
+        None => "What went wrong?".to_string(),
+    };
+    Some(
+        serde_json::json!({"id": report["id"], "title": title, "line": line, "link": short, "qr_svg": svg}),
+    )
+}
+
 /// Bug reports not sent yet (for tests).
 #[doc(hidden)]
 pub fn queued_bug_reports() -> Vec<serde_json::Value> {
@@ -274,8 +342,26 @@ impl Bridge {
                 .json(&report)
                 .send()
                 .await;
-            match sent.map(|r| r.status().as_u16()) {
-                Ok(200) => tracing::info!("bug report sent to the cloud room"),
+            let sent = match sent {
+                Ok(r) => {
+                    let status = r.status().as_u16();
+                    Ok((
+                        status,
+                        r.json::<serde_json::Value>().await.unwrap_or_default(),
+                    ))
+                }
+                Err(e) => Err(e),
+            };
+            match sent.as_ref().map(|(status, _)| *status) {
+                Ok(200) => {
+                    tracing::info!("bug report sent to the cloud room");
+                    let reply = sent.map(|(_, reply)| reply).unwrap_or_default();
+                    if let Some(panel) = bug_panel_for(&self.origin, &report, &reply) {
+                        if let Ok(mut slot) = BUG_PANEL.lock() {
+                            *slot = Some((panel, std::time::Instant::now()));
+                        }
+                    }
+                }
                 // Refused for good (bad image, too big): retrying will not help.
                 Ok(400 | 413) => tracing::warn!("the cloud refused a bug report"),
                 _ => {
@@ -549,13 +635,13 @@ impl Bridge {
             discovery["agent_receipt"] = receipt.clone().unwrap_or(serde_json::Value::Null);
             let newest = party.activity.last().map(|entry| entry.id);
             let mut body = serde_json::json!({"seats":seats,"discovery":discovery,
-                "idle":seat_idle(
-                    &party.presence,
-                    party.active_session.as_ref().is_some_and(|s| s.phase == gamenight_protocol::SessionPhase::Paused),
-                    &seats,
-                    &mut quiet,
-                    std::time::Instant::now(),
-                )});
+            "idle":seat_idle(
+                &party.presence,
+                party.active_session.as_ref().is_some_and(|s| s.phase == gamenight_protocol::SessionPhase::Paused),
+                &seats,
+                &mut quiet,
+                std::time::Instant::now(),
+            )});
             if let Some(agent) = &store_agent {
                 body["atomic_agent"] = serde_json::json!(agent);
             }
@@ -1201,10 +1287,12 @@ mod bug_report_tests {
                     async move {
                         assert_eq!(headers["authorization"], "Bearer room-token");
                         if !up.load(std::sync::atomic::Ordering::SeqCst) {
-                            return axum::http::StatusCode::SERVICE_UNAVAILABLE;
+                            return Err(axum::http::StatusCode::SERVICE_UNAVAILABLE);
                         }
                         received.lock().unwrap().push(body);
-                        axum::http::StatusCode::OK
+                        Ok(Json(
+                            serde_json::json!({"id": "x", "asked": 0, "link": "/b/abcdefghjk"}),
+                        ))
                     }
                 }
             }),
@@ -1223,7 +1311,9 @@ mod bug_report_tests {
             refresh: Arc::default(),
         };
         let id = uuid::Uuid::new_v4().to_string();
-        report_bug(serde_json::json!({"id": id, "app_version": "1", "platform": "windows"}));
+        report_bug(
+            serde_json::json!({"id": id, "app_version": "1", "platform": "windows", "title": "Dead Miles"}),
+        );
         bridge.send_bug_reports("room-token").await;
         assert!(received.lock().unwrap().is_empty());
         assert!(
@@ -1234,5 +1324,11 @@ mod bug_report_tests {
         bridge.send_bug_reports("room-token").await;
         assert!(received.lock().unwrap().iter().any(|r| r["id"] == id));
         assert!(!queued_bug_reports().iter().any(|r| r["id"] == id));
+        // The room shows the describe link for players without a phone.
+        let panel = bug_panel().expect("a bug panel");
+        assert_eq!(panel["title"], "What went wrong in Dead Miles?");
+        assert!(panel["link"].as_str().unwrap().ends_with("/b/abcdefghjk"));
+        assert!(panel["line"].as_str().unwrap().starts_with("Scan the code"));
+        assert!(panel["qr_svg"].as_str().unwrap().contains("<svg"));
     }
 }
