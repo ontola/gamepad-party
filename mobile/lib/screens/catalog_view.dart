@@ -95,7 +95,10 @@ class _CatalogSectionState extends State<CatalogSection> {
     super.initState();
     _loadCatalog();
     Catalog.instance.browserLibrary().then((ids) {
-      if (mounted && ids.isNotEmpty) setState(() => _browser = ids);
+      if (!mounted || ids.isEmpty) return;
+      setState(() => _browser = ids);
+      // The host's list again, now under the catalog's ids.
+      _loadHost();
     });
     _loadHost();
     _loadDeveloping();
@@ -187,7 +190,10 @@ class _CatalogSectionState extends State<CatalogSection> {
       final games = await controls.games();
       if (mounted && widget.controls != null) {
         setState(() {
-          _host = {for (final g in games) g.id: g};
+          // Keyed by catalog id: the browser host calls some games by its
+          // own id (neon-trails-warp); HostGame.id stays the host's.
+          final catalogId = {for (final e in _browser.entries) e.value: e.key};
+          _host = {for (final g in games) catalogId[g.id] ?? g.id: g};
           _hostLoaded = true;
         });
         _openRequestedGame();
@@ -224,7 +230,7 @@ class _CatalogSectionState extends State<CatalogSection> {
     if (controls == null) return;
     setState(() => _adding.add(game.id));
     try {
-      await controls.addToQueue(game.id);
+      await controls.addToQueue(_host[game.id]?.id ?? game.id);
       if (mounted) toast(context, '${game.title} is in the queue');
     } on ApiError catch (e) {
       if (mounted) toast(context, e.message);
@@ -700,8 +706,8 @@ class _CatalogSectionState extends State<CatalogSection> {
 
   /// Games the room's host can start now.
   Set<String> get _playable => {
-        for (final g in _host.values)
-          if (g.playable) g.id,
+        for (final MapEntry(:key, :value) in _host.entries)
+          if (value.playable) key,
       };
 
   /// The chosen order; in the Featured order, games the room's host can
@@ -760,6 +766,7 @@ class _CatalogSectionState extends State<CatalogSection> {
               onOpen: () => _open(game),
               inRoom: queueable,
               playable: host?.playable ?? false,
+              unavailable: host?.unavailable,
               playsHere: _hostsHere && _browser.containsKey(game.id),
               adding: _adding.contains(game.id),
               onAdd: () => _add(game),
@@ -781,6 +788,10 @@ class GameCard extends StatelessWidget {
 
   /// This device can run the game itself: a small purple play badge.
   final bool playsHere;
+
+  /// In a room, the host has it but can't start it now: why ("Needs 2
+  /// players"). Null: the host doesn't have it.
+  final String? unavailable;
   final bool adding;
   final VoidCallback? onAdd;
 
@@ -791,6 +802,7 @@ class GameCard extends StatelessWidget {
     this.inRoom = false,
     this.playable = false,
     this.playsHere = false,
+    this.unavailable,
     this.adding = false,
     this.onAdd,
   });
@@ -848,12 +860,15 @@ class GameCard extends StatelessWidget {
                         : const Icon(Icons.playlist_add, size: 18),
                     label: const Text('Add to queue', maxLines: 1),
                   )
-                : const Center(
+                : Center(
                     child: Text(
-                      'Not on this Splitscreen Club',
+                      unavailable ?? 'Not on this Splitscreen Club',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontSize: 12, color: GnColors.muted),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: GnColors.muted,
+                      ),
                     ),
                   ),
           ),

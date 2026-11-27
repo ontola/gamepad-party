@@ -454,7 +454,10 @@ void main() {
           findsOneWidget,
           reason: 'only for games the host has',
         );
-        expect(find.text('Not on this Splitscreen Club'), findsNWidgets(2));
+        // The host has Stack Together but can't start it now: it says
+        // so instead of claiming the game isn't there.
+        expect(find.text('Not on this Splitscreen Club'), findsOneWidget);
+        expect(find.text('Not with these players'), findsOneWidget);
 
         await tester.tap(find.text('Add to queue'));
         await tester.pump();

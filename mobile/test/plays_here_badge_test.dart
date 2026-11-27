@@ -40,4 +40,24 @@ void main() {
     await card(tester, playsHere: false);
     expect(find.byKey(const ValueKey('plays-here')), findsNothing);
   });
+
+  testWidgets('a game the room has but cannot start says why', (tester) async {
+    Future<void> room({String? unavailable}) => tester.pumpWidget(MaterialApp(
+        theme: gameNightTheme(),
+        home: Scaffold(
+            body: Center(
+                child: SizedBox(
+                    width: 160,
+                    child: GameCard(
+                        game: game,
+                        onOpen: () {},
+                        inRoom: true,
+                        playsHere: true,
+                        unavailable: unavailable))))));
+    await room(unavailable: 'Needs 2 players');
+    expect(find.text('Needs 2 players'), findsOneWidget);
+    expect(find.text('Not on this Splitscreen Club'), findsNothing);
+    await room();
+    expect(find.text('Not on this Splitscreen Club'), findsOneWidget);
+  });
 }

@@ -1262,15 +1262,38 @@ class MakeGameCard extends StatefulWidget {
 class _MakeGameCardState extends State<MakeGameCard> {
   List<GameMod> _games = const [];
 
+  /// The account the games were loaded for: the list waits for the account
+  /// (on a fresh page load it often comes after this card), and follows a
+  /// change of account.
+  String? _loadedFor;
+
   @override
   void initState() {
     super.initState();
+    widget.state.addListener(_accountChanged);
     unawaited(_load());
+  }
+
+  @override
+  void dispose() {
+    widget.state.removeListener(_accountChanged);
+    super.dispose();
+  }
+
+  void _accountChanged() {
+    if (widget.state.cloud.token != _loadedFor) unawaited(_load());
   }
 
   Future<void> _load() async {
     final store = OwnGames.instance;
-    if (store == null || !store.signedIn) return;
+    final account = widget.state.cloud.token;
+    if (store == null || !store.signedIn || account == null) {
+      _loadedFor = null;
+      if (_games.isNotEmpty && mounted) setState(() => _games = const []);
+      return;
+    }
+    if (account == _loadedFor) return;
+    _loadedFor = account;
     try {
       final games = [
         for (final m in await store.mods())

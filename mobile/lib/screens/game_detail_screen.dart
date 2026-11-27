@@ -426,7 +426,9 @@ class _GameDetailPageState extends State<_GameDetailPage> {
                 'with you once one is uploaded and ready.'
         : host == null
             ? 'Join a room to put this game in the queue.'
-            : 'This Splitscreen Club does not have this game yet.');
+            : host[game.id] != null
+                ? 'This Splitscreen Club has it. ${host[game.id]!.unavailable}.'
+                : 'This Splitscreen Club does not have this game yet.');
     // Outside a room, Want to play says what happens next.
     if (host == null && !game.unreviewed && _canWant) {
       return buy ?? const SizedBox.shrink();

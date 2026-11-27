@@ -24,8 +24,21 @@ class HostGame {
   /// What the host says about it: "available", "playing", "downloading"…
   final String state;
 
+  /// Why it can't be queued now, in the host's words ("Needs 2 players",
+  /// "Plays with a controller"), when the host says.
+  final String? reason;
+
   const HostGame(
-      {required this.id, this.title, this.playable = false, this.state = ''});
+      {required this.id,
+      this.title,
+      this.playable = false,
+      this.state = '',
+      this.reason});
+
+  /// What a phone shows instead of Add to queue.
+  String get unavailable =>
+      reason ??
+      (state == 'unavailable' ? 'Not with these players' : 'Not ready yet');
 
   static HostGame? fromJson(Object? j) {
     if (j is! Map || j['id'] is! String) return null;
@@ -34,6 +47,9 @@ class HostGame {
       title: j['title'] as String?,
       playable: j['selectable'] == true,
       state: j['state']?.toString() ?? '',
+      reason: j['failure'] is String && (j['failure'] as String).isNotEmpty
+          ? j['failure'] as String
+          : null,
     );
   }
 }
