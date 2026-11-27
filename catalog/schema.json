@@ -10,6 +10,10 @@
         "null"
       ]
     },
+    "beta": {
+      "description": "Open beta: the lobby labels it BETA, suggests it, and asks the whole\ntable for feedback afterwards (the developer's choice).",
+      "type": "boolean"
+    },
     "bundled": {
       "description": "Repo-relative path for games bundled with GameNight itself.",
       "type": [
@@ -116,6 +120,13 @@
     },
     "title": {
       "type": "string"
+    },
+    "version": {
+      "description": "The game's version; beta feedback is grouped by it.",
+      "type": [
+        "string",
+        "null"
+      ]
     }
   },
   "additionalProperties": false,

@@ -59,6 +59,13 @@ pub struct CatalogEntry {
     /// Repo-relative path for games bundled with GameNight itself.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub bundled: Option<String>,
+    /// Open beta: the lobby labels it BETA, suggests it, and asks the whole
+    /// table for feedback afterwards (the developer's choice).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub beta: bool,
+    /// The game's version; beta feedback is grouped by it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub version: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, JsonSchema)]
