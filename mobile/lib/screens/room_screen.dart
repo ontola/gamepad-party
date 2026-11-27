@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../account.dart' show TableBug;
+import '../account.dart' show TableBeta, TableBug;
 import '../app_state.dart';
 import '../report_scope.dart';
 import '../link.dart';
@@ -33,6 +33,10 @@ class RoomScreen extends StatefulWidget {
 class RoomScreenState extends State<RoomScreen> {
   final _address = TextEditingController();
   final _code = TextEditingController();
+  final _betaWords = TextEditingController();
+
+  /// The beta card's thumbs: 1 up, -1 down, 0 none yet.
+  int _betaRating = 0;
 
   /// The game shows first on the one room screen, so nothing to switch.
   void showCurrentGame() {}
@@ -59,6 +63,7 @@ class RoomScreenState extends State<RoomScreen> {
   void dispose() {
     _address.dispose();
     _code.dispose();
+    _betaWords.dispose();
     super.dispose();
   }
 
@@ -206,6 +211,7 @@ class RoomScreenState extends State<RoomScreen> {
           ),
         );
         final bug = state.pendingBug;
+        final beta = state.pendingBeta;
         final meet = state.metPlayer
             ? null
             : MeetYourPlayer(
@@ -215,9 +221,13 @@ class RoomScreenState extends State<RoomScreen> {
         final game = GameScreen(
           state: state,
           onJoin: () {},
-          above: bug == null
+          above: bug == null && beta == null
               ? meet
-              : Column(children: [_bugCard(bug), if (meet != null) meet]),
+              : Column(children: [
+                  if (bug != null) _bugCard(bug),
+                  if (beta != null) _betaCard(beta),
+                  if (meet != null) meet,
+                ]),
           below: [...cards, if (!state.inHostedRoom) leave],
         );
         // A game's phone screen fills the page, so the way out stays on top.
@@ -283,6 +293,109 @@ class RoomScreenState extends State<RoomScreen> {
                 key: const ValueKey('table-bug-dismiss'),
                 onPressed: () =>
                     state.answerBug(bug.id, '').catchError((_) {}),
+                child: const Text('Not now'),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// The table just played an open beta: its maker asks everyone seated,
+  /// guests too, how it was (thumbs and a few words).
+  Widget _betaCard(TableBeta beta) {
+    Widget thumb(int value, IconData icon, String label) => Expanded(
+          child: OutlinedButton.icon(
+            key: ValueKey('table-beta-${value > 0 ? 'up' : 'down'}'),
+            style: OutlinedButton.styleFrom(
+              backgroundColor: _betaRating == value
+                  ? GnColors.accent.withValues(alpha: 0.18)
+                  : null,
+              side: BorderSide(
+                  color:
+                      _betaRating == value ? GnColors.accent : GnColors.border),
+            ),
+            onPressed: () => setState(() => _betaRating = value),
+            icon: Icon(icon, size: 18),
+            label: Text(label),
+          ),
+        );
+    Future<void> answer(int rating, String text) async {
+      try {
+        await state.answerBeta(beta, rating, text);
+        _betaWords.clear();
+        if (mounted) setState(() => _betaRating = 0);
+      } catch (e) {
+        if (mounted) setState(() => _error = '$e');
+      }
+    }
+
+    return Container(
+      key: const ValueKey('table-beta'),
+      margin: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
+      decoration: BoxDecoration(
+        color: GnColors.card,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: GnColors.accent.withValues(alpha: 0.6)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'BETA',
+            style: TextStyle(
+                color: GnColors.accent,
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 1.2),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            'How was ${beta.title}?',
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'It is still being made. Tell its maker what worked and what did not.',
+            style: TextStyle(color: GnColors.muted, height: 1.4),
+          ),
+          const SizedBox(height: 10),
+          Row(children: [
+            thumb(1, Icons.thumb_up_alt_outlined, 'Fun'),
+            const SizedBox(width: 8),
+            thumb(-1, Icons.thumb_down_alt_outlined, 'Not yet'),
+          ]),
+          const SizedBox(height: 8),
+          TextField(
+            key: const ValueKey('table-beta-words'),
+            controller: _betaWords,
+            minLines: 1,
+            maxLines: 4,
+            maxLength: 2000,
+            decoration: const InputDecoration(
+              hintText: 'What should change? (optional)',
+              counterText: '',
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              ListenableBuilder(
+                listenable: _betaWords,
+                builder: (context, _) => FilledButton(
+                  key: const ValueKey('table-beta-send'),
+                  onPressed: _betaRating == 0 && _betaWords.text.trim().isEmpty
+                      ? null
+                      : () => answer(_betaRating, _betaWords.text.trim()),
+                  child: const Text('Send'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              TextButton(
+                key: const ValueKey('table-beta-dismiss'),
+                onPressed: () => answer(0, ''),
                 child: const Text('Not now'),
               ),
             ],

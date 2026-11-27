@@ -1180,6 +1180,28 @@ class AppState extends ChangeNotifier {
     return bug == null || _answeredBugs.contains(bug.id) ? null : bug;
   }
 
+  /// Open betas this phone answered or waved off (game@version).
+  final Set<String> _answeredBetas = {};
+
+  /// An open beta this table just played that this phone has not answered.
+  TableBeta? get pendingBeta {
+    final beta = hostedRoom?.beta;
+    return beta == null || _answeredBetas.contains(beta.key) ? null : beta;
+  }
+
+  /// Tell the beta's maker how it was (rating 0 and no text: not now).
+  Future<void> answerBeta(TableBeta beta, int rating, String text) async {
+    _answeredBetas.add(beta.key);
+    notifyListeners();
+    try {
+      await cloud.answerBeta(beta, rating, text);
+    } catch (e) {
+      _answeredBetas.remove(beta.key);
+      notifyListeners();
+      rethrow;
+    }
+  }
+
   /// Describe the table's bug (or wave it off with empty `text`).
   Future<void> answerBug(String id, String text) async {
     await cloud.describeBug(id, text);

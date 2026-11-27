@@ -76,6 +76,17 @@ class StudioDocument {
 
 /// A bug reported at the table: the host sent a screenshot, the phones
 /// seated there are asked what went wrong.
+/// An open beta this table just played (`beta_feedback` in room status):
+/// its maker asks everyone seated how it was.
+class TableBeta {
+  final String game;
+  final String title;
+  final String version;
+  const TableBeta(
+      {required this.game, required this.title, required this.version});
+  String get key => '$game@$version';
+}
+
 class TableBug {
   final String id;
   final String? game;
@@ -155,6 +166,16 @@ class HostedRoom {
         game: bug['game'] as String?,
         title: bug['title'] as String?);
   }
+
+  /// An open beta this table just played that this phone has not answered.
+  TableBeta? get beta {
+    final beta = raw['beta_feedback'];
+    if (beta is! Map || beta['game'] is! String) return null;
+    return TableBeta(
+        game: beta['game'] as String,
+        title: beta['title'] as String? ?? beta['game'] as String,
+        version: beta['version'] as String? ?? '');
+  }
 }
 
 /// `GET /v1/pairing/<ticket>`: what a hosted lobby QR would connect.
@@ -220,6 +241,7 @@ class CloudApi {
         path == '/v1/rooms/next' ||
         path == '/v1/rooms/phone-seat' ||
         path.startsWith('/v1/rooms/bug-report') ||
+        path == '/v1/rooms/beta-feedback' ||
         path.startsWith('/v1/rooms/guest/');
     final usesGuest = guestToken != null && guestPath;
     final cookieMutation = browserCookies &&
@@ -729,6 +751,18 @@ class CloudApi {
         'text': text
       }, errors: const {
         403: 'This bug report has closed. Send it as feedback instead.'
+      });
+
+  /// How the table's open beta was: `rating` 1 (good), -1 (not good) or 0,
+  /// and a few words. 0 with no words: "not now".
+  Future<void> answerBeta(TableBeta beta, int rating, String text) =>
+      _send('POST', '/v1/rooms/beta-feedback', body: {
+        'game': beta.game,
+        'version': beta.version,
+        'rating': rating,
+        'text': text
+      }, errors: const {
+        403: 'This beta question has closed.'
       });
 
   Future<dynamic> request(String method, String path,

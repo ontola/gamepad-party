@@ -18,6 +18,7 @@ class GuestCloud {
   bool phone = true;
   bool upgraded = false;
   bool bug = false;
+  bool beta = false;
   final calls = <String>[];
   final bodies = <String, dynamic>{};
   Map<String, dynamic> get room => {
@@ -45,6 +46,14 @@ class GuestCloud {
             'game': 'pocket-aces',
             'title': 'Pocket Aces',
             'link': '/b/abcdefghjk'
+          },
+        if (beta)
+          'beta_feedback': {
+            'game': 'dead-miles',
+            'title': 'Dead Miles',
+            'version': '0.3.0',
+            'at': 1,
+            'link': '/p/abcdefghjk'
           },
         'discovery': {
           'current': 'pocket-aces',
@@ -91,6 +100,10 @@ class GuestCloud {
                       }
                     : {}),
                 200);
+          case 'POST /v1/rooms/beta-feedback':
+            expect(r.headers['X-GameNight-Room-Token'], guest);
+            beta = false;
+            return http.Response('', 204);
           case 'POST /v1/rooms/bug-report':
             expect(r.headers['X-GameNight-Room-Token'], guest);
             expect(r.headers.containsKey('Authorization'), isFalse);
@@ -151,6 +164,24 @@ void main() {
     expect(server.bodies['POST /v1/rooms/bug-report'],
         {'id': 'bug-1', 'text': 'The cards froze'});
     expect(state.pendingBug, isNull);
+  });
+
+  test('a seated guest is asked how a beta was after the table played it',
+      () async {
+    await state.joinHostedRoom('ABC234');
+    await state.chooseGuestSeat(state.hostedRoom!.seats[1]);
+    server.beta = true;
+    await state.refreshHostedRoom();
+    expect(state.pendingBeta?.title, 'Dead Miles');
+    await state.answerBeta(state.pendingBeta!, 1, 'More zombies');
+    expect(server.bodies['POST /v1/rooms/beta-feedback'], {
+      'game': 'dead-miles',
+      'version': '0.3.0',
+      'rating': 1,
+      'text': 'More zombies'
+    });
+    expect(server.calls, contains('POST /v1/rooms/beta-feedback'));
+    expect(state.pendingBeta, isNull);
   });
 
   test('room code joins as guest and seat choice opens private phone game',
