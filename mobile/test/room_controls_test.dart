@@ -324,7 +324,7 @@ void main() {
         reason: 'store cards are cover only',
       );
       expect(find.text('Splitscreen Club Lobby'), findsNothing);
-      expect(find.text('Add to queue'), findsNothing);
+      expect(find.text('Queue'), findsNothing);
       expect(find.text('Pick up my character'), findsNothing);
       expect(room.calls.where((c) => c.contains('/api/games')), isEmpty);
 
@@ -415,7 +415,8 @@ void main() {
           reason: 'the host has it, so it can be queued',
         );
         expect(find.text('Stack Together'), findsNothing);
-        expect(find.text('Add to queue'), findsOneWidget);
+        expect(find.text('Queue'), findsOneWidget);
+        expect(find.text('Play'), findsOneWidget);
         expect(
           find.text('Not on this Splitscreen Club'),
           findsOneWidget,
@@ -450,7 +451,7 @@ void main() {
         await tester.pumpAndSettle();
         await show(tester, catalogOnly: true);
         expect(
-          find.text('Add to queue'),
+          find.text('Queue'),
           findsOneWidget,
           reason: 'only for games the host has',
         );
@@ -459,7 +460,7 @@ void main() {
         expect(find.text('Not on this Splitscreen Club'), findsOneWidget);
         expect(find.text('Not with these players'), findsOneWidget);
 
-        await tester.tap(find.text('Add to queue'));
+        await tester.tap(find.text('Queue'));
         await tester.pump();
         await tester.pump();
         expect(room.bodies['POST /api/playlist/queue'], {

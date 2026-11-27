@@ -15,6 +15,9 @@ import '../theme.dart';
 import 'game_detail_screen.dart';
 import '../navigation/open_website.dart';
 import '../apps.dart';
+import '../link.dart' show apiOrigin;
+import '../navigation/host_room.dart' show browserHost;
+import 'package:url_launcher/url_launcher.dart';
 import '../navigation/browser_host_stub.dart'
     if (dart.library.js_interop) '../navigation/browser_host_web.dart';
 
@@ -236,6 +239,39 @@ class _CatalogSectionState extends State<CatalogSection> {
       if (mounted) toast(context, e.message);
     } finally {
       if (mounted) setState(() => _adding.remove(game.id));
+    }
+  }
+
+  /// In a room: start [game] there now (it loads, then the current game
+  /// ends).
+  Future<void> _playNow(CatalogGame game) async {
+    final controls = widget.controls;
+    if (controls == null) return;
+    setState(() => _adding.add(game.id));
+    try {
+      await controls.playNext(_host[game.id]?.id ?? game.id, start: true);
+      if (mounted) toast(context, '${game.title} starts on the TV');
+    } on ApiError catch (e) {
+      if (mounted) toast(context, e.message);
+    } finally {
+      if (mounted) setState(() => _adding.remove(game.id));
+    }
+  }
+
+  /// Outside a room: this device runs [game] itself, the Android app with
+  /// its native host, a computer's browser on /play/.
+  void _playHere(CatalogGame game) {
+    final id = _browser[game.id];
+    if (id == null) return;
+    if (Apps.supported) {
+      unawaited(Apps.host(browserHost.replace(queryParameters: {
+        ...browserHost.queryParameters,
+        'game': id,
+      })));
+    } else {
+      unawaited(launchUrl(
+          Uri.parse('$apiOrigin/play/?game=${Uri.encodeQueryComponent(id)}'),
+          webOnlyWindowName: '_self'));
     }
   }
 
@@ -746,7 +782,10 @@ class _CatalogSectionState extends State<CatalogSection> {
         final width = (box.maxWidth - gap * (columns - 1)) / columns;
         // Until the host says which games it has, cards are for browsing only.
         final queueable = _inRoom && _host.isNotEmpty;
-        final extent = width * 4 / 3 + (queueable ? GameCard.queueRow : 0);
+        bool here(CatalogGame g) =>
+            !_inRoom && _hostsHere && _browser.containsKey(g.id);
+        final row = queueable || games.any(here);
+        final extent = width * 4 / 3 + (row ? GameCard.queueRow : 0);
         return GridView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
@@ -767,9 +806,11 @@ class _CatalogSectionState extends State<CatalogSection> {
               inRoom: queueable,
               playable: host?.playable ?? false,
               unavailable: host?.unavailable,
-              playsHere: _hostsHere && _browser.containsKey(game.id),
+              playsHere: here(game),
+              row: row,
               adding: _adding.contains(game.id),
               onAdd: () => _add(game),
+              onPlay: () => queueable ? _playNow(game) : _playHere(game),
             );
           },
         );
@@ -778,15 +819,17 @@ class _CatalogSectionState extends State<CatalogSection> {
   }
 }
 
-/// One game in the catalog: only its cover (the art carries the title;
-/// the game page has the rest), plus the queue button in a room.
+/// One game in the catalog: its cover (the art carries the title; the
+/// game page has the rest) and what you can do with it. In a room: Play
+/// (start it now on the room's TV) and Queue, or why the room can't start
+/// it. Outside a room: Play, when this device runs the game itself.
 class GameCard extends StatelessWidget {
   final CatalogGame game;
   final VoidCallback onOpen;
   final bool inRoom;
   final bool playable;
 
-  /// This device can run the game itself: a small purple play badge.
+  /// Outside a room: this device runs the game itself (Play starts it).
   final bool playsHere;
 
   /// In a room, the host has it but can't start it now: why ("Needs 2
@@ -794,6 +837,13 @@ class GameCard extends StatelessWidget {
   final String? unavailable;
   final bool adding;
   final VoidCallback? onAdd;
+
+  /// Play: in a room start it now there, outside one on this device.
+  final VoidCallback? onPlay;
+
+  /// Whether a row of buttons sits under the cover (cards in one grid all
+  /// get the room for it).
+  final bool row;
 
   const GameCard({
     super.key,
@@ -805,13 +855,16 @@ class GameCard extends StatelessWidget {
     this.unavailable,
     this.adding = false,
     this.onAdd,
-  });
+    this.onPlay,
+    bool? row,
+  }) : row = row ?? (inRoom || playsHere);
 
-  /// Height under the cover for the queue row, in a room.
+  /// Height under the cover for the button row.
   static const queueRow = 44.0;
 
   @override
   Widget build(BuildContext context) {
+    final dim = inRoom && !playable;
     final cover = Tooltip(
       message: game.title,
       waitDuration: const Duration(milliseconds: 600),
@@ -822,97 +875,69 @@ class GameCard extends StatelessWidget {
         child: InkWell(
           onTap: onOpen,
           child: Opacity(
-            opacity: inRoom && !playable ? 0.55 : 1,
+            opacity: dim ? 0.55 : 1,
             child: GameCover(game: game),
           ),
         ),
       ),
     );
-    final badged = playsHere
-        ? Stack(
-            fit: StackFit.expand,
-            children: [
-              cover,
-              const Positioned(top: 8, right: 8, child: PlaysHereBadge()),
-            ],
-          )
-        : cover;
+    const compact = EdgeInsets.symmetric(horizontal: 8);
+    final play = FilledButton.icon(
+      key: const ValueKey('card-play'),
+      style: FilledButton.styleFrom(
+        minimumSize: const Size(0, 36),
+        padding: compact,
+      ),
+      onPressed: adding ? null : onPlay,
+      icon: const Icon(Icons.play_arrow_rounded, size: 20),
+      label: const Text('Play', maxLines: 1),
+    );
+    Widget? buttons;
+    if (inRoom && playable) {
+      buttons = Row(
+        children: [
+          Expanded(child: play),
+          const SizedBox(width: 6),
+          Expanded(
+            child: OutlinedButton.icon(
+              key: const ValueKey('card-queue'),
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size(0, 36),
+                padding: compact,
+              ),
+              onPressed: adding ? null : onAdd,
+              icon: adding
+                  ? const SizedBox.square(
+                      dimension: 14,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.playlist_add, size: 18),
+              label: const Text('Queue', maxLines: 1),
+            ),
+          ),
+        ],
+      );
+    } else if (inRoom) {
+      buttons = Center(
+        child: Text(
+          unavailable ?? 'Not on this Splitscreen Club',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(fontSize: 12, color: GnColors.muted),
+        ),
+      );
+    } else if (playsHere) {
+      buttons = play;
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        AspectRatio(aspectRatio: 3 / 4, child: badged),
-        if (inRoom) ...[
+        AspectRatio(aspectRatio: 3 / 4, child: cover),
+        if (row) ...[
           const SizedBox(height: 8),
-          SizedBox(
-            height: 36,
-            child: playable
-                ? FilledButton.icon(
-                    style: FilledButton.styleFrom(
-                      minimumSize: const Size(0, 36),
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                    ),
-                    onPressed: adding ? null : onAdd,
-                    icon: adding
-                        ? const SizedBox.square(
-                            dimension: 14,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.playlist_add, size: 18),
-                    label: const Text('Add to queue', maxLines: 1),
-                  )
-                : Center(
-                    child: Text(
-                      unavailable ?? 'Not on this Splitscreen Club',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: GnColors.muted,
-                      ),
-                    ),
-                  ),
-          ),
+          SizedBox(height: 36, child: buttons),
         ],
       ],
-    );
-  }
-}
-
-/// Purple play badge on a cover: this phone, tablet or browser can run the
-/// game itself.
-class PlaysHereBadge extends StatelessWidget {
-  const PlaysHereBadge({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final label = kIsWeb
-        ? 'Plays in this browser'
-        : MediaQuery.sizeOf(context).shortestSide >= 600
-            ? 'Plays on this tablet'
-            : 'Plays on this phone';
-    return Tooltip(
-      message: label,
-      child: Semantics(
-        label: label,
-        child: Container(
-          key: const ValueKey('plays-here'),
-          width: 28,
-          height: 28,
-          decoration: BoxDecoration(
-            color: GnColors.accent,
-            shape: BoxShape.circle,
-            boxShadow: const [
-              BoxShadow(color: Color(0x80000000), blurRadius: 6),
-            ],
-            border: Border.all(color: const Color(0x33FFFFFF)),
-          ),
-          child: const Icon(
-            Icons.play_arrow_rounded,
-            size: 20,
-            color: Colors.white,
-          ),
-        ),
-      ),
     );
   }
 }
