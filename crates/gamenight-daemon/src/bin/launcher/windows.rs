@@ -293,120 +293,194 @@ pub fn spawn_splash(flag: &Path, text: &str) -> io::Result<()> {
     Ok(())
 }
 
-static COVER_FLAG: std::sync::OnceLock<(PathBuf, std::time::Instant)> = std::sync::OnceLock::new();
-static COVER_TEXT: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+/// The loading screen's pixels on a window: the software-drawn
+/// [`Splash`](gamenight_daemon::splash::Splash) in a 32-bit DIB that
+/// `WM_PAINT` blits. The process is per-monitor DPI aware, so a 4K TV gets
+/// 4K pixels instead of a stretched 1080p bitmap.
+struct Surface {
+    splash: gamenight_daemon::splash::Splash,
+    dc: windows_sys::Win32::Graphics::Gdi::HDC,
+    bits: *mut u32,
+    started: std::time::Instant,
+    state: gamenight_daemon::splash::State,
+}
 
-/// A borderless black window over every screen saying what GameNight is
-/// doing (updating, opening another lobby). It goes when the new lobby
-/// removes `flag`, or after two minutes at most.
-pub fn show_update_cover(flag: PathBuf, text: String) {
-    use windows_sys::Win32::{
-        Graphics::Gdi::{CreateSolidBrush, UpdateWindow},
-        System::LibraryLoader::GetModuleHandleW,
-        UI::WindowsAndMessaging::{
-            AllowSetForegroundWindow, CreateWindowExW, DispatchMessageW, GetMessageW,
-            GetSystemMetrics, RegisterClassW, SetForegroundWindow, SetTimer, ShowCursor,
-            ShowWindow, TranslateMessage, ASFW_ANY, MSG, SM_CXVIRTUALSCREEN, SM_CYVIRTUALSCREEN,
-            SM_XVIRTUALSCREEN, SM_YVIRTUALSCREEN, SW_SHOW, WNDCLASSW, WS_EX_TOOLWINDOW,
-            WS_EX_TOPMOST, WS_POPUP, WS_VISIBLE,
-        },
-    };
-    let _ = COVER_FLAG.set((flag, std::time::Instant::now()));
-    let _ = COVER_TEXT.set(text);
-    let class: Vec<u16> = "GameNightUpdateCover\0".encode_utf16().collect();
-    let title: Vec<u16> = "Splitscreen Club\0".encode_utf16().collect();
+// The window thread owns it; the statics below only hand it to the window
+// procedure on that same thread.
+unsafe impl Send for Surface {}
+
+static SURFACE: std::sync::Mutex<Option<Surface>> = std::sync::Mutex::new(None);
+
+/// Sharp text on high-DPI screens. Called before the first window; the
+/// launcher shows nothing else that depends on scaling.
+fn dpi_aware() {
     unsafe {
-        let instance = GetModuleHandleW(std::ptr::null());
-        let mut window_class: WNDCLASSW = std::mem::zeroed();
-        window_class.lpfnWndProc = Some(cover_proc);
-        window_class.hInstance = instance;
-        window_class.hbrBackground = CreateSolidBrush(COVER_BACKGROUND);
-        window_class.lpszClassName = class.as_ptr();
-        RegisterClassW(&window_class);
-        let window = CreateWindowExW(
-            WS_EX_TOPMOST | WS_EX_TOOLWINDOW,
-            class.as_ptr(),
-            title.as_ptr(),
-            WS_POPUP | WS_VISIBLE,
-            GetSystemMetrics(SM_XVIRTUALSCREEN),
-            GetSystemMetrics(SM_YVIRTUALSCREEN),
-            GetSystemMetrics(SM_CXVIRTUALSCREEN),
-            GetSystemMetrics(SM_CYVIRTUALSCREEN),
-            std::ptr::null_mut(),
-            std::ptr::null_mut(),
-            instance,
-            std::ptr::null(),
+        windows_sys::Win32::UI::HiDpi::SetProcessDpiAwarenessContext(
+            windows_sys::Win32::UI::HiDpi::DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2,
         );
-        if window.is_null() {
-            return;
-        }
-        ShowWindow(window, SW_SHOW);
-        UpdateWindow(window);
-        SetForegroundWindow(window);
-        ShowCursor(0);
-        // We hold the foreground now; let the new lobby take it from us.
-        AllowSetForegroundWindow(ASFW_ANY);
-        SetTimer(window, 1, 250, None);
-        let mut message: MSG = std::mem::zeroed();
-        while GetMessageW(&mut message, std::ptr::null_mut(), 0, 0) > 0 {
-            TranslateMessage(&message);
-            DispatchMessageW(&message);
-        }
     }
 }
 
-/// #0b0b12 as COLORREF (0x00BBGGRR), the lobby's own background.
-const COVER_BACKGROUND: u32 = 0x0012_0b0b;
+impl Surface {
+    /// `area` is the window in screen coordinates, `main` the main monitor.
+    unsafe fn new(
+        area: [i32; 4],
+        main: [i32; 4],
+        kind: gamenight_daemon::splash::Kind,
+        text: String,
+        progress: Option<f32>,
+    ) -> Option<Surface> {
+        use windows_sys::Win32::Graphics::Gdi::{
+            CreateCompatibleDC, CreateDIBSection, SelectObject, BITMAPINFO, BI_RGB, DIB_RGB_COLORS,
+        };
+        let (w, h) = (area[2] - area[0], area[3] - area[1]);
+        let main = [
+            main[0] - area[0],
+            main[1] - area[1],
+            main[2] - area[0],
+            main[3] - area[1],
+        ];
+        let splash = gamenight_daemon::splash::Splash::new(w, h, main, kind);
+        let mut info: BITMAPINFO = std::mem::zeroed();
+        info.bmiHeader.biSize = std::mem::size_of_val(&info.bmiHeader) as u32;
+        info.bmiHeader.biWidth = w;
+        info.bmiHeader.biHeight = -h; // top-down
+        info.bmiHeader.biPlanes = 1;
+        info.bmiHeader.biBitCount = 32;
+        info.bmiHeader.biCompression = BI_RGB;
+        let dc = CreateCompatibleDC(std::ptr::null_mut());
+        let mut bits: *mut core::ffi::c_void = std::ptr::null_mut();
+        let bitmap = CreateDIBSection(
+            dc,
+            &info,
+            DIB_RGB_COLORS,
+            &mut bits,
+            std::ptr::null_mut(),
+            0,
+        );
+        if dc.is_null() || bitmap.is_null() || bits.is_null() {
+            return None;
+        }
+        SelectObject(dc, bitmap);
+        let state = gamenight_daemon::splash::State {
+            progress,
+            text,
+            time: 0.0,
+        };
+        let surface = Surface {
+            splash,
+            dc,
+            bits: bits.cast(),
+            started: std::time::Instant::now(),
+            state,
+        };
+        surface.splash.draw_all(surface.pixels(), &surface.state);
+        Some(surface)
+    }
 
-unsafe extern "system" fn cover_proc(
+    #[allow(clippy::mut_from_ref)] // the DIB's memory, only touched on the window thread
+    fn pixels(&self) -> &mut [u32] {
+        let (w, h) = self.splash.size();
+        unsafe { std::slice::from_raw_parts_mut(self.bits, (w * h) as usize) }
+    }
+
+    /// Draw the moving parts and ask the window to show them.
+    unsafe fn tick(&mut self, window: windows_sys::Win32::Foundation::HWND) {
+        use windows_sys::Win32::{Foundation::RECT, Graphics::Gdi::InvalidateRect};
+        self.state.time = self.started.elapsed().as_secs_f32();
+        for r in self.splash.draw(self.pixels(), &self.state) {
+            let rect = RECT {
+                left: r[0],
+                top: r[1],
+                right: r[2],
+                bottom: r[3],
+            };
+            InvalidateRect(window, &rect, 0);
+        }
+    }
+
+    unsafe fn paint(&self, window: windows_sys::Win32::Foundation::HWND) {
+        use windows_sys::Win32::Graphics::Gdi::{
+            BeginPaint, BitBlt, EndPaint, GdiFlush, PAINTSTRUCT, SRCCOPY,
+        };
+        let mut paint: PAINTSTRUCT = std::mem::zeroed();
+        let dc = BeginPaint(window, &mut paint);
+        GdiFlush();
+        let r = paint.rcPaint;
+        BitBlt(
+            dc,
+            r.left,
+            r.top,
+            r.right - r.left,
+            r.bottom - r.top,
+            self.dc,
+            r.left,
+            r.top,
+            SRCCOPY,
+        );
+        EndPaint(window, &paint);
+    }
+}
+
+/// The main monitor in screen coordinates.
+fn main_monitor() -> [i32; 4] {
+    use windows_sys::Win32::UI::WindowsAndMessaging::{GetSystemMetrics, SM_CXSCREEN, SM_CYSCREEN};
+    unsafe {
+        [
+            0,
+            0,
+            GetSystemMetrics(SM_CXSCREEN),
+            GetSystemMetrics(SM_CYSCREEN),
+        ]
+    }
+}
+
+/// The window procedure both screens share: paint from the surface, tick on
+/// the timer (`done` says when to go), Esc minimises.
+unsafe fn splash_proc(
     window: windows_sys::Win32::Foundation::HWND,
     message: u32,
     wparam: windows_sys::Win32::Foundation::WPARAM,
     lparam: windows_sys::Win32::Foundation::LPARAM,
+    done: impl FnOnce(&mut gamenight_daemon::splash::State) -> bool,
 ) -> windows_sys::Win32::Foundation::LRESULT {
-    use windows_sys::Win32::{
-        Foundation::RECT,
-        Graphics::Gdi::{BeginPaint, EndPaint, PAINTSTRUCT},
-        UI::WindowsAndMessaging::{
-            DefWindowProcW, DestroyWindow, GetClientRect, GetSystemMetrics, PostQuitMessage,
-            SM_CYSCREEN, WM_DESTROY, WM_PAINT, WM_TIMER,
+    use windows_sys::Win32::UI::{
+        Input::KeyboardAndMouse::VK_ESCAPE,
+        WindowsAndMessaging::{
+            DefWindowProcW, DestroyWindow, PostQuitMessage, ShowWindow, SW_MINIMIZE, WM_DESTROY,
+            WM_ERASEBKGND, WM_KEYDOWN, WM_PAINT, WM_TIMER,
         },
     };
     match message {
         WM_TIMER => {
-            let done = COVER_FLAG.get().is_none_or(|(flag, started)| {
-                !flag.exists() || started.elapsed() > std::time::Duration::from_secs(120)
-            });
-            if done {
+            let mut surface = SURFACE.lock().unwrap_or_else(|e| e.into_inner());
+            let live = match surface.as_mut() {
+                Some(s) => {
+                    let go = !done(&mut s.state);
+                    if go {
+                        s.tick(window);
+                    }
+                    go
+                }
+                None => false,
+            };
+            drop(surface);
+            if !live {
                 DestroyWindow(window);
             }
             0
         }
+        WM_ERASEBKGND => 1,
         WM_PAINT => {
-            let mut paint: PAINTSTRUCT = std::mem::zeroed();
-            let dc = BeginPaint(window, &mut paint);
-            let mut rect: RECT = std::mem::zeroed();
-            GetClientRect(window, &mut rect);
-            // The brand in the middle of the main screen, what is happening below it.
-            let screen = GetSystemMetrics(SM_CYSCREEN);
-            let width = rect.right - rect.left;
-            let size = screen / 14;
-            let top = screen / 2 - size;
-            paint_brand(dc, width, top, size);
-            let text = COVER_TEXT
-                .get()
-                .map_or("Updating Splitscreen Club\u{2026}", String::as_str);
-            paint_line(
-                dc,
-                text,
-                width,
-                top + size * 2,
-                size / 2,
-                screen / 36,
-                500,
-                TEXT_DIM,
-            );
-            EndPaint(window, &paint);
+            if let Some(s) = SURFACE.lock().unwrap_or_else(|e| e.into_inner()).as_ref() {
+                s.paint(window);
+            } else {
+                return DefWindowProcW(window, message, wparam, lparam);
+            }
+            0
+        }
+        WM_KEYDOWN if wparam == VK_ESCAPE as usize => {
+            ShowWindow(window, SW_MINIMIZE);
             0
         }
         WM_DESTROY => {
@@ -417,162 +491,124 @@ unsafe extern "system" fn cover_proc(
     }
 }
 
-/// Bungee (the wordmark) and Outfit (all other text), carried in the binary
-/// so the launcher's windows look like the app, site and lobby.
-const BUNGEE: &[u8] = include_bytes!("../../../../../web/fonts/Bungee-Regular.ttf");
-const OUTFIT_500: &[u8] = include_bytes!("../../../../../mobile/assets/fonts/Outfit-500.ttf");
-
-/// #a6abc3, the site's secondary text, as COLORREF.
-const TEXT_DIM: u32 = 0x00c3_aba6;
-/// The wordmark: "Splitscreen" amber (#ffb454), ".Club" lilac (#a78bfa).
-const WORDMARK: [(&str, u32); 2] = [("Splitscreen", 0x0054_b4ff), (".Club", 0x00fa_8ba7)];
-
-fn load_brand_fonts() {
-    static LOADED: std::sync::Once = std::sync::Once::new();
-    LOADED.call_once(|| unsafe {
-        for data in [BUNGEE, OUTFIT_500] {
-            let mut count = 0u32;
-            windows_sys::Win32::Graphics::Gdi::AddFontMemResourceEx(
-                data.as_ptr().cast(),
-                data.len() as u32,
-                std::ptr::null(),
-                std::ptr::addr_of_mut!(count),
-            );
-        }
-    });
-}
-
-unsafe fn brand_font(
-    face: &str,
-    size: i32,
-    weight: i32,
-) -> windows_sys::Win32::Graphics::Gdi::HFONT {
-    load_brand_fonts();
-    let face: Vec<u16> = face.encode_utf16().chain(Some(0)).collect();
-    // CLEARTYPE_QUALITY
-    windows_sys::Win32::Graphics::Gdi::CreateFontW(
-        size,
-        0,
-        0,
-        0,
-        weight,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        5,
-        0,
-        face.as_ptr(),
-    )
-}
-
-/// The app icon and the Splitscreen.Club wordmark side by side, centred in
-/// `width`, `size` pixels tall from `top`.
-unsafe fn paint_brand(dc: windows_sys::Win32::Graphics::Gdi::HDC, width: i32, top: i32, size: i32) {
-    use windows_sys::Win32::{
-        Foundation::SIZE,
-        Graphics::Gdi::{
-            DeleteObject, GetTextExtentPoint32W, SelectObject, SetBkMode, SetTextColor, TextOutW,
-            TRANSPARENT,
-        },
-        System::LibraryLoader::GetModuleHandleW,
-        UI::WindowsAndMessaging::{DestroyIcon, DrawIconEx, LoadImageW, DI_NORMAL, IMAGE_ICON},
-    };
-    let font = brand_font("Bungee", size * 3 / 5, 400);
-    let previous = SelectObject(dc, font);
-    SetBkMode(dc, TRANSPARENT as i32);
-    let words: Vec<(Vec<u16>, u32, i32, i32)> = WORDMARK
-        .iter()
-        .map(|(word, color)| {
-            let wide: Vec<u16> = word.encode_utf16().collect();
-            let mut extent: SIZE = std::mem::zeroed();
-            GetTextExtentPoint32W(dc, wide.as_ptr(), wide.len() as i32, &mut extent);
-            (wide, *color, extent.cx, extent.cy)
-        })
-        .collect();
-    let gap = size / 4;
-    let total = size + gap + words.iter().map(|w| w.2).sum::<i32>();
-    let mut x = (width - total) / 2;
-    // winres embeds branding/gamenight.ico as resource 1.
-    let icon = LoadImageW(
-        GetModuleHandleW(std::ptr::null()),
-        std::ptr::without_provenance(1),
-        IMAGE_ICON,
-        size,
-        size,
-        0,
-    );
-    if !icon.is_null() {
-        DrawIconEx(
-            dc,
-            x,
-            top,
-            icon,
-            size,
-            size,
-            0,
-            std::ptr::null_mut(),
-            DI_NORMAL,
-        );
-        DestroyIcon(icon);
-    }
-    x += size + gap;
-    for (wide, color, w, h) in &words {
-        SetTextColor(dc, *color);
-        TextOutW(
-            dc,
-            x,
-            top + (size - h) / 2,
-            wide.as_ptr(),
-            wide.len() as i32,
-        );
-        x += w;
-    }
-    SelectObject(dc, previous);
-    DeleteObject(font);
-}
-
-/// One centred line of Outfit text.
-#[allow(clippy::too_many_arguments)]
-unsafe fn paint_line(
-    dc: windows_sys::Win32::Graphics::Gdi::HDC,
-    text: &str,
-    width: i32,
-    top: i32,
-    height: i32,
-    size: i32,
-    weight: i32,
-    color: u32,
+/// Register `class`, open a borderless window over `area` and run its loop.
+unsafe fn run_splash(
+    class: &str,
+    area: [i32; 4],
+    ex_style: u32,
+    style: u32,
+    proc_: unsafe extern "system" fn(
+        windows_sys::Win32::Foundation::HWND,
+        u32,
+        windows_sys::Win32::Foundation::WPARAM,
+        windows_sys::Win32::Foundation::LPARAM,
+    ) -> windows_sys::Win32::Foundation::LRESULT,
+    after_show: impl FnOnce(windows_sys::Win32::Foundation::HWND),
 ) {
     use windows_sys::Win32::{
-        Foundation::RECT,
-        Graphics::Gdi::{
-            DeleteObject, DrawTextW, SelectObject, SetBkMode, SetTextColor, DT_CENTER,
-            DT_SINGLELINE, DT_VCENTER, TRANSPARENT,
+        Graphics::Gdi::UpdateWindow,
+        System::LibraryLoader::GetModuleHandleW,
+        UI::WindowsAndMessaging::{
+            CreateWindowExW, DispatchMessageW, GetMessageW, LoadCursorW, LoadIconW, RegisterClassW,
+            SetTimer, ShowWindow, TranslateMessage, IDC_ARROW, MSG, SW_SHOW, WNDCLASSW,
         },
     };
-    let font = brand_font("Outfit", size, weight);
-    let previous = SelectObject(dc, font);
-    SetBkMode(dc, TRANSPARENT as i32);
-    SetTextColor(dc, color);
-    let mut wide: Vec<u16> = text.encode_utf16().collect();
-    let mut rect = RECT {
-        left: 0,
-        top,
-        right: width,
-        bottom: top + height,
-    };
-    DrawTextW(
-        dc,
-        wide.as_mut_ptr(),
-        wide.len() as i32,
-        &mut rect,
-        DT_CENTER | DT_VCENTER | DT_SINGLELINE,
+    let class: Vec<u16> = class.encode_utf16().chain(Some(0)).collect();
+    let title: Vec<u16> = "Splitscreen Club\0".encode_utf16().collect();
+    let instance = GetModuleHandleW(std::ptr::null());
+    let mut window_class: WNDCLASSW = std::mem::zeroed();
+    window_class.lpfnWndProc = Some(proc_);
+    window_class.hInstance = instance;
+    // winres embeds branding/gamenight.ico as resource 1.
+    window_class.hIcon = LoadIconW(instance, std::ptr::without_provenance(1));
+    window_class.hCursor = LoadCursorW(std::ptr::null_mut(), IDC_ARROW);
+    window_class.lpszClassName = class.as_ptr();
+    RegisterClassW(&window_class);
+    let window = CreateWindowExW(
+        ex_style,
+        class.as_ptr(),
+        title.as_ptr(),
+        style,
+        area[0],
+        area[1],
+        area[2] - area[0],
+        area[3] - area[1],
+        std::ptr::null_mut(),
+        std::ptr::null_mut(),
+        instance,
+        std::ptr::null(),
     );
-    SelectObject(dc, previous);
-    DeleteObject(font);
+    if window.is_null() {
+        return;
+    }
+    ShowWindow(window, SW_SHOW);
+    UpdateWindow(window);
+    after_show(window);
+    // ~30 fps for the bar and the bob; only small rectangles are redrawn.
+    SetTimer(window, 1, 33, None);
+    let mut message: MSG = std::mem::zeroed();
+    while GetMessageW(&mut message, std::ptr::null_mut(), 0, 0) > 0 {
+        TranslateMessage(&message);
+        DispatchMessageW(&message);
+    }
+    *SURFACE.lock().unwrap_or_else(|e| e.into_inner()) = None;
+}
+
+static COVER_FLAG: std::sync::OnceLock<(PathBuf, std::time::Instant)> = std::sync::OnceLock::new();
+
+/// A borderless window over every screen saying what Splitscreen Club is
+/// doing (updating, opening another lobby), the loading screen's look with
+/// one line instead of the bar. It goes when the new lobby removes `flag`,
+/// or after two minutes at most.
+pub fn show_update_cover(flag: PathBuf, text: String) {
+    use windows_sys::Win32::UI::WindowsAndMessaging::{
+        AllowSetForegroundWindow, GetSystemMetrics, SetForegroundWindow, ShowCursor, ASFW_ANY,
+        SM_CXVIRTUALSCREEN, SM_CYVIRTUALSCREEN, SM_XVIRTUALSCREEN, SM_YVIRTUALSCREEN,
+        WS_EX_TOOLWINDOW, WS_EX_TOPMOST, WS_POPUP,
+    };
+    dpi_aware();
+    let _ = COVER_FLAG.set((flag, std::time::Instant::now()));
+    unsafe {
+        let (x, y) = (
+            GetSystemMetrics(SM_XVIRTUALSCREEN),
+            GetSystemMetrics(SM_YVIRTUALSCREEN),
+        );
+        let area = [
+            x,
+            y,
+            x + GetSystemMetrics(SM_CXVIRTUALSCREEN),
+            y + GetSystemMetrics(SM_CYVIRTUALSCREEN),
+        ];
+        let kind = gamenight_daemon::splash::Kind::Cover;
+        *SURFACE.lock().unwrap_or_else(|e| e.into_inner()) =
+            Surface::new(area, main_monitor(), kind, text, None);
+        run_splash(
+            "GameNightUpdateCover",
+            area,
+            WS_EX_TOPMOST | WS_EX_TOOLWINDOW,
+            WS_POPUP,
+            cover_proc,
+            |window| {
+                SetForegroundWindow(window);
+                ShowCursor(0);
+                // We hold the foreground now; let the new lobby take it from us.
+                AllowSetForegroundWindow(ASFW_ANY);
+            },
+        );
+    }
+}
+
+unsafe extern "system" fn cover_proc(
+    window: windows_sys::Win32::Foundation::HWND,
+    message: u32,
+    wparam: windows_sys::Win32::Foundation::WPARAM,
+    lparam: windows_sys::Win32::Foundation::LPARAM,
+) -> windows_sys::Win32::Foundation::LRESULT {
+    splash_proc(window, message, wparam, lparam, |_| {
+        COVER_FLAG.get().is_none_or(|(flag, started)| {
+            !flag.exists() || started.elapsed() > std::time::Duration::from_secs(120)
+        })
+    })
 }
 
 fn append_log(path: &Path, message: &str) {
@@ -622,66 +658,40 @@ pub fn show_error(message: &str) {
 }
 
 static WELCOME: std::sync::OnceLock<(PathBuf, std::time::Instant)> = std::sync::OnceLock::new();
-static WELCOME_SHOWN: std::sync::Mutex<(f32, f32, String)> =
-    std::sync::Mutex::new((0.0, 0.0, String::new()));
+/// The bar as shown, the bar's target (eased towards).
+static WELCOME_BAR: std::sync::Mutex<(f32, f32)> = std::sync::Mutex::new((0.0, 0.0));
 
-/// GameNight's first window, up the moment the launcher starts: the name, what
-/// the host is doing and a progress bar. It is an ordinary window (taskbar
-/// entry, minimise button) under the launcher's own taskbar identity, so it
-/// can be sent to the background. The daemon writes "progress\ntext" to
-/// `flag` and removes it once the lobby is on screen; then this window goes.
+/// Splitscreen Club's first screen, up the moment the launcher starts: the
+/// browser host's loading screen (brand, amber bar, what the host is doing,
+/// the controller card), full screen on the main monitor so it hands over to
+/// the full-screen room without a desktop in between. It keeps a taskbar
+/// entry under the launcher's identity and Esc minimises it, so it can be
+/// sent to the background. The daemon writes "progress\ntext" to `flag` and
+/// removes it once the lobby is on screen; then this window goes.
 pub fn show_welcome(flag: PathBuf) {
-    use windows_sys::Win32::{
-        Graphics::Gdi::{CreateSolidBrush, UpdateWindow},
-        System::LibraryLoader::GetModuleHandleW,
-        UI::WindowsAndMessaging::{
-            AllowSetForegroundWindow, CreateWindowExW, DispatchMessageW, GetMessageW,
-            GetSystemMetrics, LoadIconW, RegisterClassW, SetTimer, ShowWindow, TranslateMessage,
-            ASFW_ANY, MSG, SM_CXSCREEN, SM_CYSCREEN, SW_SHOWNORMAL, WNDCLASSW, WS_CAPTION,
-            WS_MINIMIZEBOX, WS_OVERLAPPED, WS_SYSMENU,
-        },
+    use windows_sys::Win32::UI::WindowsAndMessaging::{
+        AllowSetForegroundWindow, ASFW_ANY, WS_EX_APPWINDOW, WS_MINIMIZEBOX, WS_POPUP, WS_SYSMENU,
     };
+    dpi_aware();
     let _ = WELCOME.set((flag, std::time::Instant::now()));
-    let class: Vec<u16> = "GameNightWelcome\0".encode_utf16().collect();
-    let title: Vec<u16> = "Splitscreen Club\0".encode_utf16().collect();
+    *WELCOME_BAR.lock().unwrap_or_else(|e| e.into_inner()) = (0.0, 0.1);
     unsafe {
-        let instance = GetModuleHandleW(std::ptr::null());
-        let mut window_class: WNDCLASSW = std::mem::zeroed();
-        window_class.lpfnWndProc = Some(welcome_proc);
-        window_class.hInstance = instance;
-        // winres embeds branding/gamenight.ico as resource 1.
-        window_class.hIcon = LoadIconW(instance, std::ptr::without_provenance(1));
-        window_class.hbrBackground = CreateSolidBrush(COVER_BACKGROUND);
-        window_class.lpszClassName = class.as_ptr();
-        RegisterClassW(&window_class);
-        let (w, h) = (560, 300);
-        let window = CreateWindowExW(
-            0,
-            class.as_ptr(),
-            title.as_ptr(),
-            WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX,
-            (GetSystemMetrics(SM_CXSCREEN) - w) / 2,
-            (GetSystemMetrics(SM_CYSCREEN) - h) / 2,
-            w,
-            h,
-            std::ptr::null_mut(),
-            std::ptr::null_mut(),
-            instance,
-            std::ptr::null(),
+        let area = main_monitor();
+        let kind = gamenight_daemon::splash::Kind::Welcome;
+        let text = "Starting Splitscreen Club\u{2026}".to_owned();
+        *SURFACE.lock().unwrap_or_else(|e| e.into_inner()) =
+            Surface::new(area, area, kind, text, Some(0.0));
+        run_splash(
+            "GameNightWelcome",
+            area,
+            WS_EX_APPWINDOW,
+            WS_POPUP | WS_SYSMENU | WS_MINIMIZEBOX,
+            welcome_proc,
+            // The lobby must be able to take the screen from this window.
+            |_| {
+                AllowSetForegroundWindow(ASFW_ANY);
+            },
         );
-        if window.is_null() {
-            return;
-        }
-        ShowWindow(window, SW_SHOWNORMAL);
-        UpdateWindow(window);
-        // The lobby must be able to take the screen from this window.
-        AllowSetForegroundWindow(ASFW_ANY);
-        SetTimer(window, 1, 50, None);
-        let mut message: MSG = std::mem::zeroed();
-        while GetMessageW(&mut message, std::ptr::null_mut(), 0, 0) > 0 {
-            TranslateMessage(&message);
-            DispatchMessageW(&message);
-        }
     }
 }
 
@@ -691,110 +701,36 @@ unsafe extern "system" fn welcome_proc(
     wparam: windows_sys::Win32::Foundation::WPARAM,
     lparam: windows_sys::Win32::Foundation::LPARAM,
 ) -> windows_sys::Win32::Foundation::LRESULT {
-    use windows_sys::Win32::{
-        Foundation::RECT,
-        Graphics::Gdi::{
-            BeginPaint, CreateSolidBrush, DeleteObject, EndPaint, FillRect, InvalidateRect,
-            PAINTSTRUCT,
-        },
-        UI::WindowsAndMessaging::{
-            DefWindowProcW, DestroyWindow, GetClientRect, PostQuitMessage, WM_DESTROY,
-            WM_ERASEBKGND, WM_PAINT, WM_TIMER,
-        },
-    };
-    match message {
-        WM_TIMER => {
-            let Some((flag, started)) = WELCOME.get() else {
-                DestroyWindow(window);
-                return 0;
-            };
-            let content = std::fs::read_to_string(flag);
-            if content.is_err() || started.elapsed() > std::time::Duration::from_secs(180) {
-                DestroyWindow(window);
-                return 0;
-            }
-            let content = content.unwrap_or_default();
-            let mut lines = content.lines();
-            let target = lines
-                .next()
-                .and_then(|p| p.trim().parse::<f32>().ok())
-                .unwrap_or(0.1)
-                .clamp(0.0, 1.0);
-            let text = lines
-                .next()
-                .unwrap_or("Starting Splitscreen Club\u{2026}")
-                .to_owned();
-            let mut shown = WELCOME_SHOWN.lock().unwrap();
-            // Ease toward the step, then creep on while it takes long, so the
-            // bar never looks stuck (but never passes the next step).
-            if shown.1 < target {
-                shown.1 = target;
-            }
-            let (ceiling, speed) = if shown.0 < shown.1 {
-                (shown.1, 0.12)
-            } else {
-                ((shown.1 + 0.12).min(0.97), 0.004)
-            };
-            shown.0 += (ceiling - shown.0).max(0.0) * speed;
-            shown.2 = text;
-            InvalidateRect(window, std::ptr::null(), 0);
-            0
+    splash_proc(window, message, wparam, lparam, |state| {
+        let Some((flag, started)) = WELCOME.get() else {
+            return true;
+        };
+        let Ok(content) = std::fs::read_to_string(flag) else {
+            return true;
+        };
+        if started.elapsed() > std::time::Duration::from_secs(180) {
+            return true;
         }
-        WM_ERASEBKGND => 1,
-        WM_PAINT => {
-            let mut paint: PAINTSTRUCT = std::mem::zeroed();
-            let dc = BeginPaint(window, &mut paint);
-            let mut client: RECT = std::mem::zeroed();
-            GetClientRect(window, &mut client);
-            let background = CreateSolidBrush(COVER_BACKGROUND);
-            FillRect(dc, &client, background);
-            DeleteObject(background);
-            let (progress, text) = {
-                let shown = WELCOME_SHOWN.lock().unwrap();
-                (shown.0, shown.2.clone())
-            };
-            let width = client.right - client.left;
-            paint_brand(dc, width, 46, 64);
-            let text = if text.is_empty() {
-                "Starting Splitscreen Club\u{2026}".to_owned()
-            } else {
-                text
-            };
-            paint_line(dc, &text, width, 134, 36, 20, 500, TEXT_DIM);
-            // The bar: a dim track and the lobby's violet (#7c5cff).
-            let (left, right, top) = (72, width - 72, 196);
-            let track = CreateSolidBrush(0x002e_2222);
-            FillRect(
-                dc,
-                &RECT {
-                    left,
-                    top,
-                    right,
-                    bottom: top + 8,
-                },
-                track,
-            );
-            DeleteObject(track);
-            let fill = CreateSolidBrush(0x00ff_5c7c);
-            let end = left + ((right - left) as f32 * progress.clamp(0.0, 1.0)) as i32;
-            FillRect(
-                dc,
-                &RECT {
-                    left,
-                    top,
-                    right: end.max(left + 8),
-                    bottom: top + 8,
-                },
-                fill,
-            );
-            DeleteObject(fill);
-            EndPaint(window, &paint);
-            0
+        let mut lines = content.lines();
+        let target = lines
+            .next()
+            .and_then(|p| p.trim().parse::<f32>().ok())
+            .unwrap_or(0.1)
+            .clamp(0.0, 1.0);
+        if let Some(text) = lines.next().filter(|t| !t.trim().is_empty()) {
+            state.text = text.to_owned();
         }
-        WM_DESTROY => {
-            PostQuitMessage(0);
-            0
-        }
-        _ => DefWindowProcW(window, message, wparam, lparam),
-    }
+        let mut bar = WELCOME_BAR.lock().unwrap_or_else(|e| e.into_inner());
+        // Ease toward the step, then creep on while it takes long, so the
+        // bar never looks stuck (but never passes the next step).
+        bar.1 = bar.1.max(target);
+        let (ceiling, speed) = if bar.0 < bar.1 {
+            (bar.1, 0.08)
+        } else {
+            ((bar.1 + 0.12).min(0.97), 0.003)
+        };
+        bar.0 += (ceiling - bar.0).max(0.0) * speed;
+        state.progress = Some(bar.0);
+        false
+    })
 }

@@ -391,6 +391,19 @@ fn main() {
         }
         return;
     }
+    // The loading screen alone, driven by hand: write "0.5\nSome step" to
+    // the file to move it, delete the file to close it.
+    #[cfg(windows)]
+    if std::env::args().nth(1).as_deref() == Some("--welcome-preview") {
+        if let Some(flag) = std::env::args_os().nth(2) {
+            let flag = std::path::PathBuf::from(flag);
+            if !flag.exists() {
+                let _ = fs::write(&flag, "0.3\nStarting the host\u{2026}");
+            }
+            windows::show_welcome(flag);
+        }
+        return;
+    }
     #[cfg(windows)]
     velopack::VelopackApp::build()
         .set_auto_apply_on_startup(false)

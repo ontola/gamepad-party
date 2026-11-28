@@ -13,6 +13,7 @@ mod lobby_input;
 mod macos;
 mod nowplaying;
 mod screenshots;
+pub mod splash;
 #[cfg(windows)]
 pub mod windows_launch;
 
